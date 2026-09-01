@@ -1,0 +1,12 @@
+private.pem was removed from this package.
+
+A private signing key must never be distributed in a zip, repo, or chat
+download — only jwk.json (the PUBLIC key, safe to share) belongs in
+client-facing files. Generate the real private key directly on your
+server and leave it there:
+
+    openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+
+Then re-derive jwk.json's public components from it if you ever need to
+regenerate that file. Keep private.pem outside your public web root (see
+config.php's comment on this) and never commit or email/zip it.

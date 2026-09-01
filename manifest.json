@@ -1,0 +1,15 @@
+{
+  "name": "Suite — your files, your device",
+  "short_name": "Suite",
+  "description": "Docs, Sheets, Forms, Notes, Tasks, Agenda, Slides, and Lockbox — all local, no account.",
+  "start_url": "./suite.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1c2333",
+  "theme_color": "#1c2333",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

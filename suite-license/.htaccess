@@ -1,0 +1,12 @@
+<Files "config.php">
+  Require all denied
+</Files>
+<Files "*.pem">
+  Require all denied
+</Files>
+<Files "jwk.json">
+  Require all denied
+</Files>
+<Files "schema.sql">
+  Require all denied
+</Files>

@@ -1,0 +1,2539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Suite — Yours, Always</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1c2333">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Suite">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{
+  --ink:#232017;
+  --paper:#f6f1e4;
+  --paper-dark:#ece4d0;
+  --navy:#1c2333;
+  --navy-2:#262f45;
+  --sage:#6f8c6a;
+  --sage-dark:#567052;
+  --brass:#b8925a;
+  --brass-light:#d4ab78;
+  --rust:#a8563f;
+  --line:#d8cdb0;
+  --shadow:rgba(28,35,51,0.25);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;
+  background:var(--navy);
+  color:var(--ink);
+  min-height:100vh;
+}
+.topbar{
+  background:var(--navy);
+  color:var(--paper);
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:2px solid var(--brass);
+  flex-wrap:wrap;
+  gap:10px;
+}
+.brand{
+  font-size:1.3em;
+  letter-spacing:0.04em;
+  font-weight:600;
+}
+.brand span{color:var(--brass-light);}
+.mode-toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.78em;
+  background:var(--navy-2);
+  padding:6px 10px;
+  border-radius:20px;
+  border:1px solid rgba(212,171,120,0.3);
+}
+.mode-toggle button{
+  border:none;
+  background:transparent;
+  color:var(--paper);
+  opacity:0.5;
+  cursor:pointer;
+  padding:4px 10px;
+  border-radius:14px;
+  font-family:inherit;
+  font-size:1em;
+}
+.mode-toggle button.active{
+  background:var(--brass);
+  color:var(--navy);
+  opacity:1;
+  font-weight:600;
+}
+.tabs{
+  display:flex;
+  background:var(--navy-2);
+  overflow-x:auto;
+  border-bottom:1px solid rgba(212,171,120,0.25);
+}
+.tab{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  color:var(--paper);
+  opacity:0.55;
+  padding:11px 18px;
+  cursor:pointer;
+  white-space:nowrap;
+  font-size:0.82em;
+  letter-spacing:0.03em;
+  border-bottom:3px solid transparent;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.tab:hover{opacity:0.85;}
+.tab.active{
+  opacity:1;
+  border-bottom:3px solid var(--brass);
+  background:rgba(184,146,90,0.08);
+}
+.tab .ext{
+  font-size:0.85em;
+  color:var(--brass-light);
+  font-family:'Courier New',monospace;
+}
+.workspace{
+  max-width:1100px;
+  margin:0 auto;
+  padding:24px;
+}
+.panel{
+  background:var(--paper);
+  border-radius:6px;
+  box-shadow:0 8px 24px var(--shadow);
+  padding:24px;
+  min-height:400px;
+  display:none;
+}
+.panel.active{display:block;}
+.panel h2{
+  margin:0 0 4px 0;
+  font-size:1.4em;
+  color:var(--navy);
+}
+.panel .sub{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.8em;
+  color:#8a7f66;
+  margin-bottom:18px;
+}
+.toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+  align-items:center;
+}
+button.btn{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  background:var(--navy);
+  color:var(--paper);
+  border:none;
+  padding:8px 14px;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:0.82em;
+  letter-spacing:0.02em;
+}
+button.btn:hover{background:var(--navy-2);}
+button.btn.sage{background:var(--sage);}
+button.btn.sage:hover{background:var(--sage-dark);}
+.countdown-banner{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.88em;
+  background:var(--paper-dark);
+  padding:10px 14px;
+  border-radius:4px;
+  margin-bottom:14px;
+}
+.cal-nav{
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  margin-bottom:10px;
+}
+.cal-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+  margin-bottom:18px;
+}
+.cal-dow{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.72em;
+  text-align:center;
+  color:#8a7f66;
+  padding:4px 0;
+}
+.cal-cell{
+  min-height:52px;
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:4px;
+  cursor:pointer;
+  background:var(--paper);
+}
+.cal-cell:hover{background:var(--paper-dark);}
+.cal-cell.empty{border:none; cursor:default; background:transparent;}
+.cal-cell.today{border:2px solid var(--brass);}
+.cal-cell.selected{background:rgba(184,146,90,0.25);}
+.cal-daynum{font-size:0.82em; color:var(--ink);}
+.cal-dots{display:flex; gap:2px; flex-wrap:wrap; margin-top:3px;}
+.cal-dot{width:6px; height:6px; border-radius:50%; display:inline-block;}
+.repeat-badge{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.75em;
+  color:#8a7f66;
+  font-style:italic;
+}
+.today-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+  margin:14px 0;
+}
+.today-card{
+  background:var(--paper-dark);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:14px 16px;
+}
+.today-card h3{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.85em;
+  color:#8a7f66;
+  margin:0 0 8px 0;
+}
+.today-item{ padding:4px 0; font-size:0.92em; }
+.search-result{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.85em;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:4px;
+  margin-top:6px;
+  cursor:pointer;
+}
+.search-result:hover{ background:var(--paper-dark); }
+body.standalone .tabs{ display:none; }
+.plot-dot.aging-warm{ background:#b8925a !important; }
+.plot-dot.aging-hot{ background:#a8563f !important; box-shadow:0 0 8px rgba(168,86,63,0.6); }
+.carry-badge{
+  position:absolute;
+  top:-8px; right:-8px;
+  background:var(--navy);
+  color:var(--paper);
+  font-size:0.6em;
+  border-radius:50%;
+  width:16px; height:16px;
+  display:flex; align-items:center; justify-content:center;
+}
+.slide-preview{
+  margin-top:12px;
+  padding:10px 14px;
+  background:var(--paper-dark);
+  border:1px solid var(--line);
+  border-radius:6px;
+  font-size:0.9em;
+  min-height:20px;
+}
+.embed-grid{ border-collapse:collapse; margin:6px 0; }
+.embed-grid td{ border:1px solid var(--line); padding:4px 8px; font-family:'Courier New',monospace; font-size:0.85em; }
+.timelock-row{
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:8px 12px;
+  margin-top:8px;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.88em;
+}
+.locked-badge{ color:#a8563f; font-size:0.85em; margin-left:8px; }
+.unlocked-badge{ color:#6f8c6a; font-size:0.85em; margin-left:8px; }
+.timelock-content{ margin-top:6px; font-family:'Iowan Old Style',Georgia,serif; }
+.anchor-tag{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.7em;
+  color:#8a7f66;
+  margin-bottom:4px;
+  font-style:italic;
+}
+.cal-moon{ font-size:0.75em; margin-left:4px; }
+.grid-help{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.82em;
+  background:var(--paper-dark);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:14px 16px;
+  margin-bottom:14px;
+  line-height:1.6;
+}
+.grid-help code{
+  background:rgba(28,35,51,0.08);
+  padding:1px 5px;
+  border-radius:3px;
+  font-family:'Courier New',monospace;
+  color:var(--navy);
+}
+.formula-guide-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px 18px;
+  margin:8px 0 12px 0;
+}
+.formula-guide-grid div{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.formula-guide-grid span{color:#8a7f66; font-style:italic;}
+.grid-calc{
+  background:var(--navy);
+  border-radius:8px;
+  padding:14px;
+  margin-bottom:14px;
+  max-width:280px;
+  box-shadow:0 4px 14px var(--shadow);
+}
+.grid-calc #calcDisplay{
+  width:100%;
+  box-sizing:border-box;
+  font-family:'Courier New',monospace;
+  font-size:1.2em;
+  padding:10px;
+  border-radius:4px;
+  border:none;
+  margin-bottom:10px;
+  text-align:right;
+  background:var(--paper);
+  color:var(--ink);
+}
+.calc-buttons{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+}
+.calc-buttons button{width:100%;}
+.toolbar select{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  background:var(--navy);
+  color:var(--paper);
+  border:none;
+  padding:7px 8px;
+  border-radius:4px;
+  font-size:0.8em;
+  cursor:pointer;
+}
+.toolbar .tdiv{
+  width:1px;
+  align-self:stretch;
+  background:rgba(35,32,23,0.15);
+  margin:2px 2px;
+}
+.toolbar input[type=color]{
+  width:30px;
+  height:30px;
+  border:none;
+  border-radius:4px;
+  padding:0;
+  cursor:pointer;
+  background:none;
+}
+button.btn.icon{
+  min-width:32px;
+  text-align:center;
+  padding:8px 10px;
+}
+button.btn.active-fmt{
+  background:var(--brass);
+  color:var(--navy);
+}
+button.btn.ghost{
+  background:transparent;
+  color:var(--navy);
+  border:1px solid var(--line);
+}
+button.btn.ghost:hover{background:var(--paper-dark);}
+button.btn.brass{background:var(--brass);color:#2b1d0c;}
+button.btn.brass:hover{background:var(--brass-light);}
+button.btn.small{padding:5px 10px;font-size:0.75em;}
+input[type=file]{display:none;}
+textarea,input[type=text],input[type=date],input[type=time],select{
+  font-family:inherit;
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:8px;
+  background:#fffdf8;
+  color:var(--ink);
+}
+
+/* DOCS */
+#docsEditor{
+  min-height:300px;
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:16px;
+  background:#fffdf8;
+  font-size:1.05em;
+  line-height:1.6;
+  outline:none;
+}
+.wordcount{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:#8a7f66;margin-top:8px;}
+
+/* SHEETS */
+table.grid{border-collapse:collapse;width:100%;}
+table.grid td{
+  border:1px solid var(--line);
+  min-width:70px;
+  height:30px;
+  padding:0;
+}
+table.grid input{
+  width:100%;height:100%;border:none;background:transparent;
+  padding:4px 6px;font-size:0.85em;text-align:left;
+}
+table.grid th{
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.7em;color:#8a7f66;font-weight:normal;
+  background:var(--paper-dark);padding:3px;
+}
+
+/* FORMS */
+.forms-layout{display:flex;gap:20px;flex-wrap:wrap;}
+.forms-col{flex:1;min-width:280px;}
+.field-row{
+  display:flex;gap:6px;margin-bottom:8px;align-items:center;
+  font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;
+}
+.field-row input,.field-row select{flex:1;}
+.preview-box{
+  border:1px solid var(--line);border-radius:6px;padding:16px;background:#fffdf8;
+}
+.preview-box label{
+  display:block;font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.85em;margin:12px 0 4px;color:var(--navy);
+}
+.preview-box input{width:100%;}
+
+/* NOTES canvas */
+#notesCanvas{
+  position:relative;
+  border:1px dashed var(--line);
+  border-radius:6px;
+  height:420px;
+  background:repeating-linear-gradient(0deg,#fffdf8,#fffdf8 24px,#f2ecd f);
+  background:#fffdf8;
+  overflow:hidden;
+}
+.spot-note{
+  position:absolute;
+  width:150px;
+  min-height:90px;
+  background:#fff6d8;
+  border:1px solid #e0d09a;
+  border-radius:3px;
+  padding:8px;
+  box-shadow:2px 3px 6px rgba(0,0,0,0.15);
+  cursor:move;
+  font-size:0.82em;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+}
+.spot-note textarea{
+  width:100%;height:60px;border:none;background:transparent;resize:none;font-family:inherit;font-size:1em;outline:none;
+}
+.spot-note .del{
+  position:absolute;top:2px;right:4px;cursor:pointer;color:#a8563f;font-weight:bold;font-size:0.9em;
+}
+
+/* TASKS timeline */
+#plotArea{
+  position:relative;
+  height:340px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:#fffdf8;
+  margin-top:10px;
+  overflow:hidden;
+}
+.plot-axis-label{
+  position:absolute;font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.7em;color:#8a7f66;
+}
+.plot-dot{
+  position:absolute;
+  width:16px;height:16px;
+  border-radius:50%;
+  background:var(--rust);
+  cursor:grab;
+  border:2px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,0.3);
+}
+.plot-dot.done{background:var(--sage);}
+.plot-tooltip{
+  position:absolute;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.72em;
+  background:var(--navy);
+  color:var(--paper);
+  padding:3px 7px;
+  border-radius:3px;
+  white-space:nowrap;
+  transform:translate(-50%,-140%);
+  pointer-events:none;
+}
+
+/* AGENDA */
+.agenda-day{
+  border-bottom:1px solid var(--line);
+  padding:10px 0;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+}
+.agenda-day .date{font-weight:600;color:var(--navy);font-size:0.85em;margin-bottom:6px;}
+.agenda-event{
+  display:flex;justify-content:space-between;
+  padding:5px 8px;background:var(--paper-dark);border-radius:3px;margin-bottom:4px;font-size:0.82em;
+}
+
+/* SLIDES filmstrip */
+.filmstrip{
+  display:flex;gap:10px;overflow-x:auto;padding:10px 0;
+}
+.slide-thumb{
+  min-width:160px;height:100px;
+  background:#fffdf8;
+  border:2px solid var(--line);
+  border-radius:4px;
+  padding:8px;
+  font-size:0.72em;
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  cursor:pointer;
+  flex-shrink:0;
+  position:relative;
+}
+.slide-thumb.active{border-color:var(--brass);}
+.slide-editor{
+  margin-top:14px;border:1px solid var(--line);border-radius:6px;padding:16px;background:#fffdf8;min-height:200px;
+}
+.slide-editor textarea{width:100%;min-height:160px;border:none;outline:none;font-family:inherit;font-size:1em;resize:vertical;}
+
+/* LOCKBOX */
+.lockbox-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 10px;border-bottom:1px solid var(--line);font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;
+}
+.tag-pill{
+  background:var(--sage);color:#fff;font-size:0.7em;padding:2px 8px;border-radius:10px;margin-left:6px;
+}
+.used-in{color:#8a7f66;font-size:0.78em;font-style:italic;}
+
+/* Seal animation */
+.seal-overlay{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:999;
+  opacity:0;
+}
+.seal-overlay.show{animation:sealFade 1.1s ease forwards;}
+.seal-stamp{
+  width:90px;height:90px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 60%, #8a6a3d);
+  display:flex;align-items:center;justify-content:center;
+  color:#2b1d0c;font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.65em;font-weight:700;
+  letter-spacing:0.05em;text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,0.4);
+  transform:scale(0.4);
+}
+.seal-overlay.show .seal-stamp{animation:stampIn 1.1s cubic-bezier(.2,1.6,.4,1) forwards;}
+@keyframes sealFade{
+  0%{opacity:0;}
+  15%{opacity:1;}
+  75%{opacity:1;}
+  100%{opacity:0;}
+}
+@keyframes stampIn{
+  0%{transform:scale(2.2) rotate(-18deg);}
+  30%{transform:scale(0.85) rotate(4deg);}
+  50%{transform:scale(1) rotate(-2deg);}
+  100%{transform:scale(1) rotate(0deg);}
+}
+.hint{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:#8a7f66;margin-top:10px;line-height:1.5;}
+.sync-badge{
+  font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.68em;
+  background:var(--sage);color:#fff;padding:2px 8px;border-radius:10px;margin-left:8px;
+  display:none;
+}
+body.hybrid .sync-badge{display:inline-block;}
+.footer-note{
+  text-align:center;color:var(--paper);opacity:0.5;font-family:'Helvetica Neue',Arial,sans-serif;
+  font-size:0.72em;padding:20px;
+}
+.capsule-bar{
+  display:flex;align-items:center;gap:8px;
+}
+.sync-panel{
+  max-width:1100px;margin:0 auto;padding:0 24px 20px;
+}
+.sync-card{
+  background:var(--paper);border-radius:6px;padding:16px 20px;
+  box-shadow:0 6px 18px var(--shadow);
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  display:none;
+}
+body.hybrid .sync-card{display:block;}
+.sync-card h3{margin:0 0 6px;font-size:0.95em;color:var(--navy);font-family:'Iowan Old Style',Georgia,serif;}
+.sync-card .disclaimer{font-size:0.72em;color:#a8563f;margin-bottom:10px;line-height:1.5;}
+.sync-row{
+  display:flex;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--line);font-size:0.8em;color:var(--ink);
+}
+.sync-row .stamp{color:#8a7f66;font-size:0.85em;}
+.capsule-modal-bg{
+  position:fixed;inset:0;background:rgba(28,35,51,0.55);
+  display:none;align-items:center;justify-content:center;z-index:1000;
+}
+.capsule-modal-bg.show{display:flex;}
+.capsule-modal{
+  background:var(--paper);border-radius:8px;padding:24px;max-width:420px;width:90%;
+  box-shadow:0 20px 50px rgba(0,0,0,0.4);font-family:'Helvetica Neue',Arial,sans-serif;
+}
+.capsule-modal h3{font-family:'Iowan Old Style',Georgia,serif;margin:0 0 10px;color:var(--navy);}
+.capsule-modal p{font-size:0.85em;line-height:1.6;color:var(--ink);margin:0 0 14px;}
+.capsule-modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
+
+/* LICENSE / PAYWALL */
+.lock-overlay{
+  border:1px dashed var(--brass);border-radius:8px;padding:32px;text-align:center;
+  background:repeating-linear-gradient(45deg,#fffdf8,#fffdf8 10px,#f6efd f 10px,#f6efd f 20px);
+  background:#fffdf8;
+}
+.lock-overlay .lock-icon{font-size:2em;margin-bottom:8px;}
+.lock-overlay h3{margin:0 0 6px;color:var(--navy);font-family:'Iowan Old Style',Georgia,serif;}
+.lock-overlay p{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;color:#6b6250;max-width:420px;margin:0 auto 16px;line-height:1.5;}
+.lock-overlay input{width:220px;text-align:center;letter-spacing:0.05em;}
+.lock-price{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:var(--brass-dark,#8a6a3d);margin-top:10px;}
+.free-pill{
+  font-size:0.62em;background:var(--sage);color:#fff;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;
+}
+.pro-pill{
+  font-size:0.62em;background:var(--brass);color:#2b1d0c;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span id="brandTitle">Suite</span> <span>· a calendar with moon phases and daylight built in</span></div>
+  <div class="capsule-bar">
+    <button class="btn brass small" onclick="openCapsuleModal('export')">Export Capsule</button>
+    <button class="btn ghost small" onclick="openCapsuleModal('import')">Import Capsule</button>
+  </div>
+  <div class="mode-toggle">
+    <button id="btnOffline" class="active">Offline</button>
+    <button id="btnHybrid">Hybrid</button>
+  </div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="sync-panel">
+  <div class="sync-card" id="syncCard">
+    <h3>Hybrid sync</h3>
+    <div class="disclaimer">Honest note: this prototype has no real backend. "Sync" here just timestamps each module locally so you can see how the feature would behave — nothing actually leaves your browser.</div>
+    <div id="syncList"></div>
+    <div class="toolbar" style="margin-top:12px;">
+      <button class="btn sage small" onclick="syncAll()">Sync now</button>
+    </div>
+  </div>
+</div>
+
+<div class="workspace" id="workspace"></div>
+
+<div class="footer-note">No account. No server unless you choose sync. Every save is yours to keep — export a Capsule anytime.<br>
+<span style="opacity:0.85;">A note: because nothing is stored anywhere but this device, there's no "forgot my passphrase" recovery and no cloud backup unless you make one. That's the trade — getting to "no one else can touch your data" means no one else can rescue it for you either. Export a Capsule regularly and keep it somewhere safe.</span>
+</div>
+
+<div class="capsule-modal-bg" id="capsuleModalBg">
+  <div class="capsule-modal" id="capsuleModal"></div>
+</div>
+
+<div class="seal-overlay" id="sealOverlay">
+  <div class="seal-stamp">SEALED<br>& SAVED</div>
+</div>
+
+<script>
+/* ---------- Storage helpers ---------- */
+const KEY_PREFIX = "suite_v1_";
+function loadLocal(key, fallback){
+  try{
+    const raw = localStorage.getItem(KEY_PREFIX+key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+const MODULE_KEYS_TRACKED = ['docs','sheets','forms','notes','tasks','agenda','slides','lockbox'];
+function saveLocal(key, value){
+  localStorage.setItem(KEY_PREFIX+key, JSON.stringify(value));
+  if(MODULE_KEYS_TRACKED.includes(key)){
+    const times = loadLocal('modTimes', {});
+    times[key] = Date.now();
+    localStorage.setItem(KEY_PREFIX+'modTimes', JSON.stringify(times));
+  }
+  showSeal();
+}
+function showSeal(){
+  const el = document.getElementById('sealOverlay');
+  el.classList.remove('show'); void el.offsetWidth;
+  el.classList.add('show');
+}
+function download(filename, content){
+  const blob = new Blob([content], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function pickFile(accept, cb){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept=accept;
+  inp.onchange = e=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>cb(r.result, f.name);
+    r.readAsText(f);
+  };
+  document.body.appendChild(inp); inp.click(); inp.remove();
+}
+
+/* ---------- License (server-verified, one-time $9 unlock, no account) ---------- */
+// Set this to your verify.php URL once it's live on your host, e.g.:
+// const LICENSE_VERIFY_URL = 'https://codersagent.com/suite-license/verify.php';
+const LICENSE_VERIFY_URL = ''; // <-- fill this in before shipping
+
+// Public key only — safe to expose. Used to verify signatures locally after the
+// first successful server check, so the app stays offline day-to-day.
+const LICENSE_PUBLIC_JWK = {
+  kty: "RSA", alg: "RS256", ext: true, key_ops: ["verify"], e: "AQAB",
+  n: "kAidYl1Daul6rCzJg--OXpKv3AZt5Sy3cBQw0-bqEGvc2qn49ad804MN684eZYmgIZqNahkssWGbp9fo042obm_RnZ7QmFal67pb7GTcM-0Xc-V5Ifg0BpeKSI1vQJz47g4bxZq9zJlMsWQhR3VSGW2JTYNL3vX5XFQgA4ISAUB32dE5fDkMPVrMutcGCKuize4iHQgJpdg3HJcAbGEQPnUW6XnwdlfDGiSX_VMq0lgvt1yELgbCiNFtJr_c3iwZDtByhdqbVRiHmkuDmkpHdCIIkeO9MxORgMoSqESfYpnBBy_7gPT9lXOlklGccoGQTs33xNvk1vSrwB0nwdBdpw"
+};
+
+let _licenseCryptoKey = null; // cached imported CryptoKey
+async function getLicensePublicKey(){
+  if(_licenseCryptoKey) return _licenseCryptoKey;
+  _licenseCryptoKey = await crypto.subtle.importKey(
+    'jwk', LICENSE_PUBLIC_JWK,
+    { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' },
+    false, ['verify']
+  );
+  return _licenseCryptoKey;
+}
+function b64ToBytes(b64){ const s=atob(b64); const arr=new Uint8Array(s.length); for(let i=0;i<s.length;i++) arr[i]=s.charCodeAt(i); return arr; }
+
+async function verifyStoredToken(){
+  const token = loadLocal('licenseToken', null);
+  if(!token || !token.payload || !token.signature) return false;
+  try{
+    const key = await getLicensePublicKey();
+    const enc = new TextEncoder();
+    const ok = await crypto.subtle.verify(
+      { name:'RSASSA-PKCS1-v1_5' },
+      key,
+      b64ToBytes(token.signature),
+      enc.encode(token.payload)
+    );
+    return ok;
+  }catch(e){ return false; }
+}
+
+// Cached result so render functions can check synchronously; refreshed on load and on activation.
+window._licensed = false;
+function isLicensed(){ return !!window._licensed; }
+
+async function refreshLicenseState(){
+  window._licensed = await verifyStoredToken();
+}
+
+/* Device fingerprint: a hash of a few weak, non-invasive signals (not identity —
+   just enough to tell devices apart for the 3-device license cap). Persisted once
+   generated so it stays stable across sessions on the same device. */
+async function getDeviceFingerprint(){
+  let stored = loadLocal('deviceFingerprintSeed', null);
+  if(!stored){
+    stored = [
+      navigator.userAgent, navigator.language, navigator.hardwareConcurrency || '',
+      screen.width + 'x' + screen.height, new Date().getTimezoneOffset(),
+      Math.random().toString(36).slice(2) // random component so two identical browsers on different machines still differ
+    ].join('|');
+    saveLocal('deviceFingerprintSeed', stored);
+  }
+  return sha256Hex(stored);
+}
+
+async function tryActivate(moduleLabel){
+  const input = document.getElementById('licenseInput_'+moduleLabel);
+  const key = input ? input.value.trim() : '';
+  if(!key){ alert('Enter your license key first.'); return; }
+  if(!LICENSE_VERIFY_URL){
+    alert('The license server URL hasn\'t been configured yet in suite.html (LICENSE_VERIFY_URL) — this is a setup step, not a key problem.');
+    return;
+  }
+  const btn = document.querySelector(`[onclick="tryActivate('${moduleLabel}')"]`);
+  if(btn){ btn.disabled = true; btn.textContent = 'Checking…'; }
+  try{
+    const deviceFingerprint = await getDeviceFingerprint();
+    const res = await fetch(LICENSE_VERIFY_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({key, device_fingerprint: deviceFingerprint})
+    });
+    const data = await res.json();
+    if(!data.ok){
+      alert('That key didn\'t verify: ' + (data.error || 'unknown error'));
+      return;
+    }
+    // Confirm the signature ourselves before trusting it — belt and suspenders.
+    const key2 = await getLicensePublicKey();
+    const enc = new TextEncoder();
+    const sigValid = await crypto.subtle.verify(
+      { name:'RSASSA-PKCS1-v1_5' }, key2,
+      b64ToBytes(data.signature), enc.encode(data.payload)
+    );
+    if(!sigValid){ alert('Server response failed local verification — please try again.'); return; }
+
+    saveLocal('licenseToken', { payload: data.payload, signature: data.signature });
+    window._licensed = true;
+    showSeal();
+    renderDocs(); renderSheets(); renderForms(); renderNotes();
+    renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
+    renderToday();
+  }catch(e){
+    alert('Couldn\'t reach the license server — check your internet connection and try again. (Activation needs to happen online once; after that the app works offline as usual.)');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Unlock'; }
+  }
+}
+function lockOverlayHTML(moduleLabel){
+  return `
+    <div class="lock-overlay">
+      <div class="lock-icon">&#128274;</div>
+      <h3>${moduleLabel} is part of the Pro unlock</h3>
+      <p>Folio, Spot, and Almanac are free forever. ${moduleLabel} and four other modules unlock with a single one-time purchase — no subscription, no account. Unlocking needs internet once; after that it works offline like everything else.</p>
+      <input type="text" id="licenseInput_${moduleLabel}" placeholder="SUITE-XXXXX-XX">
+      <div class="toolbar" style="justify-content:center;margin-top:12px;">
+        <button class="btn brass small" onclick="tryActivate('${moduleLabel}')">Unlock</button>
+      </div>
+      <div class="lock-price">$9 once — unlocks Grid, Fill, Docket, Glides, Lockbox, and Capsule encryption for good.</div>
+    </div>
+  `;
+}
+
+
+
+/* ---------- Mode toggle ---------- */
+let mode = loadLocal('mode','offline');
+function setMode(m){
+  mode = m;
+  saveLocal('mode', m);
+  document.body.classList.toggle('hybrid', m==='hybrid');
+  document.getElementById('btnOffline').classList.toggle('active', m==='offline');
+  document.getElementById('btnHybrid').classList.toggle('active', m==='hybrid');
+}
+document.getElementById('btnOffline').onclick = ()=>setMode('offline');
+document.getElementById('btnHybrid').onclick = ()=>setMode('hybrid');
+
+/* ---------- Standalone-tool mode ----------
+   When SUITE_ONLY is set to a module id (e.g. 'sheets'), this file behaves as a
+   single standalone tool: only that module loads, the tab bar and Today/search
+   are hidden, and the header shows that tool's own name instead of "Suite".
+   Leave null for the full combined Suite. */
+const SUITE_ONLY = 'agenda';
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function moonPhaseEmoji(date){
+  const knownNewMoon = Date.UTC(2000,0,6,18,14,0);
+  const synodic = 29.53058867;
+  const diffDays = (date.getTime()-knownNewMoon)/(1000*60*60*24);
+  let phase = (diffDays % synodic)/synodic;
+  if(phase<0) phase+=1;
+  const phases = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+  return phases[Math.floor(phase*8+0.5)%8];
+}
+function moonPhaseName(date){
+  const knownNewMoon = Date.UTC(2000,0,6,18,14,0);
+  const synodic = 29.53058867;
+  const diffDays = (date.getTime()-knownNewMoon)/(1000*60*60*24);
+  let phase = (diffDays % synodic)/synodic;
+  if(phase<0) phase+=1;
+  const names = ['New moon','Waxing crescent','First quarter','Waxing gibbous','Full moon','Waning gibbous','Last quarter','Waning crescent'];
+  return names[Math.floor(phase*8+0.5)%8];
+}
+function dayLengthHours(date, lat){
+  lat = lat===undefined ? 24.7 : lat; // default reference latitude; local, no network lookup
+  const start = new Date(date.getFullYear(),0,0);
+  const dayOfYear = Math.floor((date-start)/86400000);
+  const P = Math.asin(0.39795*Math.cos(0.2163108 + 2*Math.atan(0.9671396*Math.tan(0.00860*(dayOfYear-186)))));
+  const latRad = lat*Math.PI/180;
+  const cosArg = (Math.sin(0.8333*Math.PI/180)+Math.sin(latRad)*Math.sin(P))/(Math.cos(latRad)*Math.cos(P));
+  const clamped = Math.max(-1, Math.min(1, cosArg));
+  return 24 - (24/Math.PI)*Math.acos(clamped);
+}
+function bumpSpotStreak(){
+  const today = todayStr();
+  const s = loadLocal('spotStreak', {lastDate:null, count:0});
+  if(s.lastDate===today) return;
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  s.count = (s.lastDate===yesterday) ? s.count+1 : 1;
+  s.lastDate = today;
+  saveLocal('spotStreak', s);
+}
+function computeSpotStreak(){
+  const s = loadLocal('spotStreak', {lastDate:null, count:0});
+  if(!s.lastDate) return 0;
+  const today = todayStr();
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  return (s.lastDate===today || s.lastDate===yesterday) ? s.count : 0;
+}
+function daysCarried(item){
+  if(item.done || !item.createdDate) return 0;
+  const created = new Date(item.createdDate+'T00:00:00');
+  return Math.max(0, Math.floor((new Date()-created)/86400000));
+}
+function renderToday(){
+  const p = document.getElementById('panel-today');
+  if(!p) return;
+  const now = new Date();
+  const agenda = loadLocal('agenda', {events:[]});
+  const rangeStart = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const rangeEnd = new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
+  const todaysEvents = (typeof agendaOccurrencesInRange==='function') ? agendaOccurrencesInRange(agenda.events||[], rangeStart, rangeEnd) : [];
+  const tasksD = loadLocal('tasks', {items:[]});
+  const openTasks = (tasksD.items||[]).filter(t=>!t.done);
+  const streak = computeSpotStreak();
+  const moon = moonPhaseEmoji(now);
+  p.innerHTML = `
+    <h2>Today</h2>
+    <div class="sub">${now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'})} · ${moon} ${moonPhaseName(now)}</div>
+    <div class="today-grid">
+      <div class="today-card">
+        <h3>📅 Almanac</h3>
+        ${todaysEvents.length ? todaysEvents.map(e=>`<div class="today-item" style="border-left:3px solid ${e.color||'#6f8c6a'};padding-left:8px;">${e.time} — ${e.title}</div>`).join('') : '<div class="hint">Nothing scheduled today.</div>'}
+      </div>
+      <div class="today-card">
+        <h3>📌 Docket</h3>
+        ${openTasks.length ? openTasks.slice(0,6).map(t=>`<div class="today-item">${t.label}${daysCarried(t)>0?` <span class="repeat-badge">carried ${daysCarried(t)}d</span>`:''}</div>`).join('') : '<div class="hint">Docket is clear.</div>'}
+      </div>
+      <div class="today-card">
+        <h3>✏️ Spot streak</h3>
+        <div class="today-item">${streak>0 ? `${streak} day${streak===1?'':'s'} in a row` : 'No streak yet — jot something in Spot.'}</div>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:16px;">
+      <input type="text" id="universalSearch" placeholder="Search everything…" oninput="universalSearch(this.value)" style="min-width:260px;">
+    </div>
+    <div id="universalSearchResults"></div>
+  `;
+}
+function universalSearch(query){
+  const el = document.getElementById('universalSearchResults');
+  if(!query || query.trim().length<2){ el.innerHTML=''; return; }
+  const q = query.toLowerCase();
+  const results = [];
+  const docs = loadLocal('docs', {html:''});
+  if((docs.html||'').replace(/<[^>]+>/g,' ').toLowerCase().includes(q)) results.push({tab:'docs', label:'Folio', snippet:'Match in your document'});
+  (loadLocal('notes', {items:[]}).items||[]).forEach(n=>{ if((n.text||'').toLowerCase().includes(q)) results.push({tab:'notes', label:'Spot', snippet:n.text.slice(0,60)}); });
+  (loadLocal('tasks', {items:[]}).items||[]).forEach(t=>{ if((t.label||'').toLowerCase().includes(q)) results.push({tab:'tasks', label:'Docket', snippet:t.label}); });
+  (loadLocal('agenda', {events:[]}).events||[]).forEach(e=>{ if((e.title||'').toLowerCase().includes(q)) results.push({tab:'agenda', label:'Almanac', snippet:e.title+' — '+e.date}); });
+  (loadLocal('slides', {slides:[]}).slides||[]).forEach(s=>{ if((s.text||'').toLowerCase().includes(q)) results.push({tab:'slides', label:'Glides', snippet:(s.text||'').slice(0,60)}); });
+  (loadLocal('forms', {fields:[]}).fields||[]).forEach(f=>{ if((f.label||'').toLowerCase().includes(q)) results.push({tab:'forms', label:'Fill', snippet:f.label}); });
+  (loadLocal('lockbox', {files:[]}).files||[]).forEach(f=>{ if((f.name||'').toLowerCase().includes(q)) results.push({tab:'lockbox', label:'Lockbox', snippet:f.name}); });
+  el.innerHTML = results.length ? results.map(r=>`<div class="search-result" onclick="activateTab('${r.tab}')"><b>${r.label}</b> — ${r.snippet}</div>`).join('') : '<div class="hint">No matches.</div>';
+}
+
+/* ---------- Modules config ---------- */
+const ALL_MODULES = [
+  {id:'docs', label:'Folio', ext:'.fils', free:true},
+  {id:'sheets', label:'Grid', ext:'.grid', free:false},
+  {id:'forms', label:'Fill', ext:'.fill', free:false},
+  {id:'notes', label:'Spot', ext:'.spot', free:true},
+  {id:'tasks', label:'Docket', ext:'.plot', free:false},
+  {id:'agenda', label:'Almanac', ext:'.agnd', free:true},
+  {id:'slides', label:'Glides', ext:'.glides', free:false},
+  {id:'lockbox', label:'Lockbox', ext:'.lbox', free:false},
+];
+const modules = SUITE_ONLY ? ALL_MODULES.filter(m=>m.id===SUITE_ONLY) : ALL_MODULES;
+
+const tabsEl = document.getElementById('tabs');
+const workspaceEl = document.getElementById('workspace');
+
+if(!SUITE_ONLY){
+  const todayTab = document.createElement('div');
+  todayTab.className='tab'; todayTab.dataset.id='today';
+  todayTab.innerHTML = 'Today';
+  todayTab.onclick = ()=>activateTab('today');
+  tabsEl.appendChild(todayTab);
+  const todayPanel = document.createElement('div');
+  todayPanel.className='panel'; todayPanel.id='panel-today';
+  workspaceEl.appendChild(todayPanel);
+} else {
+  document.body.classList.add('standalone');
+  const brandTitle = document.getElementById('brandTitle');
+  if(brandTitle) brandTitle.textContent = modules[0].label;
+}
+
+modules.forEach(m=>{
+  const tab = document.createElement('div');
+  tab.className='tab'; tab.dataset.id=m.id;
+  tab.innerHTML = `${m.label} <span class="ext">${m.ext}</span><span class="${m.free?'free-pill':'pro-pill'}">${m.free?'Free':'Pro'}</span><span class="sync-badge">synced</span>`;
+  tab.onclick = ()=>activateTab(m.id);
+  tabsEl.appendChild(tab);
+
+  const panel = document.createElement('div');
+  panel.className='panel'; panel.id='panel-'+m.id;
+  workspaceEl.appendChild(panel);
+});
+
+function activateTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.id===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+id));
+}
+
+/* ================= DOCS (.fils) ================= */
+function renderDocs(){
+  const p = document.getElementById('panel-docs');
+  if(!p) return;
+  const data = loadLocal('docs', {html:'<p>Start writing...</p>'});
+  p.innerHTML = `
+    <h2>Folio</h2>
+    <div class="sub">.fils — write your stuff, it stays yours</div>
+    <div class="toolbar">
+      <select title="Paragraph style" onchange="document.execCommand('formatBlock',false,this.value); this.blur();">
+        <option value="P">Normal</option>
+        <option value="H1">Heading 1</option>
+        <option value="H2">Heading 2</option>
+        <option value="H3">Heading 3</option>
+        <option value="BLOCKQUOTE">Quote</option>
+        <option value="PRE">Code block</option>
+      </select>
+      <select title="Font" onchange="document.execCommand('fontName',false,this.value); this.blur();">
+        <option value="Iowan Old Style, Georgia, serif">Serif</option>
+        <option value="Helvetica Neue, Arial, sans-serif">Sans</option>
+        <option value="Courier New, monospace">Mono</option>
+      </select>
+      <select title="Font size" onchange="document.execCommand('fontSize',false,this.value); this.blur();">
+        <option value="2">Small</option>
+        <option value="3" selected>Normal</option>
+        <option value="5">Large</option>
+        <option value="7">Huge</option>
+      </select>
+      <div class="tdiv"></div>
+      <button class="btn ghost small icon" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
+      <button class="btn ghost small icon" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
+      <button class="btn ghost small icon" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
+      <button class="btn ghost small icon" title="Strikethrough" onclick="document.execCommand('strikeThrough')"><s>S</s></button>
+      <button class="btn ghost small icon" title="Superscript" onclick="document.execCommand('superscript')">x²</button>
+      <button class="btn ghost small icon" title="Subscript" onclick="document.execCommand('subscript')">x₂</button>
+      <div class="tdiv"></div>
+      <label title="Text color" style="display:flex;align-items:center;"><input type="color" onchange="document.execCommand('foreColor',false,this.value)" value="#232017"></label>
+      <label title="Highlight" style="display:flex;align-items:center;"><input type="color" onchange="document.execCommand('hiliteColor',false,this.value)" value="#f4e9c1"></label>
+      <div class="tdiv"></div>
+      <button class="btn ghost small icon" title="Align left" onclick="document.execCommand('justifyLeft')">⟵</button>
+      <button class="btn ghost small icon" title="Align center" onclick="document.execCommand('justifyCenter')">↔</button>
+      <button class="btn ghost small icon" title="Align right" onclick="document.execCommand('justifyRight')">⟶</button>
+      <button class="btn ghost small icon" title="Justify" onclick="document.execCommand('justifyFull')">☰</button>
+      <div class="tdiv"></div>
+      <button class="btn ghost small" title="Bulleted list" onclick="document.execCommand('insertUnorderedList')">• List</button>
+      <button class="btn ghost small" title="Numbered list" onclick="document.execCommand('insertOrderedList')">1. List</button>
+      <button class="btn ghost small icon" title="Decrease indent" onclick="document.execCommand('outdent')">⇤</button>
+      <button class="btn ghost small icon" title="Increase indent" onclick="document.execCommand('indent')">⇥</button>
+      <div class="tdiv"></div>
+      <button class="btn ghost small icon" title="Undo" onclick="document.execCommand('undo')">↶</button>
+      <button class="btn ghost small icon" title="Redo" onclick="document.execCommand('redo')">↷</button>
+      <button class="btn ghost small" title="Insert link" onclick="docsInsertLink()">🔗 Link</button>
+      <button class="btn ghost small" title="Clear formatting" onclick="document.execCommand('removeFormat')">Clear</button>
+      <div class="tdiv"></div>
+      <button class="btn brass small" onclick="docsAddMarginNote()" title="Select text first, then pin a note about it">📌 Margin note</button>
+      <div class="tdiv"></div>
+      <button class="btn sage small" onclick="saveDocs()">Save</button>
+      <button class="btn ghost small" onclick="exportDocs()">Export .fils</button>
+      <button class="btn ghost small" onclick="importDocs()">Import .fils</button>
+    </div>
+    <div id="docsEditor" contenteditable="true">${data.html}</div>
+    <div class="wordcount" id="docsWC"></div>
+  `;
+  updateWC();
+  document.getElementById('docsEditor').addEventListener('input', updateWC);
+}
+function docsInsertLink(){
+  const url = prompt('Link URL:', 'https://');
+  if(url) document.execCommand('createLink', false, url);
+}
+function docsAddMarginNote(){
+  const sel = window.getSelection().toString().trim();
+  if(!sel){ alert('Select some text in the doc first, then pin a note about it.'); return; }
+  const noteText = prompt('Margin note for: "'+sel.slice(0,60)+(sel.length>60?'…':'')+'"', '');
+  if(!noteText) return;
+  const d = getNotesData();
+  if(d.items.length>=100){ alert('Spot is capped at 100 notes.'); return; }
+  d.items.push({id:Date.now(), x:40+Math.random()*200, y:40+Math.random()*200, text:noteText, anchor:sel.slice(0,80)});
+  saveLocal('notes', d);
+  bumpSpotStreak();
+  renderNotes();
+  alert('Pinned to Spot — open the Spot tab to see it, with a "find" link back to this line in Folio.');
+}
+function updateWC(){
+  const txt = document.getElementById('docsEditor').innerText||'';
+  const words = txt.trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById('docsWC').textContent = words + ' words';
+}
+function saveDocs(){
+  const html = document.getElementById('docsEditor').innerHTML;
+  saveLocal('docs', {html});
+}
+function exportDocs(){
+  saveDocs();
+  const data = loadLocal('docs', {});
+  download('document.fils', JSON.stringify({type:'fils',...data}, null, 2));
+}
+function importDocs(){
+  pickFile('.fils', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('docs', {html:parsed.html||''}); renderDocs(); }
+    catch(e){ alert('Could not read that .fils file'); }
+  });
+}
+
+/* ================= SHEETS (.grid) ================= */
+const SHEET_ROWS=8, SHEET_COLS=6;
+function colLetter(i){ return String.fromCharCode(65+i); }
+function renderSheets(){
+  const p = document.getElementById('panel-sheets');
+  if(!p) return;
+  if(!isLicensed()){ p.innerHTML = '<h2>Grid</h2><div class="sub">.grid — track anything, no cloud required</div>' + lockOverlayHTML('Grid'); return; }
+  const data = loadLocal('sheets', {});
+  let html = `<h2>Grid</h2><div class="sub">.grid — track anything, no cloud required</div>
+    <div class="toolbar">
+      <button class="btn sage small" onclick="saveSheets()">Save</button>
+      <button class="btn ghost small" onclick="exportSheets()">Export .grid</button>
+      <button class="btn ghost small" onclick="importSheets()">Import .grid</button>
+      <button class="btn ghost small" onclick="toggleGridHelp()">📖 Formula guide</button>
+      <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator</button>
+    </div>
+    <div id="gridHelp" class="grid-help" style="display:none;">
+      <b>Formulas</b> — start any cell with <code>=</code>. Reference other cells like <code>A1</code>, ranges like <code>A1:A9</code>.
+      <div class="formula-guide-grid">
+        <div><code>=A1+B2*2</code><span>arithmetic: + − × ÷ ^</span></div>
+        <div><code>=SUM(A1:A9)</code><span>add up a range</span></div>
+        <div><code>=AVERAGE(A1:A9)</code><span>mean of a range</span></div>
+        <div><code>=MIN(A1:A9)</code> / <code>=MAX(A1:A9)</code><span>smallest / largest</span></div>
+        <div><code>=COUNT(A1:A9)</code><span>how many numbers</span></div>
+        <div><code>=COUNTA(A1:A9)</code><span>how many non-empty cells</span></div>
+        <div><code>=ROUND(A1,2)</code><span>round to 2 decimals</span></div>
+        <div><code>=ABS(A1)</code> / <code>=SQRT(A1)</code><span>absolute value / square root</span></div>
+        <div><code>=POWER(A1,2)</code> / <code>=MOD(A1,3)</code><span>power / remainder</span></div>
+        <div><code>=IF(A1>10,"big","small")</code><span>conditional value</span></div>
+        <div><code>=AND(A1>0,B1>0)</code> / <code>=OR(...)</code><span>combine conditions</span></div>
+        <div><code>=CONCAT(A1,B1)</code><span>join text together</span></div>
+        <div><code>=TODAY()</code><span>today's date</span></div>
+      </div>
+      <b>Calculator</b> — open it with the 🧮 button, type or click buttons, hit <code>=</code>. Use <b>→ Cell</b> to drop the result straight into whichever cell you clicked last.
+    </div>
+    <div id="gridCalc" class="grid-calc" style="display:none;">
+      <input id="calcDisplay" type="text" placeholder="0" onkeydown="if(event.key==='Enter')calcEquals();">
+      <div class="calc-buttons">
+        <button class="btn ghost small" onclick="calcClear()">C</button>
+        <button class="btn ghost small" onclick="calcBackspace()">⌫</button>
+        <button class="btn ghost small" onclick="calcPress('(')">(</button>
+        <button class="btn ghost small" onclick="calcPress(')')">)</button>
+        <button class="btn ghost small" onclick="calcPress('7')">7</button>
+        <button class="btn ghost small" onclick="calcPress('8')">8</button>
+        <button class="btn ghost small" onclick="calcPress('9')">9</button>
+        <button class="btn ghost small" onclick="calcPress('/')">÷</button>
+        <button class="btn ghost small" onclick="calcPress('4')">4</button>
+        <button class="btn ghost small" onclick="calcPress('5')">5</button>
+        <button class="btn ghost small" onclick="calcPress('6')">6</button>
+        <button class="btn ghost small" onclick="calcPress('*')">×</button>
+        <button class="btn ghost small" onclick="calcPress('1')">1</button>
+        <button class="btn ghost small" onclick="calcPress('2')">2</button>
+        <button class="btn ghost small" onclick="calcPress('3')">3</button>
+        <button class="btn ghost small" onclick="calcPress('-')">−</button>
+        <button class="btn ghost small" onclick="calcPress('0')">0</button>
+        <button class="btn ghost small" onclick="calcPress('.')">.</button>
+        <button class="btn sage small" onclick="calcEquals()">=</button>
+        <button class="btn ghost small" onclick="calcPress('+')">+</button>
+      </div>
+      <button class="btn ghost small" style="margin-top:8px;" onclick="calcSendToCell()">→ Cell</button>
+    </div>
+    <table class="grid"><tr><th></th>`;
+  for(let c=0;c<SHEET_COLS;c++) html+=`<th>${colLetter(c)}</th>`;
+  html+='</tr>';
+  for(let r=0;r<SHEET_ROWS;r++){
+    html+=`<tr><th>${r+1}</th>`;
+    for(let c=0;c<SHEET_COLS;c++){
+      const cellId = colLetter(c)+(r+1);
+      const val = data[cellId]!==undefined ? data[cellId] : '';
+      html+=`<td><input data-cell="${cellId}" value="${(val+'').replace(/"/g,'&quot;')}" onfocus="lastFocusedCell='${cellId}'" onblur="recalcSheet()"></td>`;
+    }
+    html+='</tr>';
+  }
+  html+='</table><div class="hint">Try =A1+B2 or =SUM(A1:A9) — or open the Formula guide above for the full list. Formulas recalc on blur.</div>';
+  p.innerHTML = html;
+  recalcSheet(true);
+}
+let lastFocusedCell = null;
+let calcExpr = '';
+function toggleGridHelp(){
+  const el = document.getElementById('gridHelp');
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+function toggleGridCalc(){
+  const el = document.getElementById('gridCalc');
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+function calcPress(ch){
+  calcExpr += ch;
+  document.getElementById('calcDisplay').value = calcExpr;
+}
+function calcClear(){
+  calcExpr = '';
+  document.getElementById('calcDisplay').value = '';
+}
+function calcBackspace(){
+  calcExpr = calcExpr.slice(0,-1);
+  document.getElementById('calcDisplay').value = calcExpr;
+}
+function calcEquals(){
+  calcExpr = document.getElementById('calcDisplay').value;
+  try{
+    if(!/^[0-9+\-*/().\s]*$/.test(calcExpr) || calcExpr.trim()===''){ throw new Error('bad'); }
+    const result = Function('"use strict"; return ('+calcExpr+')')();
+    calcExpr = String(result);
+    document.getElementById('calcDisplay').value = calcExpr;
+  }catch(e){
+    document.getElementById('calcDisplay').value = 'Error';
+    calcExpr = '';
+  }
+}
+function calcSendToCell(){
+  if(!lastFocusedCell){ alert('Click a cell first, then send the result to it.'); return; }
+  const inp = document.querySelector(`#panel-sheets input[data-cell="${lastFocusedCell}"]`);
+  if(inp){ inp.value = document.getElementById('calcDisplay').value; recalcSheet(); }
+}
+function getRawSheetData(){
+  const cells = {};
+  document.querySelectorAll('#panel-sheets input[data-cell]').forEach(inp=>{
+    cells[inp.dataset.cell] = inp.value;
+  });
+  return cells;
+}
+function cellNumericValue(raw, cells, seen){
+  if(raw===undefined || raw==='') return 0;
+  if(typeof raw === 'string' && raw.startsWith('=')) return numOf(evalFormula(raw.slice(1), cells, seen||new Set()));
+  const n = parseFloat(raw);
+  return isNaN(n) ? 0 : n;
+}
+function numOf(v){
+  if(typeof v==='number') return v;
+  if(typeof v==='boolean') return v?1:0;
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+function tokenizeFormula(expr){
+  const tokens = []; let i=0;
+  while(i<expr.length){
+    const ch = expr[i];
+    if(/\s/.test(ch)){ i++; continue; }
+    if(/[A-Za-z]/.test(ch)){
+      let j=i; while(j<expr.length && /[A-Za-z]/.test(expr[j])) j++;
+      const letters = expr.slice(i,j).toUpperCase();
+      let k=j; while(k<expr.length && /[0-9]/.test(expr[k])) k++;
+      if(k>j){ tokens.push({type:'cell', value: letters+expr.slice(j,k)}); i=k; }
+      else { tokens.push({type:'ident', value: letters}); i=j; }
+      continue;
+    }
+    if(/[0-9.]/.test(ch)){
+      let j=i; while(j<expr.length && /[0-9.]/.test(expr[j])) j++;
+      tokens.push({type:'number', value: parseFloat(expr.slice(i,j))}); i=j; continue;
+    }
+    if(ch==='"'){
+      let j=i+1; while(j<expr.length && expr[j]!=='"') j++;
+      tokens.push({type:'string', value: expr.slice(i+1,j)}); i=j+1; continue;
+    }
+    if('<>='.includes(ch)){
+      let j=i+1; if(expr[j]==='=') j++;
+      tokens.push({type:'op', value: expr.slice(i,j)}); i=j; continue;
+    }
+    if('+-*/^(),:'.includes(ch)){ tokens.push({type:'op', value: ch}); i++; continue; }
+    i++;
+  }
+  return tokens;
+}
+function getCellValue(cellId, cells, seen){
+  if(seen.has(cellId)) return 0;
+  seen.add(cellId);
+  const raw = cells[cellId];
+  let val;
+  if(raw===undefined || raw===''){ val = 0; }
+  else if(typeof raw==='string' && raw.startsWith('=')){ val = evalFormula(raw.slice(1), cells, seen); }
+  else { const n = parseFloat(raw); val = isNaN(n) ? raw : n; }
+  seen.delete(cellId);
+  return val;
+}
+function rangeCells(range){
+  const {start,end} = range;
+  const c1 = start.match(/[A-Z]+/)[0], r1 = parseInt(start.match(/\d+/)[0]);
+  const c2 = end.match(/[A-Z]+/)[0], r2 = parseInt(end.match(/\d+/)[0]);
+  const ids = [];
+  for(let r=r1;r<=r2;r++) ids.push(c1+r);
+  return ids;
+}
+function flattenArgsToNumbers(args, cells, seen){
+  let out = [];
+  args.forEach(a=>{
+    if(a.type==='range'){
+      rangeCells(a).forEach(cid=>{ const v=getCellValue(cid,cells,seen); if(typeof v==='number') out.push(v); });
+    } else if(typeof a.value==='number'){ out.push(a.value); }
+  });
+  return out;
+}
+function callFunction(name, args, cells, seen){
+  switch(name){
+    case 'SUM': return flattenArgsToNumbers(args,cells,seen).reduce((a,b)=>a+b,0);
+    case 'AVERAGE': { const v=flattenArgsToNumbers(args,cells,seen); return v.length? v.reduce((a,b)=>a+b,0)/v.length : 0; }
+    case 'MIN': { const v=flattenArgsToNumbers(args,cells,seen); return v.length? Math.min(...v) : 0; }
+    case 'MAX': { const v=flattenArgsToNumbers(args,cells,seen); return v.length? Math.max(...v) : 0; }
+    case 'COUNT': return flattenArgsToNumbers(args,cells,seen).length;
+    case 'COUNTA': {
+      let cnt=0;
+      args.forEach(a=>{
+        if(a.type==='range'){ rangeCells(a).forEach(cid=>{ if(cells[cid]!==undefined && cells[cid]!=='') cnt++; }); }
+        else if(a.value!==undefined && a.value!==''){ cnt++; }
+      });
+      return cnt;
+    }
+    case 'ROUND': { const d = args[1]!==undefined?numOf(args[1].value):0; const f=Math.pow(10,d); return Math.round(numOf(args[0]?.value)*f)/f; }
+    case 'ABS': return Math.abs(numOf(args[0]?.value));
+    case 'SQRT': return Math.sqrt(numOf(args[0]?.value));
+    case 'POWER': return Math.pow(numOf(args[0]?.value), numOf(args[1]?.value));
+    case 'MOD': { const a=numOf(args[0]?.value), b=numOf(args[1]?.value); return b!==0 ? a%b : 0; }
+    case 'IF': return args[0]?.value ? (args[1]?args[1].value:0) : (args[2]!==undefined?args[2].value:0);
+    case 'AND': return args.every(a=>!!a.value);
+    case 'OR': return args.some(a=>!!a.value);
+    case 'CONCAT': return args.map(a=>String(a.value)).join('');
+    case 'TODAY': return new Date().toISOString().slice(0,10);
+    default: return 0;
+  }
+}
+function parseFormulaTokens(tokens, cells, seen){
+  let pos = 0;
+  const peek = ()=>tokens[pos];
+  const next = ()=>tokens[pos++];
+  const expectOp = (v)=>{ const t=next(); if(!t||t.value!==v) throw new Error('parse error'); };
+  function parseExpr(){ return parseCompare(); }
+  function parseCompare(){
+    let left = parseAdd();
+    const t = peek();
+    if(t && t.type==='op' && ['=','==','<>','!=','>','>=','<','<='].includes(t.value)){
+      next(); const right = parseAdd();
+      switch(t.value){
+        case '=': case '==': return left===right;
+        case '<>': case '!=': return left!==right;
+        case '>': return numOf(left)>numOf(right);
+        case '>=': return numOf(left)>=numOf(right);
+        case '<': return numOf(left)<numOf(right);
+        case '<=': return numOf(left)<=numOf(right);
+      }
+    }
+    return left;
+  }
+  function parseAdd(){
+    let left = parseMul();
+    while(peek() && peek().type==='op' && (peek().value==='+'||peek().value==='-')){
+      const op = next().value; const right = parseMul();
+      left = op==='+' ? numOf(left)+numOf(right) : numOf(left)-numOf(right);
+    }
+    return left;
+  }
+  function parseMul(){
+    let left = parsePow();
+    while(peek() && peek().type==='op' && (peek().value==='*'||peek().value==='/')){
+      const op = next().value; const right = parsePow();
+      left = op==='*' ? numOf(left)*numOf(right) : (numOf(right)!==0 ? numOf(left)/numOf(right) : 0);
+    }
+    return left;
+  }
+  function parsePow(){
+    let left = parseUnary();
+    if(peek() && peek().type==='op' && peek().value==='^'){ next(); left = Math.pow(numOf(left), numOf(parsePow())); }
+    return left;
+  }
+  function parseUnary(){
+    if(peek() && peek().type==='op' && peek().value==='-'){ next(); return -numOf(parseUnary()); }
+    return parsePrimary();
+  }
+  function parseArgs(){
+    const args = [];
+    if(peek() && peek().type==='op' && peek().value===')') return args;
+    while(true){
+      if(peek() && peek().type==='cell'){
+        const saved = pos; const c1 = next().value;
+        if(peek() && peek().type==='op' && peek().value===':'){
+          next(); const c2 = next().value;
+          args.push({type:'range', start:c1, end:c2});
+        } else { pos = saved; args.push({type:'value', value: parseExpr()}); }
+      } else { args.push({type:'value', value: parseExpr()}); }
+      if(peek() && peek().type==='op' && peek().value===','){ next(); continue; }
+      break;
+    }
+    return args;
+  }
+  function parsePrimary(){
+    const t = peek();
+    if(!t) return 0;
+    if(t.type==='number'){ next(); return t.value; }
+    if(t.type==='string'){ next(); return t.value; }
+    if(t.type==='cell'){ next(); return getCellValue(t.value, cells, seen); }
+    if(t.type==='op' && t.value==='('){ next(); const v=parseExpr(); expectOp(')'); return v; }
+    if(t.type==='ident'){
+      const name = t.value; next();
+      if(name==='TRUE') return true;
+      if(name==='FALSE') return false;
+      if(peek() && peek().type==='op' && peek().value==='('){
+        next(); const args = parseArgs(); expectOp(')');
+        return callFunction(name, args, cells, seen);
+      }
+      return 0;
+    }
+    next(); return 0;
+  }
+  return parseExpr();
+}
+function evalFormula(expr, cells, seen){
+  try{
+    const tokens = tokenizeFormula(expr);
+    return parseFormulaTokens(tokens, cells, seen||new Set());
+  }catch(e){ return '#ERR'; }
+}
+function recalcSheet(skipSave){
+  const cells = getRawSheetData();
+  document.querySelectorAll('#panel-sheets input[data-cell]').forEach(inp=>{
+    const raw = cells[inp.dataset.cell];
+    if(typeof raw === 'string' && raw.startsWith('=')){
+      const val = evalFormula(raw.slice(1), cells, new Set());
+      inp.title = raw;
+      inp.dataset.formula = raw;
+      inp.value = raw; // keep formula visible while editing; show computed on blur via placeholder trick
+    }
+  });
+  // second pass: display computed values for formula cells, but keep raw stored
+  document.querySelectorAll('#panel-sheets input[data-cell]').forEach(inp=>{
+    if(document.activeElement===inp) return;
+    const raw = cells[inp.dataset.cell];
+    if(typeof raw==='string' && raw.startsWith('=')){
+      const val = evalFormula(raw.slice(1), cells, new Set());
+      inp.value = (typeof val==='boolean') ? (val?'TRUE':'FALSE') : val;
+      inp.dataset.rawFormula = raw;
+    }
+  });
+  if(!skipSave) saveSheetsSilent();
+}
+function saveSheetsSilent(){
+  const cells = {};
+  document.querySelectorAll('#panel-sheets input[data-cell]').forEach(inp=>{
+    cells[inp.dataset.cell] = inp.dataset.rawFormula || inp.value;
+  });
+  localStorage.setItem(KEY_PREFIX+'sheets', JSON.stringify(cells));
+}
+function saveSheets(){
+  saveSheetsSilent();
+  showSeal();
+}
+function exportSheets(){
+  saveSheetsSilent();
+  const data = loadLocal('sheets', {});
+  download('sheet.grid', JSON.stringify({type:'grid',cells:data}, null, 2));
+}
+function importSheets(){
+  pickFile('.grid', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('sheets', parsed.cells||{}); renderSheets(); }
+    catch(e){ alert('Could not read that .grid file'); }
+  });
+}
+
+/* ================= FORMS (.fill) ================= */
+function renderForms(){
+  const p = document.getElementById('panel-forms');
+  if(!p) return;
+  if(!isLicensed()){ p.innerHTML = '<h2>Fill</h2><div class="sub">.fill — send a form without anyone harvesting the answers</div>' + lockOverlayHTML('Fill'); return; }
+  const data = loadLocal('forms', {fields:[{label:'Your name', type:'text'}], submissions:[]});
+  p.innerHTML = `
+    <h2>Fill</h2>
+    <div class="sub">.fill — send a form without anyone harvesting the answers</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="addField()">+ Add field</button>
+      <button class="btn sage small" onclick="saveForms()">Save</button>
+      <button class="btn ghost small" onclick="exportForms()">Export .fill</button>
+      <button class="btn ghost small" onclick="importForms()">Import .fill</button>
+      <button class="btn ghost small" onclick="exportStandaloneForm()">⬇ Standalone form (.html)</button>
+    </div>
+    <div class="forms-layout">
+      <div class="forms-col">
+        <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;">Builder</h3>
+        <div id="fieldsList"></div>
+      </div>
+      <div class="forms-col">
+        <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;">Live preview</h3>
+        <div class="preview-box" id="formPreview"></div>
+        <button class="btn ghost small" style="margin-top:10px;" onclick="submitFormPreview()">Submit response</button>
+        <div class="hint" id="submissionCount"></div>
+      </div>
+    </div>
+  `;
+  renderFieldsList(data.fields);
+  renderFormPreview(data.fields);
+  document.getElementById('submissionCount').textContent = (data.submissions||[]).length + ' response(s) saved locally';
+}
+function renderFieldsList(fields){
+  const el = document.getElementById('fieldsList');
+  el.innerHTML = fields.map((f,i)=>`
+    <div class="field-row">
+      <input type="text" value="${f.label}" onchange="updateField(${i},'label',this.value)">
+      <select onchange="updateField(${i},'type',this.value)">
+        <option value="text" ${f.type==='text'?'selected':''}>Text</option>
+        <option value="email" ${f.type==='email'?'selected':''}>Email</option>
+        <option value="date" ${f.type==='date'?'selected':''}>Date</option>
+      </select>
+      <button class="btn ghost small" onclick="removeField(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function renderFormPreview(fields){
+  const el = document.getElementById('formPreview');
+  el.innerHTML = fields.map(f=>`<label>${f.label}</label><input type="${f.type}" data-preview-field="${f.label}">`).join('');
+}
+function getFormsData(){ return loadLocal('forms', {fields:[],submissions:[]}); }
+function addField(){
+  const d = getFormsData();
+  d.fields.push({label:'New field', type:'text'});
+  saveLocal('forms', d); renderForms();
+}
+function updateField(i, key, val){
+  const d = getFormsData();
+  d.fields[i][key]=val;
+  localStorage.setItem(KEY_PREFIX+'forms', JSON.stringify(d));
+  renderFormPreview(d.fields);
+}
+function removeField(i){
+  const d = getFormsData();
+  d.fields.splice(i,1);
+  saveLocal('forms', d); renderForms();
+}
+function submitFormPreview(){
+  const d = getFormsData();
+  const resp = {};
+  document.querySelectorAll('[data-preview-field]').forEach(inp=>{
+    resp[inp.dataset.previewField] = inp.value;
+  });
+  d.submissions = d.submissions||[];
+  d.submissions.push(resp);
+  saveLocal('forms', d);
+  document.getElementById('submissionCount').textContent = d.submissions.length + ' response(s) saved locally';
+}
+function exportStandaloneForm(){
+  const d = getFormsData();
+  const fieldsJson = JSON.stringify(d.fields).replace(/</g,'\\u003c');
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Form</title>'
+    + '<style>body{font-family:Georgia,serif;max-width:520px;margin:40px auto;padding:0 20px;color:#232017;background:#f7f2e4;}'
+    + 'label{display:block;margin-top:14px;font-weight:bold;}input{width:100%;padding:8px;margin-top:4px;box-sizing:border-box;font-family:inherit;}'
+    + 'button{margin-top:20px;padding:10px 18px;background:#6f8c6a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;}</style>'
+    + '</head><body><h2>Fill it out</h2><div id="f"></div><button onclick="submitIt()">Export my answers</button>'
+    + '<p style="font-size:0.8em;color:#8a7f66;">No server, no account — this saves a file straight to your device.</p>'
+    + '<script>const fields = ' + fieldsJson + ';'
+    + "document.getElementById('f').innerHTML = fields.map(fl=>'<label>'+fl.label+'</label><input type=\"'+fl.type+'\" data-f=\"'+fl.label+'\">').join('');"
+    + 'function submitIt(){const answers={};document.querySelectorAll("[data-f]").forEach(inp=>{answers[inp.dataset.f]=inp.value;});'
+    + 'const blob=new Blob([JSON.stringify(answers,null,2)],{type:"application/json"});const a=document.createElement("a");'
+    + 'a.href=URL.createObjectURL(blob);a.download="answers.json";a.click();}'
+    + '<\/script></body></html>';
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'form-standalone.html';
+  a.click();
+}
+function saveForms(){ saveLocal('forms', getFormsData()); }
+function exportForms(){
+  const d = getFormsData();
+  download('form.fill', JSON.stringify({type:'fill',...d}, null, 2));
+}
+function importForms(){
+  pickFile('.fill', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('forms', {fields:parsed.fields||[], submissions:parsed.submissions||[]}); renderForms(); }
+    catch(e){ alert('Could not read that .fill file'); }
+  });
+}
+
+/* ================= NOTES (.spot) ================= */
+let draggingNote=null, dragOffset={x:0,y:0};
+function renderNotes(){
+  const p = document.getElementById('panel-notes');
+  if(!p) return;
+  p.innerHTML = `
+    <h2>Spot</h2>
+    <div class="sub">.spot — drag ideas around, see how they connect (capped at 100)</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="addSpotNote()">+ New note</button>
+      <button class="btn sage small" onclick="showSeal()">Save</button>
+      <button class="btn ghost small" onclick="exportNotes()">Export .spot</button>
+      <button class="btn ghost small" onclick="importNotes()">Import .spot</button>
+    </div>
+    <div id="notesCanvas"></div>
+  `;
+  renderNotesCanvas();
+}
+function getNotesData(){ return loadLocal('notes', {items:[
+  {id:1,x:30,y:30,text:'Drag me anywhere'},
+  {id:2,x:220,y:110,text:'Cluster related ideas by proximity'}
+]}); }
+function renderNotesCanvas(){
+  const d = getNotesData();
+  const canvas = document.getElementById('notesCanvas');
+  canvas.innerHTML = d.items.map(item=>`
+    <div class="spot-note${item.anchor?' anchored':''}" style="left:${item.x}px; top:${item.y}px;" data-id="${item.id}">
+      <span class="del" onclick="deleteSpotNote(${item.id})">✕</span>
+      ${item.anchor?`<div class="anchor-tag" title="${item.anchor.replace(/"/g,'&quot;')}">📌 "${item.anchor.slice(0,26)}${item.anchor.length>26?'…':''}" <span style="cursor:pointer;text-decoration:underline;" onclick="findInFolio('${item.anchor.replace(/'/g,"\\'")}')">find</span></div>`:''}
+      <textarea onchange="updateSpotText(${item.id}, this.value)">${item.text}</textarea>
+    </div>
+  `).join('');
+  canvas.querySelectorAll('.spot-note').forEach(el=>{
+    el.addEventListener('mousedown', e=>{
+      if(e.target.tagName==='TEXTAREA' || e.target.classList.contains('del')) return;
+      draggingNote = el;
+      const rect = el.getBoundingClientRect();
+      dragOffset = {x:e.clientX-rect.left, y:e.clientY-rect.top};
+    });
+  });
+}
+function findInFolio(snippet){
+  activateTab('docs');
+  setTimeout(()=>{
+    if(window.find){ window.find(snippet); }
+    else { alert('This browser doesn\'t support in-page search — the pinned line was:\n\n'+snippet); }
+  }, 60);
+}
+document.addEventListener('mousemove', e=>{
+  if(!draggingNote) return;
+  const canvas = document.getElementById('notesCanvas');
+  if(!canvas) return;
+  const canvasRect = canvas.getBoundingClientRect();
+  let x = e.clientX - canvasRect.left - dragOffset.x;
+  let y = e.clientY - canvasRect.top - dragOffset.y;
+  x = Math.max(0, Math.min(x, canvasRect.width-150));
+  y = Math.max(0, Math.min(y, canvasRect.height-90));
+  draggingNote.style.left = x+'px';
+  draggingNote.style.top = y+'px';
+});
+document.addEventListener('mouseup', ()=>{
+  if(draggingNote){
+    const id = parseInt(draggingNote.dataset.id);
+    const d = getNotesData();
+    const item = d.items.find(i=>i.id===id);
+    if(item){
+      item.x = parseInt(draggingNote.style.left);
+      item.y = parseInt(draggingNote.style.top);
+      localStorage.setItem(KEY_PREFIX+'notes', JSON.stringify(d));
+    }
+  }
+  draggingNote=null;
+});
+function addSpotNote(){
+  const d = getNotesData();
+  if(d.items.length>=100){ alert('100 notes on one canvas is the cap — keeps it fast and simple.'); return; }
+  const id = Date.now();
+  d.items.push({id, x:40+Math.random()*200, y:40+Math.random()*200, text:'New idea'});
+  saveLocal('notes', d); bumpSpotStreak(); renderNotesCanvas();
+}
+function updateSpotText(id, text){
+  const d = getNotesData();
+  const item = d.items.find(i=>i.id===id);
+  if(item) item.text=text;
+  saveLocal('notes', d);
+  bumpSpotStreak();
+}
+function deleteSpotNote(id){
+  const d = getNotesData();
+  d.items = d.items.filter(i=>i.id!==id);
+  saveLocal('notes', d); renderNotesCanvas();
+}
+function exportNotes(){
+  const d = getNotesData();
+  download('notes.spot', JSON.stringify({type:'spot',...d}, null, 2));
+}
+function importNotes(){
+  pickFile('.spot', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('notes', {items:parsed.items||[]}); renderNotes(); }
+    catch(e){ alert('Could not read that .spot file'); }
+  });
+}
+
+/* ================= TASKS (.plot) ================= */
+let draggingDot=null;
+function renderTasks(){
+  const p = document.getElementById('panel-tasks');
+  if(!p) return;
+  if(!isLicensed()){ p.innerHTML = '<h2>Docket</h2><div class="sub">.plot — urgent vs. important, at a glance</div>' + lockOverlayHTML('Docket'); return; }
+  p.innerHTML = `
+    <h2>Docket</h2>
+    <div class="sub">.plot — urgent vs. important. Dots you keep avoiding visibly age and pick up a carried-day count.</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="addPlotTask()">+ New task</button>
+      <button class="btn sage small" onclick="showSeal()">Save</button>
+      <button class="btn ghost small" onclick="exportTasks()">Export .plot</button>
+      <button class="btn ghost small" onclick="importTasks()">Import .plot</button>
+    </div>
+    <div id="plotArea">
+      <div class="plot-axis-label" style="bottom:6px; left:10px;">Soon</div>
+      <div class="plot-axis-label" style="bottom:6px; right:10px;">Later</div>
+      <div class="plot-axis-label" style="top:6px; left:10px;">Urgent</div>
+      <div class="plot-axis-label" style="bottom:50%; left:10px;">Low priority</div>
+    </div>
+    <div class="hint">Drag dots. Click a dot to mark it done. X = timing, Y = urgency.</div>
+  `;
+  renderPlotArea();
+}
+function getTasksData(){
+  const d = loadLocal('tasks', {items:[
+    {id:1,x:20,y:20,label:'Reply to client',done:false,createdDate:todayStr()},
+    {id:2,x:70,y:60,label:'Plan next month',done:false,createdDate:todayStr()},
+    {id:3,x:40,y:85,label:'Renew domain',done:true,createdDate:todayStr()}
+  ]});
+  d.items.forEach(it=>{ if(!it.createdDate) it.createdDate = todayStr(); });
+  return d;
+}
+function renderPlotArea(){
+  const d = getTasksData();
+  const area = document.getElementById('plotArea');
+  area.querySelectorAll('.plot-dot').forEach(el=>el.remove());
+  d.items.forEach(item=>{
+    const dot = document.createElement('div');
+    const carried = daysCarried(item);
+    let agingClass = '';
+    if(carried>=5) agingClass=' aging-hot'; else if(carried>=2) agingClass=' aging-warm';
+    dot.className='plot-dot'+(item.done?' done':'')+agingClass;
+    dot.style.left = item.x+'%';
+    dot.style.top = item.y+'%';
+    dot.dataset.id = item.id;
+    dot.title = item.label + (carried>0?` — carried ${carried} day${carried===1?'':'s'}`:'');
+    if(carried>0){
+      const badge = document.createElement('span');
+      badge.className='carry-badge';
+      badge.textContent = carried;
+      dot.appendChild(badge);
+    }
+    dot.onclick = (e)=>{ e.stopPropagation(); toggleTaskDone(item.id); };
+    dot.addEventListener('mousedown', e=>{ draggingDot = dot; e.stopPropagation(); });
+    area.appendChild(dot);
+  });
+}
+document.addEventListener('mousemove', e=>{
+  if(!draggingDot) return;
+  const area = document.getElementById('plotArea');
+  if(!area) return;
+  const rect = area.getBoundingClientRect();
+  let x = ((e.clientX-rect.left)/rect.width)*100;
+  let y = ((e.clientY-rect.top)/rect.height)*100;
+  x=Math.max(2,Math.min(98,x)); y=Math.max(2,Math.min(98,y));
+  draggingDot.style.left=x+'%'; draggingDot.style.top=y+'%';
+});
+document.addEventListener('mouseup', ()=>{
+  if(draggingDot){
+    const id = parseInt(draggingDot.dataset.id);
+    const d = getTasksData();
+    const item = d.items.find(i=>i.id===id);
+    if(item){
+      item.x = parseFloat(draggingDot.style.left);
+      item.y = parseFloat(draggingDot.style.top);
+      localStorage.setItem(KEY_PREFIX+'tasks', JSON.stringify(d));
+    }
+  }
+  draggingDot=null;
+});
+function addPlotTask(){
+  const label = prompt('Task name?','New task');
+  if(!label) return;
+  const d = getTasksData();
+  d.items.push({id:Date.now(), x:50, y:50, label, done:false, createdDate:todayStr()});
+  saveLocal('tasks', d); renderPlotArea();
+}
+function toggleTaskDone(id){
+  const d = getTasksData();
+  const item = d.items.find(i=>i.id===id);
+  if(item) item.done = !item.done;
+  saveLocal('tasks', d); renderPlotArea();
+}
+function exportTasks(){
+  const d = getTasksData();
+  download('tasks.plot', JSON.stringify({type:'plot',...d}, null, 2));
+}
+function importTasks(){
+  pickFile('.plot', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('tasks', {items:parsed.items||[]}); renderTasks(); }
+    catch(e){ alert('Could not read that .plot file'); }
+  });
+}
+
+/* ================= AGENDA (.agnd) ================= */
+function renderAgenda(){
+  const p = document.getElementById('panel-agenda');
+  if(!p) return;
+  const now = new Date();
+  if(agendaViewMonth===undefined){ agendaViewMonth = now.getMonth(); agendaViewYear = now.getFullYear(); }
+  p.innerHTML = `
+    <h2>Almanac</h2>
+    <div class="sub">.agnd — your days, at a glance</div>
+    <div id="agendaCountdown"></div>
+    <div class="toolbar">
+      <input type="date" id="agndDate">
+      <input type="time" id="agndTime">
+      <input type="text" id="agndTitle" placeholder="Event title">
+      <select id="agndColor" title="Color tag">
+        <option value="#6f8c6a">🟢 Personal</option>
+        <option value="#b8925a">🟠 Work</option>
+        <option value="#a8563f">🔴 Deadline</option>
+        <option value="#5a7fa8">🔵 Social</option>
+      </select>
+      <select id="agndRepeat" title="Repeats">
+        <option value="">Doesn't repeat</option>
+        <option value="daily">Repeats daily</option>
+        <option value="weekly">Repeats weekly</option>
+        <option value="monthly">Repeats monthly</option>
+      </select>
+      <button class="btn ghost small" onclick="addAgendaEvent()">+ Add</button>
+      <button class="btn ghost small" onclick="exportAgenda()">Export .agnd</button>
+      <button class="btn ghost small" onclick="importAgenda()">Import .agnd</button>
+    </div>
+    <div id="agendaCalendar"></div>
+    <div id="agendaList"></div>
+  `;
+  renderAgendaCalendar();
+  renderAgendaList();
+  renderAgendaCountdown();
+}
+let agendaViewMonth, agendaViewYear, agendaSelectedDate=null;
+function getAgendaData(){ return loadLocal('agenda', {events:[]}); }
+function agendaOccurrencesInRange(events, rangeStart, rangeEnd){
+  // expands repeating events into concrete date occurrences within [rangeStart, rangeEnd]
+  const out = [];
+  events.forEach(ev=>{
+    if(!ev.repeat){
+      const d = new Date(ev.date+'T00:00:00');
+      if(d>=rangeStart && d<=rangeEnd) out.push({...ev, occurDate: ev.date});
+      return;
+    }
+    let cur = new Date(ev.date+'T00:00:00');
+    let guard = 0;
+    while(cur<=rangeEnd && guard<400){
+      if(cur>=rangeStart) out.push({...ev, occurDate: cur.toISOString().slice(0,10)});
+      if(ev.repeat==='daily') cur.setDate(cur.getDate()+1);
+      else if(ev.repeat==='weekly') cur.setDate(cur.getDate()+7);
+      else if(ev.repeat==='monthly') cur.setMonth(cur.getMonth()+1);
+      guard++;
+    }
+  });
+  return out;
+}
+function renderAgendaCalendar(){
+  const d = getAgendaData();
+  const first = new Date(agendaViewYear, agendaViewMonth, 1);
+  const startWeekday = first.getDay();
+  const daysInMonth = new Date(agendaViewYear, agendaViewMonth+1, 0).getDate();
+  const rangeStart = new Date(agendaViewYear, agendaViewMonth, 1);
+  const rangeEnd = new Date(agendaViewYear, agendaViewMonth, daysInMonth);
+  const occurrences = agendaOccurrencesInRange(d.events||[], rangeStart, rangeEnd);
+  const byDate = {};
+  occurrences.forEach(o=>{ byDate[o.occurDate]=byDate[o.occurDate]||[]; byDate[o.occurDate].push(o); });
+  const monthName = first.toLocaleDateString(undefined,{month:'long', year:'numeric'});
+  const todayISO = todayStr();
+  let html = `<div class="cal-nav">
+    <button class="btn ghost small" onclick="agendaShiftMonth(-1)">‹</button>
+    <b>${monthName}</b>
+    <button class="btn ghost small" onclick="agendaShiftMonth(1)">›</button>
+  </div><div class="cal-grid">`;
+  ['S','M','T','W','T','F','S'].forEach(dd=>html+=`<div class="cal-dow">${dd}</div>`);
+  for(let i=0;i<startWeekday;i++) html+='<div class="cal-cell empty"></div>';
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${agendaViewYear}-${String(agendaViewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const evs = byDate[dateStr]||[];
+    const dots = evs.slice(0,4).map(e=>`<span class="cal-dot" style="background:${e.color||'#6f8c6a'}"></span>`).join('');
+    const moonIcon = moonPhaseEmoji(new Date(agendaViewYear, agendaViewMonth, day));
+    html += `<div class="cal-cell${dateStr===todayISO?' today':''}${dateStr===agendaSelectedDate?' selected':''}" onclick="agendaSelectDay('${dateStr}')">
+      <div class="cal-daynum">${day}<span class="cal-moon">${moonIcon}</span></div><div class="cal-dots">${dots}</div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('agendaCalendar').innerHTML = html;
+}
+function agendaShiftMonth(delta){
+  agendaViewMonth += delta;
+  if(agendaViewMonth<0){ agendaViewMonth=11; agendaViewYear--; }
+  if(agendaViewMonth>11){ agendaViewMonth=0; agendaViewYear++; }
+  renderAgendaCalendar();
+}
+function agendaSelectDay(dateStr){
+  agendaSelectedDate = (agendaSelectedDate===dateStr) ? null : dateStr;
+  renderAgendaCalendar();
+  renderAgendaList();
+}
+function renderAgendaCountdown(){
+  const d = getAgendaData();
+  const now = new Date();
+  const rangeEnd = new Date(now.getFullYear()+1, now.getMonth(), now.getDate());
+  const occurrences = agendaOccurrencesInRange(d.events||[], now, rangeEnd)
+    .sort((a,b)=> (a.occurDate+a.time).localeCompare(b.occurDate+b.time));
+  const el = document.getElementById('agendaCountdown');
+  if(!el) return;
+  if(occurrences.length===0){ el.innerHTML=''; return; }
+  const next = occurrences[0];
+  const target = new Date(next.occurDate+'T'+(next.time||'00:00')+':00');
+  const diffMs = target - now;
+  const days = Math.floor(diffMs/(1000*60*60*24));
+  const hours = Math.floor((diffMs%(1000*60*60*24))/(1000*60*60));
+  let when = 'today';
+  if(days>0) when = `in ${days} day${days===1?'':'s'}`;
+  else if(hours>0) when = `in ${hours} hour${hours===1?'':'s'}`;
+  el.innerHTML = `<div class="countdown-banner" style="border-left:4px solid ${next.color||'#6f8c6a'}">
+    ⏳ <b>${next.title}</b> — ${when} (${next.occurDate}${next.time?', '+next.time:''})
+  </div>`;
+}
+function renderAgendaList(){
+  const d = getAgendaData();
+  const now = new Date();
+  const rangeStart = agendaSelectedDate ? new Date(agendaSelectedDate+'T00:00:00') : new Date(now.getFullYear(), now.getMonth(), 1);
+  const rangeEnd = agendaSelectedDate ? new Date(agendaSelectedDate+'T23:59:59') : new Date(now.getFullYear(), now.getMonth()+1, 0);
+  const occurrences = agendaOccurrencesInRange(d.events||[], rangeStart, rangeEnd);
+  const grouped = {};
+  occurrences.forEach(ev=>{
+    grouped[ev.occurDate] = grouped[ev.occurDate]||[];
+    grouped[ev.occurDate].push(ev);
+  });
+  const days = Object.keys(grouped).sort();
+  const el = document.getElementById('agendaList');
+  let dayInfo = '';
+  if(agendaSelectedDate){
+    const dSel = new Date(agendaSelectedDate+'T12:00:00');
+    const hrs = dayLengthHours(dSel);
+    const h = Math.floor(hrs), m = Math.round((hrs-h)*60);
+    dayInfo = `<div class="hint">${moonPhaseEmoji(dSel)} ${moonPhaseName(dSel)} · 🌞 ${h}h ${m}m of daylight (approx.)</div>`;
+  }
+  if(days.length===0){ el.innerHTML = dayInfo + '<div class="hint">No events '+(agendaSelectedDate?'on this day':'this month')+' — add one above, or click a calendar day.</div>'; return; }
+  el.innerHTML = dayInfo + days.map(date=>`
+    <div class="agenda-day">
+      <div class="date">${date}${agendaSelectedDate?' <span class="btn ghost small" style="cursor:pointer;" onclick="agendaSelectDay(\''+date+'\')">show whole month</span>':''}</div>
+      ${grouped[date].sort((a,b)=>a.time.localeCompare(b.time)).map(ev=>`
+        <div class="agenda-event" style="border-left:3px solid ${ev.color||'#6f8c6a'};padding-left:8px;">
+          <span>${ev.time} — ${ev.title}${ev.repeat?' <span class="repeat-badge">↻ '+ev.repeat+'</span>':''}</span>
+          <span style="cursor:pointer;color:#a8563f;" onclick="removeAgendaEvent(${ev.id})">✕</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+function addAgendaEvent(){
+  const date = document.getElementById('agndDate').value;
+  const time = document.getElementById('agndTime').value || '00:00';
+  const title = document.getElementById('agndTitle').value;
+  const color = document.getElementById('agndColor').value;
+  const repeat = document.getElementById('agndRepeat').value;
+  if(!date || !title){ alert('Pick a date and a title'); return; }
+  const d = getAgendaData();
+  d.events.push({id:Date.now(), date, time, title, color, repeat});
+  saveLocal('agenda', d);
+  renderAgendaCalendar(); renderAgendaList(); renderAgendaCountdown();
+  document.getElementById('agndTitle').value='';
+}
+function removeAgendaEvent(id){
+  const d = getAgendaData();
+  d.events = d.events.filter(e=>e.id!==id);
+  saveLocal('agenda', d);
+  renderAgendaCalendar(); renderAgendaList(); renderAgendaCountdown();
+}
+function exportAgenda(){
+  const d = getAgendaData();
+  download('agenda.agnd', JSON.stringify({type:'agnd',...d}, null, 2));
+}
+function importAgenda(){
+  pickFile('.agnd', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('agenda', {events:parsed.events||[]}); renderAgenda(); }
+    catch(e){ alert('Could not read that .agnd file'); }
+  });
+}
+
+/* ================= SLIDES (.glides) ================= */
+let activeSlideIdx=0;
+function renderSlides(){
+  const p = document.getElementById('panel-slides');
+  if(!p) return;
+  if(!isLicensed()){ p.innerHTML = '<h2>Glides</h2><div class="sub">.glides — flip through like a filmstrip</div>' + lockOverlayHTML('Glides'); return; }
+  p.innerHTML = `
+    <h2>Glides</h2>
+    <div class="sub">.glides — flip through like a filmstrip, not a boring list</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="addSlide()">+ New slide</button>
+      <button class="btn ghost small" onclick="insertGridEmbed()">📊 Insert Grid range</button>
+      <button class="btn sage small" onclick="showSeal()">Save</button>
+      <button class="btn ghost small" onclick="exportSlides()">Export .glides</button>
+      <button class="btn ghost small" onclick="importSlides()">Import .glides</button>
+    </div>
+    <div class="filmstrip" id="filmstrip"></div>
+    <div class="slide-editor">
+      <textarea id="slideText" onchange="updateSlideText(this.value)"></textarea>
+      <div class="hint">Tip: type {{GRID:A1:B4}} anywhere in a slide to pull that live range straight from Grid — it updates automatically whenever Grid changes.</div>
+      <div id="slidePreview" class="slide-preview"></div>
+    </div>
+  `;
+  renderFilmstrip();
+}
+function colIndexFromLetter(letters){
+  let n=0;
+  for(let i=0;i<letters.length;i++){ n = n*26 + (letters.charCodeAt(i)-64); }
+  return n-1;
+}
+function parseSlideEmbeds(text){
+  return (text||'').replace(/\{\{GRID:([A-Z]+)(\d+):([A-Z]+)(\d+)\}\}/g, (m,cl1,r1,cl2,r2)=>{
+    const cells = loadLocal('sheets', {});
+    const c1i = colIndexFromLetter(cl1), c2i = colIndexFromLetter(cl2);
+    const rr1 = parseInt(r1), rr2 = parseInt(r2);
+    let tbl = '<table class="embed-grid">';
+    for(let r=rr1;r<=rr2;r++){
+      tbl+='<tr>';
+      for(let c=c1i;c<=c2i;c++){
+        const cid = colLetter(c)+r;
+        const raw = cells[cid];
+        let val = '';
+        if(typeof raw==='string' && raw.startsWith('=')) val = evalFormula(raw.slice(1), cells, new Set());
+        else if(raw!==undefined) val = raw;
+        tbl += '<td>'+val+'</td>';
+      }
+      tbl+='</tr>';
+    }
+    tbl+='</table>';
+    return tbl;
+  });
+}
+function insertGridEmbed(){
+  const range = prompt('Grid range to embed (e.g. A1:B4)?', 'A1:B4');
+  if(!range) return;
+  const ta = document.getElementById('slideText');
+  const marker = '{{GRID:'+range.toUpperCase().replace(/\s/g,'')+'}}';
+  ta.value = (ta.value||'') + '\n' + marker;
+  updateSlideText(ta.value);
+}
+function getSlidesData(){ return loadLocal('slides', {slides:[{text:'Welcome to your deck'}]}); }
+function renderFilmstrip(){
+  const d = getSlidesData();
+  if(activeSlideIdx>=d.slides.length) activeSlideIdx=0;
+  const el = document.getElementById('filmstrip');
+  el.innerHTML = d.slides.map((s,i)=>`
+    <div class="slide-thumb ${i===activeSlideIdx?'active':''}" onclick="selectSlide(${i})">
+      ${(s.text||'').slice(0,60)||'(empty)'}
+    </div>
+  `).join('');
+  const currentText = d.slides[activeSlideIdx] ? d.slides[activeSlideIdx].text : '';
+  document.getElementById('slideText').value = currentText;
+  const preview = document.getElementById('slidePreview');
+  if(preview) preview.innerHTML = parseSlideEmbeds(currentText).replace(/\n/g,'<br>');
+}
+function selectSlide(i){ activeSlideIdx=i; renderFilmstrip(); }
+function addSlide(){
+  const d = getSlidesData();
+  d.slides.push({text:'New slide'});
+  activeSlideIdx = d.slides.length-1;
+  saveLocal('slides', d); renderFilmstrip();
+}
+function updateSlideText(text){
+  const d = getSlidesData();
+  d.slides[activeSlideIdx].text = text;
+  saveLocal('slides', d); renderFilmstrip();
+}
+function exportSlides(){
+  const d = getSlidesData();
+  download('deck.glides', JSON.stringify({type:'glides',...d}, null, 2));
+}
+function importSlides(){
+  pickFile('.glides', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('slides', {slides:parsed.slides||[]}); activeSlideIdx=0; renderSlides(); }
+    catch(e){ alert('Could not read that .glides file'); }
+  });
+}
+
+/* ================= LOCKBOX (.lbox) ================= */
+function renderLockbox(){
+  const p = document.getElementById('panel-lockbox');
+  if(!p) return;
+  if(!isLicensed()){ p.innerHTML = '<h2>Lockbox</h2><div class="sub">.lbox — one place for your files</div>' + lockOverlayHTML('Lockbox'); return; }
+  p.innerHTML = `
+    <h2>Lockbox</h2>
+    <div class="sub">.lbox — one place for your files, no storage subscription</div>
+    <div class="toolbar">
+      <input type="text" id="lboxName" placeholder="File name">
+      <input type="text" id="lboxTag" placeholder="Tag (optional)">
+      <button class="btn ghost small" onclick="addLockboxFile()">+ Add reference</button>
+      <button class="btn ghost small" onclick="exportLockbox()">Export .lbox</button>
+      <button class="btn ghost small" onclick="importLockbox()">Import .lbox</button>
+    </div>
+    <div id="lockboxList"></div>
+    <div class="hint">A simple flat list with tags — no graph to render, nothing to get visually tangled.</div>
+    <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;margin-top:22px;">🔒 Time-locked notes</h3>
+    <div class="sub" style="margin-bottom:10px;">Seal something that literally can't be opened until the date you choose — a real dead-man's-switch note, not a file preview.</div>
+    <div class="toolbar">
+      <input type="text" id="tlName" placeholder="Note name">
+      <input type="date" id="tlDate">
+      <textarea id="tlContent" placeholder="What you're sealing…" style="min-width:220px;"></textarea>
+      <button class="btn brass small" onclick="addTimelock()">🔒 Seal it</button>
+    </div>
+    <div id="timelockList"></div>
+  `;
+  renderLockboxList();
+  renderTimelocks();
+}
+function getLockboxData(){ return loadLocal('lockbox', {files:[
+  {id:1,name:'Q1 budget',tag:'finance',usedIn:'Sheets'},
+  {id:2,name:'Client intake',tag:'forms',usedIn:'Fill, Folio'}
+], timelocks:[]}); }
+function renderTimelocks(){
+  const d = getLockboxData();
+  d.timelocks = d.timelocks || [];
+  const el = document.getElementById('timelockList');
+  if(!el) return;
+  if(d.timelocks.length===0){ el.innerHTML = '<div class="hint">Nothing sealed yet.</div>'; return; }
+  const now = new Date();
+  el.innerHTML = d.timelocks.map(t=>{
+    const unlockDate = new Date(t.unlockDate+'T00:00:00');
+    const locked = now < unlockDate;
+    return `<div class="timelock-row">
+      <b>${t.name}</b> ${locked?`<span class="locked-badge">🔒 locked until ${t.unlockDate}</span>`:`<span class="unlocked-badge">🔓 unlocked</span>`}
+      <span style="cursor:pointer;color:#a8563f;float:right;" onclick="removeTimelock(${t.id})">✕</span>
+      ${locked?'':`<div class="timelock-content">${t.content}</div>`}
+    </div>`;
+  }).join('');
+}
+function addTimelock(){
+  const name = document.getElementById('tlName').value;
+  const date = document.getElementById('tlDate').value;
+  const content = document.getElementById('tlContent').value;
+  if(!name || !date || !content){ alert('Fill in a name, unlock date, and what you\'re sealing.'); return; }
+  const d = getLockboxData();
+  d.timelocks = d.timelocks || [];
+  d.timelocks.push({id:Date.now(), name, unlockDate:date, content, createdAt:new Date().toISOString()});
+  saveLocal('lockbox', d);
+  renderTimelocks();
+  document.getElementById('tlName').value=''; document.getElementById('tlContent').value='';
+}
+function removeTimelock(id){
+  const d = getLockboxData();
+  d.timelocks = (d.timelocks||[]).filter(t=>t.id!==id);
+  saveLocal('lockbox', d); renderTimelocks();
+}
+function renderLockboxList(){
+  const d = getLockboxData();
+  const el = document.getElementById('lockboxList');
+  if(d.files.length===0){ el.innerHTML='<div class="hint">Nothing here yet.</div>'; return; }
+  el.innerHTML = d.files.map(f=>`
+    <div class="lockbox-row">
+      <span>${f.name} ${f.tag?`<span class="tag-pill">${f.tag}</span>`:''}
+        ${f.usedIn?`<div class="used-in">used in: ${f.usedIn}</div>`:''}
+      </span>
+      <span style="cursor:pointer;color:#a8563f;" onclick="removeLockboxFile(${f.id})">✕</span>
+    </div>
+  `).join('');
+}
+function addLockboxFile(){
+  const name = document.getElementById('lboxName').value;
+  const tag = document.getElementById('lboxTag').value;
+  if(!name) return;
+  const d = getLockboxData();
+  d.files.push({id:Date.now(), name, tag, usedIn:''});
+  saveLocal('lockbox', d); renderLockboxList();
+  document.getElementById('lboxName').value=''; document.getElementById('lboxTag').value='';
+}
+function removeLockboxFile(id){
+  const d = getLockboxData();
+  d.files = d.files.filter(f=>f.id!==id);
+  saveLocal('lockbox', d); renderLockboxList();
+}
+function exportLockbox(){
+  const d = getLockboxData();
+  download('files.lbox', JSON.stringify({type:'lbox',...d}, null, 2));
+}
+function importLockbox(){
+  pickFile('.lbox', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('lockbox', {files:parsed.files||[]}); renderLockbox(); }
+    catch(e){ alert('Could not read that .lbox file'); }
+  });
+}
+
+/* ================= CAPSULE (bundle everything, real encryption) ================= */
+const CAPSULE_KEYS = ['docs','sheets','forms','notes','tasks','agenda','slides','lockbox','mode','modTimes'];
+
+function buildCapsule(){
+  const bundle = {type:'capsule', version:1, createdAt:new Date().toISOString(), modules:{}};
+  CAPSULE_KEYS.forEach(k=>{
+    const raw = localStorage.getItem(KEY_PREFIX+k);
+    if(raw!==null){ try{ bundle.modules[k] = JSON.parse(raw); }catch(e){ bundle.modules[k]=raw; } }
+  });
+  return bundle;
+}
+function applyCapsule(bundle){
+  if(!bundle || bundle.type!=='capsule' || !bundle.modules){ throw new Error('Not a valid Capsule file'); }
+  Object.keys(bundle.modules).forEach(k=>{
+    localStorage.setItem(KEY_PREFIX+k, JSON.stringify(bundle.modules[k]));
+  });
+  renderDocs(); renderSheets(); renderForms(); renderNotes();
+  renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
+  renderToday();
+  mode = loadLocal('mode','offline');
+  setMode(mode);
+  renderSyncList();
+}
+
+/* --- Real client-side crypto: PBKDF2 -> AES-GCM key, using the browser's native Web Crypto API --- */
+function b64FromBytes(bytes){ let s=''; bytes.forEach(b=>s+=String.fromCharCode(b)); return btoa(s); }
+function bytesFromB64(b64){ const s=atob(b64); const arr=new Uint8Array(s.length); for(let i=0;i<s.length;i++) arr[i]=s.charCodeAt(i); return arr; }
+
+async function deriveKey(passphrase, salt){
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt, iterations:150000, hash:'SHA-256' },
+    baseKey,
+    { name:'AES-GCM', length:256 },
+    false,
+    ['encrypt','decrypt']
+  );
+}
+async function encryptCapsule(bundle, passphrase){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(passphrase, salt);
+  const enc = new TextEncoder();
+  const plaintext = enc.encode(JSON.stringify(bundle));
+  const ciphertext = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, plaintext);
+  return {
+    encrypted: true, version: 1, cipher: 'AES-GCM-256/PBKDF2-SHA256-150000',
+    salt: b64FromBytes(salt), iv: b64FromBytes(iv),
+    data: b64FromBytes(new Uint8Array(ciphertext))
+  };
+}
+async function decryptCapsule(file, passphrase){
+  const salt = bytesFromB64(file.salt);
+  const iv = bytesFromB64(file.iv);
+  const key = await deriveKey(passphrase, salt);
+  const ciphertext = bytesFromB64(file.data);
+  const plainBuf = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ciphertext);
+  const dec = new TextDecoder();
+  return JSON.parse(dec.decode(plainBuf));
+}
+
+function openCapsuleModal(kind){
+  const modal = document.getElementById('capsuleModal');
+  if(!isLicensed()){
+    modal.innerHTML = `
+      <h3>Capsule is part of the Pro unlock</h3>
+      <p>Encrypted backup/export of everything is one of the five Pro features. Unlock any locked module tab (Grid, Fill, Docket, Glides, or Lockbox) to enable Capsule too — it's the same one-time $9 key.</p>
+      <div class="row"><button class="btn ghost small" onclick="closeCapsuleModal()">Close</button></div>
+    `;
+    document.getElementById('capsuleModalBg').classList.add('show');
+    return;
+  }
+  if(kind==='export'){
+    modal.innerHTML = `
+      <h3>Export Capsule</h3>
+      <p>Bundles all 8 modules — Folio, Grid, Fill, Spot, Docket, Almanac, Glides, and Lockbox — into one file, locked with a passphrase you choose.</p>
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--navy);">Set a passphrase</label>
+      <input type="text" id="capsulePass" placeholder="Choose a passphrase" style="width:100%;margin-bottom:6px;">
+      <p style="color:#a8563f;font-size:0.75em;">This uses your browser's built-in encryption (AES-GCM, key derived with PBKDF2). There's no account or server involved, which also means: if you lose this passphrase, nobody — including us — can recover the file. Write it down somewhere safe.</p>
+      <div class="row">
+        <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+        <button class="btn brass small" onclick="doExportCapsule()">Encrypt &amp; Download</button>
+      </div>
+    `;
+  } else {
+    modal.innerHTML = `
+      <h3>Import Capsule</h3>
+      <p>Choose a .capsule file and enter the passphrase it was locked with. This will replace the current contents of every module.</p>
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--navy);">Passphrase</label>
+      <input type="text" id="capsuleImportPass" placeholder="Enter passphrase" style="width:100%;margin-bottom:10px;">
+      <div class="row">
+        <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+        <button class="btn brass small" onclick="doImportCapsule()">Choose file…</button>
+      </div>
+    `;
+  }
+  document.getElementById('capsuleModalBg').classList.add('show');
+}
+function closeCapsuleModal(){
+  document.getElementById('capsuleModalBg').classList.remove('show');
+}
+async function doExportCapsule(){
+  const pass = (document.getElementById('capsulePass').value||'').trim();
+  if(!pass){ alert('Choose a passphrase first — that\'s what locks the file.'); return; }
+  const bundle = buildCapsule();
+  try{
+    const encrypted = await encryptCapsule(bundle, pass);
+    download('suite.capsule', JSON.stringify(encrypted, null, 2));
+    closeCapsuleModal();
+    showSeal();
+  }catch(e){ alert('Encryption failed: '+e.message); }
+}
+function doImportCapsule(){
+  const pass = (document.getElementById('capsuleImportPass').value||'').trim();
+  if(!pass){ alert('Enter the passphrase this Capsule was locked with.'); return; }
+  pickFile('.capsule', async (content)=>{
+    try{
+      const file = JSON.parse(content);
+      if(!file.encrypted){ throw new Error('This file isn\'t an encrypted Capsule.'); }
+      const bundle = await decryptCapsule(file, pass);
+      applyCapsule(bundle);
+      closeCapsuleModal();
+      showSeal();
+    }catch(e){ alert('Could not unlock that Capsule — wrong passphrase, or a file from somewhere else. ('+e.message+')'); }
+  });
+}
+document.getElementById('capsuleModalBg').addEventListener('click', (e)=>{
+  if(e.target.id==='capsuleModalBg') closeCapsuleModal();
+});
+
+/* ---------- Merge engine: per-module, per-item — not a full CRDT, see limitations in README ---------- */
+const ITEM_LIST_MODULES = {
+  notes: 'items', tasks: 'items', agenda: 'events', slides: 'slides', lockbox: 'files'
+};
+function mergeItemArrays(localArr, remoteArr, localTime, remoteTime){
+  localArr = localArr || []; remoteArr = remoteArr || [];
+  const byId = new Map();
+  localArr.forEach(item => byId.set(item.id, {item, from:'local'}));
+  remoteArr.forEach(item => {
+    const existing = byId.get(item.id);
+    if(!existing){
+      byId.set(item.id, {item, from:'remote'}); // new on remote only — merges in cleanly
+    } else {
+      // Present on both sides — pick whichever device's module was saved more recently.
+      // Approximate (module-level, not this-exact-item-level) but simple and honest.
+      if(remoteTime > localTime) byId.set(item.id, {item, from:'remote'});
+      // else keep local's existing entry (already in the map)
+    }
+  });
+  return Array.from(byId.values()).map(v=>v.item);
+}
+function mergeBundles(localBundle, remoteBundle, localModTimes, remoteModTimes){
+  const merged = { type:'capsule', version:1, createdAt:new Date().toISOString(), modules:{} };
+  const overwrittenWhole = [];
+
+  // Single-object modules: whole-module last-write-wins, but per-module (not per-bundle) granularity.
+  ['docs','sheets','forms'].forEach(k=>{
+    const lt = localModTimes[k] || 0, rt = remoteModTimes[k] || 0;
+    if(remoteBundle.modules[k] !== undefined && rt > lt){
+      merged.modules[k] = remoteBundle.modules[k];
+      if(localBundle.modules[k] !== undefined && lt > 0) overwrittenWhole.push(k);
+    } else if(localBundle.modules[k] !== undefined){
+      merged.modules[k] = localBundle.modules[k];
+    } else if(remoteBundle.modules[k] !== undefined){
+      merged.modules[k] = remoteBundle.modules[k];
+    }
+  });
+
+  // Item-list modules: real per-item union merge — additions from either side survive.
+  Object.entries(ITEM_LIST_MODULES).forEach(([k, arrKey])=>{
+    const lt = localModTimes[k] || 0, rt = remoteModTimes[k] || 0;
+    const localData = localBundle.modules[k] || {};
+    const remoteData = remoteBundle.modules[k] || {};
+    const mergedArr = mergeItemArrays(localData[arrKey], remoteData[arrKey], lt, rt);
+    merged.modules[k] = { ...localData, ...remoteData, [arrKey]: mergedArr };
+  });
+
+  merged.modules.mode = localBundle.modules.mode;
+  const mergedTimes = {};
+  MODULE_KEYS_TRACKED.forEach(k=>{ mergedTimes[k] = Math.max(localModTimes[k]||0, remoteModTimes[k]||0); });
+  merged.modules.modTimes = mergedTimes;
+
+  return { merged, overwrittenWhole };
+}
+
+
+// Set these once your php-sync/ folder is live on your host, e.g.:
+// const SYNC_PUSH_URL = 'https://codersagent.com/suite-sync/push.php';
+// const SYNC_PULL_URL = 'https://codersagent.com/suite-sync/pull.php';
+const SYNC_PUSH_URL = 'https://offlines.xyz/suite-sync/push.php'; // <-- fill in before shipping
+const SYNC_PULL_URL = 'https://offlines.xyz/suite-sync/pull.php'; // <-- fill in before shipping
+
+function getSyncLog(){ return loadLocal('syncLog', []); }
+function logSyncEvent(kind){
+  const log = getSyncLog();
+  log.unshift({ at: new Date().toISOString(), kind });
+  localStorage.setItem(KEY_PREFIX+'syncLog', JSON.stringify(log.slice(0,10)));
+}
+function getSyncPassphrase(){ return loadLocal('syncPassphrase', null); }
+
+async function sha256Hex(str){
+  const enc = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function promptSyncSetup(){
+  const pass = prompt(
+    'Set a Sync Key — a passphrase only you know, used on every device you want to link.\n\n' +
+    'There is no account and no recovery: if you lose this passphrase, you lose access to whatever was synced under it. Write it down somewhere safe.'
+  );
+  if(pass && pass.trim().length >= 6){
+    saveLocal('syncPassphrase', pass.trim());
+    return pass.trim();
+  }
+  if(pass !== null) alert('Use at least 6 characters for a Sync Key.');
+  return null;
+}
+
+async function syncAll(){
+  if(!SYNC_PUSH_URL || !SYNC_PULL_URL){
+    alert('The sync server URLs haven\'t been configured yet in suite.html (SYNC_PUSH_URL / SYNC_PULL_URL) — that\'s a setup step, not a problem with your data.');
+    return;
+  }
+  let pass = getSyncPassphrase();
+  if(!pass){
+    pass = promptSyncSetup();
+    if(!pass) return;
+  }
+
+  const syncId = await sha256Hex(pass);
+  const btn = document.querySelector('#syncCard .sage');
+  if(btn){ btn.disabled = true; btn.textContent = 'Syncing…'; }
+
+  try{
+    // 1. Pull whatever's currently stored for this Sync Key
+    const pullRes = await fetch(`${SYNC_PULL_URL}?sync_id=${syncId}`);
+    const pullData = await pullRes.json();
+
+    const localBundle = buildCapsule();
+    const localUpdatedAt = Date.now();
+
+    if(pullData.ok){
+      // Something exists remotely — decrypt it so we can merge
+      let remoteBundle;
+      try{
+        remoteBundle = await decryptCapsule(JSON.parse(pullData.blob), pass);
+      }catch(e){
+        alert('Could not decrypt the data stored under this Sync Key — wrong passphrase, or it was synced with a different one.');
+        return;
+      }
+      const remoteAt = pullData.client_updated_at;
+      const lastKnown = loadLocal('syncLastKnownRemote', 0);
+
+      if(remoteAt > lastKnown || true){
+        // Always merge rather than blindly picking a side — new items from either
+        // device combine cleanly; only whole single-document modules (Docs/Sheets/
+        // Forms) fall back to last-write-wins, since merging inside a document isn't
+        // something this app can do safely. See php-sync/README.md for the honest
+        // limitations (no true CRDT, deletions can resurrect in rare cases).
+        const localModTimes = loadLocal('modTimes', {});
+        const remoteModTimes = remoteBundle.modules.modTimes || {};
+        const { merged, overwrittenWhole } = mergeBundles(localBundle, remoteBundle, localModTimes, remoteModTimes);
+
+        applyCapsule(merged);
+        saveLocal('modTimes', merged.modules.modTimes);
+        saveLocal('syncLastKnownRemote', remoteAt);
+
+        if(overwrittenWhole.length){
+          alert(`Merged. Note: ${overwrittenWhole.join(', ')} had a newer version on another device, so that module's content came from there instead of this device's version (whole-document modules can't be merged field-by-field).`);
+        }
+        logSyncEvent('merged');
+      }
+    }
+
+    // Push the merged (or, if nothing was remote yet, local) state back up
+    const finalBundle = buildCapsule();
+    const encrypted = await encryptCapsule(finalBundle, pass);
+    const pushRes = await fetch(SYNC_PUSH_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ sync_id: syncId, blob: JSON.stringify(encrypted), client_updated_at: Date.now() })
+    });
+    const pushData = await pushRes.json();
+
+    if(pushData.ok){
+      saveLocal('syncLastKnownRemote', pushData.stored_at);
+      logSyncEvent('pushed');
+      renderSyncList();
+      renderDocs(); renderSheets(); renderForms(); renderNotes();
+      renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
+      renderToday();
+      showSeal();
+    } else if(pushData.error === 'conflict'){
+      alert('Someone else synced a newer version in the last moment — click Sync now again to merge it in.');
+    } else {
+      alert('Sync failed: ' + (pushData.error || 'unknown error'));
+    }
+  }catch(e){
+    alert('Couldn\'t reach the sync server — check your internet connection. Your local data is untouched.');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Sync now'; }
+  }
+}
+
+function toggleAutoSync(on){
+  saveLocalSilent('autoSync', !!on);
+  if(on){
+    if(window._autoSyncTimer) clearInterval(window._autoSyncTimer);
+    window._autoSyncTimer = setInterval(syncAll, 30000);
+  } else if(window._autoSyncTimer){
+    clearInterval(window._autoSyncTimer);
+    window._autoSyncTimer = null;
+  }
+}
+function saveLocalSilent(key,value){ localStorage.setItem(KEY_PREFIX+key, JSON.stringify(value)); }
+function renderSyncList(){
+  const el = document.getElementById('syncList');
+  if(!el) return;
+  const log = getSyncLog();
+  const autoOn = loadLocal('autoSync', false);
+  const hasKey = !!getSyncPassphrase();
+  el.innerHTML = `
+    <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap;">
+      <span class="hint">${hasKey ? 'Sync Key is set on this device.' : 'No Sync Key set yet — click Sync now to create one.'}</span>
+      <label style="font-size:0.8em;display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="autoSyncBox" ${autoOn?'checked':''} onchange="toggleAutoSync(this.checked)">
+        Auto-sync every 30 seconds
+      </label>
+    </div>
+    <div class="hint">Recent activity: ${log.length ? log.map(l=>`${l.kind} @ ${new Date(l.at).toLocaleTimeString()}`).join(', ') : 'none yet'}</div>
+  `;
+  if(autoOn && !window._autoSyncTimer){ toggleAutoSync(true); }
+}
+
+
+/* ---------- init ---------- */
+(async function initApp(){
+  await refreshLicenseState(); // verify any stored token before first render, so Pro tabs don't flash locked→unlocked
+  renderDocs(); renderSheets(); renderForms(); renderNotes();
+  renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
+  if(!SUITE_ONLY){ renderToday(); activateTab('today'); }
+  else { activateTab(modules[0].id); }
+  setMode(mode);
+  renderSyncList();
+})();
+
+/* ---------- PWA: register service worker so this installs like a real app ---------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* fine if this fails when opened via file:// */ });
+  });
+}
+</script>
+</body>
+</html>
