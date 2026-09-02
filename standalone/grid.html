@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Suite — Yours, Always</title>
+<title>OFFLINES — Private Workspace & Security Suite</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1c2333">
 <meta name="mobile-web-app-capable" content="yes">
@@ -13,659 +13,541 @@
 <link rel="icon" href="icons/icon-192.png">
 <style>
 :root{
-  --ink:#232017;
-  --paper:#f6f1e4;
-  --paper-dark:#ece4d0;
-  --navy:#1c2333;
-  --navy-2:#262f45;
-  --sage:#6f8c6a;
-  --sage-dark:#567052;
-  --brass:#b8925a;
-  --brass-light:#d4ab78;
-  --rust:#a8563f;
-  --line:#d8cdb0;
-  --shadow:rgba(28,35,51,0.25);
-}
-*{box-sizing:border-box;}
-body{
-  margin:0;
-  font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;
-  background:var(--navy);
-  color:var(--ink);
-  min-height:100vh;
-}
-.topbar{
-  background:var(--navy);
-  color:var(--paper);
-  padding:14px 24px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  border-bottom:2px solid var(--brass);
-  flex-wrap:wrap;
-  gap:10px;
-}
-.brand{
-  font-size:1.3em;
-  letter-spacing:0.04em;
-  font-weight:600;
-}
-.brand span{color:var(--brass-light);}
-.mode-toggle{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.78em;
-  background:var(--navy-2);
-  padding:6px 10px;
-  border-radius:20px;
-  border:1px solid rgba(212,171,120,0.3);
-}
-.mode-toggle button{
-  border:none;
-  background:transparent;
-  color:var(--paper);
-  opacity:0.5;
-  cursor:pointer;
-  padding:4px 10px;
-  border-radius:14px;
-  font-family:inherit;
-  font-size:1em;
-}
-.mode-toggle button.active{
-  background:var(--brass);
-  color:var(--navy);
-  opacity:1;
-  font-weight:600;
-}
-.tabs{
-  display:flex;
-  background:var(--navy-2);
-  overflow-x:auto;
-  border-bottom:1px solid rgba(212,171,120,0.25);
-}
-.tab{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  color:var(--paper);
-  opacity:0.55;
-  padding:11px 18px;
-  cursor:pointer;
-  white-space:nowrap;
-  font-size:0.82em;
-  letter-spacing:0.03em;
-  border-bottom:3px solid transparent;
-  display:flex;
-  align-items:center;
-  gap:6px;
-}
-.tab:hover{opacity:0.85;}
-.tab.active{
-  opacity:1;
-  border-bottom:3px solid var(--brass);
-  background:rgba(184,146,90,0.08);
-}
-.tab .ext{
-  font-size:0.85em;
-  color:var(--brass-light);
-  font-family:'Courier New',monospace;
-}
-.workspace{
-  max-width:1100px;
-  margin:0 auto;
-  padding:24px;
-}
-.panel{
-  background:var(--paper);
-  border-radius:6px;
-  box-shadow:0 8px 24px var(--shadow);
-  padding:24px;
-  min-height:400px;
-  display:none;
-}
-.panel.active{display:block;}
-.panel h2{
-  margin:0 0 4px 0;
-  font-size:1.4em;
-  color:var(--navy);
-}
-.panel .sub{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.8em;
-  color:#8a7f66;
-  margin-bottom:18px;
-}
-.toolbar{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:14px;
-  align-items:center;
-}
-button.btn{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  background:var(--navy);
-  color:var(--paper);
-  border:none;
-  padding:8px 14px;
-  border-radius:4px;
-  cursor:pointer;
-  font-size:0.82em;
-  letter-spacing:0.02em;
-}
-button.btn:hover{background:var(--navy-2);}
-button.btn.sage{background:var(--sage);}
-button.btn.sage:hover{background:var(--sage-dark);}
-.countdown-banner{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.88em;
-  background:var(--paper-dark);
-  padding:10px 14px;
-  border-radius:4px;
-  margin-bottom:14px;
-}
-.cal-nav{
-  display:flex; align-items:center; justify-content:center; gap:14px;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  margin-bottom:10px;
-}
-.cal-grid{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:4px;
-  margin-bottom:18px;
-}
-.cal-dow{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.72em;
-  text-align:center;
-  color:#8a7f66;
-  padding:4px 0;
-}
-.cal-cell{
-  min-height:52px;
-  border:1px solid var(--line);
-  border-radius:4px;
-  padding:4px;
-  cursor:pointer;
-  background:var(--paper);
-}
-.cal-cell:hover{background:var(--paper-dark);}
-.cal-cell.empty{border:none; cursor:default; background:transparent;}
-.cal-cell.today{border:2px solid var(--brass);}
-.cal-cell.selected{background:rgba(184,146,90,0.25);}
-.cal-daynum{font-size:0.82em; color:var(--ink);}
-.cal-dots{display:flex; gap:2px; flex-wrap:wrap; margin-top:3px;}
-.cal-dot{width:6px; height:6px; border-radius:50%; display:inline-block;}
-.repeat-badge{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.75em;
-  color:#8a7f66;
-  font-style:italic;
-}
-.today-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:14px;
-  margin:14px 0;
-}
-.today-card{
-  background:var(--paper-dark);
-  border:1px solid var(--line);
-  border-radius:6px;
-  padding:14px 16px;
-}
-.today-card h3{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.85em;
-  color:#8a7f66;
-  margin:0 0 8px 0;
-}
-.today-item{ padding:4px 0; font-size:0.92em; }
-.search-result{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.85em;
-  padding:8px 10px;
-  border:1px solid var(--line);
-  border-radius:4px;
-  margin-top:6px;
-  cursor:pointer;
-}
-.search-result:hover{ background:var(--paper-dark); }
-body.standalone .tabs{ display:none; }
-.plot-dot.aging-warm{ background:#b8925a !important; }
-.plot-dot.aging-hot{ background:#a8563f !important; box-shadow:0 0 8px rgba(168,86,63,0.6); }
-.carry-badge{
-  position:absolute;
-  top:-8px; right:-8px;
-  background:var(--navy);
-  color:var(--paper);
-  font-size:0.6em;
-  border-radius:50%;
-  width:16px; height:16px;
-  display:flex; align-items:center; justify-content:center;
-}
-.slide-preview{
-  margin-top:12px;
-  padding:10px 14px;
-  background:var(--paper-dark);
-  border:1px solid var(--line);
-  border-radius:6px;
-  font-size:0.9em;
-  min-height:20px;
-}
-.embed-grid{ border-collapse:collapse; margin:6px 0; }
-.embed-grid td{ border:1px solid var(--line); padding:4px 8px; font-family:'Courier New',monospace; font-size:0.85em; }
-.timelock-row{
-  border:1px solid var(--line);
-  border-radius:4px;
-  padding:8px 12px;
-  margin-top:8px;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.88em;
-}
-.locked-badge{ color:#a8563f; font-size:0.85em; margin-left:8px; }
-.unlocked-badge{ color:#6f8c6a; font-size:0.85em; margin-left:8px; }
-.timelock-content{ margin-top:6px; font-family:'Iowan Old Style',Georgia,serif; }
-.anchor-tag{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.7em;
-  color:#8a7f66;
-  margin-bottom:4px;
-  font-style:italic;
-}
-.cal-moon{ font-size:0.75em; margin-left:4px; }
-.grid-help{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.82em;
-  background:var(--paper-dark);
-  border:1px solid var(--line);
-  border-radius:6px;
-  padding:14px 16px;
-  margin-bottom:14px;
-  line-height:1.6;
-}
-.grid-help code{
-  background:rgba(28,35,51,0.08);
-  padding:1px 5px;
-  border-radius:3px;
-  font-family:'Courier New',monospace;
-  color:var(--navy);
-}
-.formula-guide-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:6px 18px;
-  margin:8px 0 12px 0;
-}
-.formula-guide-grid div{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
-.formula-guide-grid span{color:#8a7f66; font-style:italic;}
-.grid-calc{
-  background:var(--navy);
-  border-radius:8px;
-  padding:14px;
-  margin-bottom:14px;
-  max-width:280px;
-  box-shadow:0 4px 14px var(--shadow);
-}
-.grid-calc #calcDisplay{
-  width:100%;
-  box-sizing:border-box;
-  font-family:'Courier New',monospace;
-  font-size:1.2em;
-  padding:10px;
-  border-radius:4px;
-  border:none;
-  margin-bottom:10px;
-  text-align:right;
-  background:var(--paper);
-  color:var(--ink);
-}
-.calc-buttons{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:6px;
-}
-.calc-buttons button{width:100%;}
-.toolbar select{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  background:var(--navy);
-  color:var(--paper);
-  border:none;
-  padding:7px 8px;
-  border-radius:4px;
-  font-size:0.8em;
-  cursor:pointer;
-}
-.toolbar .tdiv{
-  width:1px;
-  align-self:stretch;
-  background:rgba(35,32,23,0.15);
-  margin:2px 2px;
-}
-.toolbar input[type=color]{
-  width:30px;
-  height:30px;
-  border:none;
-  border-radius:4px;
-  padding:0;
-  cursor:pointer;
-  background:none;
-}
-button.btn.icon{
-  min-width:32px;
-  text-align:center;
-  padding:8px 10px;
-}
-button.btn.active-fmt{
-  background:var(--brass);
-  color:var(--navy);
-}
-button.btn.ghost{
-  background:transparent;
-  color:var(--navy);
-  border:1px solid var(--line);
-}
-button.btn.ghost:hover{background:var(--paper-dark);}
-button.btn.brass{background:var(--brass);color:#2b1d0c;}
-button.btn.brass:hover{background:var(--brass-light);}
-button.btn.small{padding:5px 10px;font-size:0.75em;}
-input[type=file]{display:none;}
-textarea,input[type=text],input[type=date],input[type=time],select{
-  font-family:inherit;
-  border:1px solid var(--line);
-  border-radius:4px;
-  padding:8px;
-  background:#fffdf8;
-  color:var(--ink);
+  --bg-base: #0b0f17;
+  --bg-surface: #121824;
+  --bg-elevated: #1a2332;
+  --bg-hover: #242f45;
+  --bg-active: #2c3a54;
+
+  --border-subtle: #232d42;
+  --border-strong: #364563;
+  --border-focus: #3b82f6;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --emerald: #10b981;
+  --emerald-bg: rgba(16,185,129,0.12);
+  --emerald-border: rgba(16,185,129,0.3);
+
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.12);
+
+  --blue: #3b82f6;
+  --blue-bg: rgba(59,130,246,0.12);
+
+  --purple: #8b5cf6;
+  --purple-bg: rgba(139,92,246,0.12);
+
+  --rose: #f43f5e;
+  --rose-bg: rgba(244,63,94,0.12);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", SFMono-Regular, Consolas, Menlo, monospace;
 }
 
-/* DOCS */
-#docsEditor{
-  min-height:300px;
-  border:1px solid var(--line);
-  border-radius:4px;
-  padding:16px;
-  background:#fffdf8;
-  font-size:1.05em;
-  line-height:1.6;
-  outline:none;
-}
-.wordcount{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:#8a7f66;margin-top:8px;}
+*{ box-sizing: border-box; margin: 0; padding: 0; }
 
-/* SHEETS */
-table.grid{border-collapse:collapse;width:100%;}
-table.grid td{
-  border:1px solid var(--line);
-  min-width:70px;
-  height:30px;
-  padding:0;
-}
-table.grid input{
-  width:100%;height:100%;border:none;background:transparent;
-  padding:4px 6px;font-size:0.85em;text-align:left;
-}
-table.grid th{
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.7em;color:#8a7f66;font-weight:normal;
-  background:var(--paper-dark);padding:3px;
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-main);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: hidden;
 }
 
-/* FORMS */
-.forms-layout{display:flex;gap:20px;flex-wrap:wrap;}
-.forms-col{flex:1;min-width:280px;}
-.field-row{
-  display:flex;gap:6px;margin-bottom:8px;align-items:center;
-  font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;
-}
-.field-row input,.field-row select{flex:1;}
-.preview-box{
-  border:1px solid var(--line);border-radius:6px;padding:16px;background:#fffdf8;
-}
-.preview-box label{
-  display:block;font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.85em;margin:12px 0 4px;color:var(--navy);
-}
-.preview-box input{width:100%;}
+.tabs { display: none; }
 
-/* NOTES canvas */
-#notesCanvas{
-  position:relative;
-  border:1px dashed var(--line);
-  border-radius:6px;
-  height:420px;
-  background:repeating-linear-gradient(0deg,#fffdf8,#fffdf8 24px,#f2ecd f);
-  background:#fffdf8;
-  overflow:hidden;
-}
-.spot-note{
-  position:absolute;
-  width:150px;
-  min-height:90px;
-  background:#fff6d8;
-  border:1px solid #e0d09a;
-  border-radius:3px;
-  padding:8px;
-  box-shadow:2px 3px 6px rgba(0,0,0,0.15);
-  cursor:move;
-  font-size:0.82em;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-}
-.spot-note textarea{
-  width:100%;height:60px;border:none;background:transparent;resize:none;font-family:inherit;font-size:1em;outline:none;
-}
-.spot-note .del{
-  position:absolute;top:2px;right:4px;cursor:pointer;color:#a8563f;font-weight:bold;font-size:0.9em;
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background: var(--bg-base);
 }
 
-/* TASKS timeline */
-#plotArea{
-  position:relative;
-  height:340px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  background:#fffdf8;
-  margin-top:10px;
-  overflow:hidden;
-}
-.plot-axis-label{
-  position:absolute;font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.7em;color:#8a7f66;
-}
-.plot-dot{
-  position:absolute;
-  width:16px;height:16px;
-  border-radius:50%;
-  background:var(--rust);
-  cursor:grab;
-  border:2px solid #fff;
-  box-shadow:0 1px 4px rgba(0,0,0,0.3);
-}
-.plot-dot.done{background:var(--sage);}
-.plot-tooltip{
-  position:absolute;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.72em;
-  background:var(--navy);
-  color:var(--paper);
-  padding:3px 7px;
-  border-radius:3px;
-  white-space:nowrap;
-  transform:translate(-50%,-140%);
-  pointer-events:none;
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  flex: 0 0 250px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  user-select: none;
 }
 
-/* AGENDA */
-.agenda-day{
-  border-bottom:1px solid var(--line);
-  padding:10px 0;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-}
-.agenda-day .date{font-weight:600;color:var(--navy);font-size:0.85em;margin-bottom:6px;}
-.agenda-event{
-  display:flex;justify-content:space-between;
-  padding:5px 8px;background:var(--paper-dark);border-radius:3px;margin-bottom:4px;font-size:0.82em;
+.sidebar-brand {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-/* SLIDES filmstrip */
-.filmstrip{
-  display:flex;gap:10px;overflow-x:auto;padding:10px 0;
+.sidebar-brand .name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.slide-thumb{
-  min-width:160px;height:100px;
-  background:#fffdf8;
-  border:2px solid var(--line);
-  border-radius:4px;
-  padding:8px;
-  font-size:0.72em;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  cursor:pointer;
-  flex-shrink:0;
-  position:relative;
-}
-.slide-thumb.active{border-color:var(--brass);}
-.slide-editor{
-  margin-top:14px;border:1px solid var(--line);border-radius:6px;padding:16px;background:#fffdf8;min-height:200px;
-}
-.slide-editor textarea{width:100%;min-height:160px;border:none;outline:none;font-family:inherit;font-size:1em;resize:vertical;}
 
-/* LOCKBOX */
-.lockbox-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:8px 10px;border-bottom:1px solid var(--line);font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;
+.sidebar-brand .name b { color: var(--emerald); }
+.sidebar-brand .tag {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
-.tag-pill{
-  background:var(--sage);color:#fff;font-size:0.7em;padding:2px 8px;border-radius:10px;margin-left:6px;
-}
-.used-in{color:#8a7f66;font-size:0.78em;font-style:italic;}
 
-/* Seal animation */
-.seal-overlay{
-  position:fixed;inset:0;
-  display:flex;align-items:center;justify-content:center;
-  pointer-events:none;z-index:999;
-  opacity:0;
+.sidebar-nav {
+  padding: 10px 8px;
+  flex: 1;
 }
-.seal-overlay.show{animation:sealFade 1.1s ease forwards;}
-.seal-stamp{
-  width:90px;height:90px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 60%, #8a6a3d);
-  display:flex;align-items:center;justify-content:center;
-  color:#2b1d0c;font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.65em;font-weight:700;
-  letter-spacing:0.05em;text-align:center;
-  box-shadow:0 10px 30px rgba(0,0,0,0.4);
-  transform:scale(0.4);
-}
-.seal-overlay.show .seal-stamp{animation:stampIn 1.1s cubic-bezier(.2,1.6,.4,1) forwards;}
-@keyframes sealFade{
-  0%{opacity:0;}
-  15%{opacity:1;}
-  75%{opacity:1;}
-  100%{opacity:0;}
-}
-@keyframes stampIn{
-  0%{transform:scale(2.2) rotate(-18deg);}
-  30%{transform:scale(0.85) rotate(4deg);}
-  50%{transform:scale(1) rotate(-2deg);}
-  100%{transform:scale(1) rotate(0deg);}
-}
-.hint{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:#8a7f66;margin-top:10px;line-height:1.5;}
-.sync-badge{
-  font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.68em;
-  background:var(--sage);color:#fff;padding:2px 8px;border-radius:10px;margin-left:8px;
-  display:none;
-}
-body.hybrid .sync-badge{display:inline-block;}
-.footer-note{
-  text-align:center;color:var(--paper);opacity:0.5;font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.72em;padding:20px;
-}
-.capsule-bar{
-  display:flex;align-items:center;gap:8px;
-}
-.sync-panel{
-  max-width:1100px;margin:0 auto;padding:0 24px 20px;
-}
-.sync-card{
-  background:var(--paper);border-radius:6px;padding:16px 20px;
-  box-shadow:0 6px 18px var(--shadow);
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  display:none;
-}
-body.hybrid .sync-card{display:block;}
-.sync-card h3{margin:0 0 6px;font-size:0.95em;color:var(--navy);font-family:'Iowan Old Style',Georgia,serif;}
-.sync-card .disclaimer{font-size:0.72em;color:#a8563f;margin-bottom:10px;line-height:1.5;}
-.sync-row{
-  display:flex;justify-content:space-between;padding:5px 0;
-  border-bottom:1px solid var(--line);font-size:0.8em;color:var(--ink);
-}
-.sync-row .stamp{color:#8a7f66;font-size:0.85em;}
-.capsule-modal-bg{
-  position:fixed;inset:0;background:rgba(28,35,51,0.55);
-  display:none;align-items:center;justify-content:center;z-index:1000;
-}
-.capsule-modal-bg.show{display:flex;}
-.capsule-modal{
-  background:var(--paper);border-radius:8px;padding:24px;max-width:420px;width:90%;
-  box-shadow:0 20px 50px rgba(0,0,0,0.4);font-family:'Helvetica Neue',Arial,sans-serif;
-}
-.capsule-modal h3{font-family:'Iowan Old Style',Georgia,serif;margin:0 0 10px;color:var(--navy);}
-.capsule-modal p{font-size:0.85em;line-height:1.6;color:var(--ink);margin:0 0 14px;}
-.capsule-modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
 
-/* LICENSE / PAYWALL */
-.lock-overlay{
-  border:1px dashed var(--brass);border-radius:8px;padding:32px;text-align:center;
-  background:repeating-linear-gradient(45deg,#fffdf8,#fffdf8 10px,#f6efd f 10px,#f6efd f 20px);
-  background:#fffdf8;
+.sidebar-group {
+  margin-bottom: 14px;
 }
-.lock-overlay .lock-icon{font-size:2em;margin-bottom:8px;}
-.lock-overlay h3{margin:0 0 6px;color:var(--navy);font-family:'Iowan Old Style',Georgia,serif;}
-.lock-overlay p{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;color:#6b6250;max-width:420px;margin:0 auto 16px;line-height:1.5;}
-.lock-overlay input{width:220px;text-align:center;letter-spacing:0.05em;}
-.lock-price{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:var(--brass-dark,#8a6a3d);margin-top:10px;}
-.free-pill{
-  font-size:0.62em;background:var(--sage);color:#fff;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;
+
+.sidebar-group-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 6px 10px 4px;
 }
-.pro-pill{
-  font-size:0.62em;background:var(--brass);color:#2b1d0c;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  margin-bottom: 2px;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.sidebar-item.active {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border-left: 3px solid var(--emerald);
+  padding-left: 7px;
+  font-weight: 600;
+}
+
+.sidebar-item .si-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-item .si-icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  width: 16px;
+  text-align: center;
+}
+
+.sidebar-item .si-ext {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* Main Column */
+.main-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-base);
+}
+
+/* Header Topstrip */
+.topstrip {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  position: relative;
+  z-index: 20;
+}
+
+.topstrip-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 580px;
+}
+
+.workspace-select-wrap {
+  position: relative;
+}
+
+.workspace-select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 6px 28px 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.workspace-select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.gsearch {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.gsearch input {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 7px 32px 7px 30px;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.gsearch input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+
+.gsearch .gsearch-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.gsearch .kbd {
+  position: absolute;
+  right: 8px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.topstrip-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.security-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.security-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 6px var(--emerald);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn.primary {
+  background: var(--blue);
+  color: #ffffff;
+}
+.btn.primary:hover { background: #2563eb; }
+
+.btn.emerald {
+  background: var(--emerald);
+  color: #0b0f17;
+}
+.btn.emerald:hover { background: #059669; }
+
+.btn.brass {
+  background: #d97706;
+  color: #ffffff;
+}
+.btn.brass:hover { background: #b45309; }
+
+.btn.ghost {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  color: var(--text-main);
+}
+.btn.ghost:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.btn.danger {
+  background: var(--rose-bg);
+  border-color: rgba(244,63,94,0.3);
+  color: var(--rose);
+}
+.btn.danger:hover {
+  background: var(--rose);
+  color: #ffffff;
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+
+/* Workspace Container */
+.workspace {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.panel {
+  display: none;
+}
+.panel.active {
+  display: block;
+  animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Common Card & Surface Styling */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.kpi-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.kpi-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Global Search & Command Palette Modal */
+.cmd-palette-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 23, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 120px;
+}
+
+.cmd-palette-bg.open { display: flex; }
+
+.cmd-palette {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 620px;
+  overflow: hidden;
 }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand"><span id="brandTitle">Suite</span> <span>· a fast, offline spreadsheet — real formulas, a real calculator</span></div>
-  <div class="capsule-bar">
-    <button class="btn brass small" onclick="openCapsuleModal('export')">Export Capsule</button>
-    <button class="btn ghost small" onclick="openCapsuleModal('import')">Import Capsule</button>
-  </div>
-  <div class="mode-toggle">
-    <button id="btnOffline" class="active">Offline</button>
-    <button id="btnHybrid">Hybrid</button>
-  </div>
-</div>
-
 <div class="tabs" id="tabs"></div>
 
-<div class="sync-panel">
-  <div class="sync-card" id="syncCard">
-    <h3>Hybrid sync</h3>
-    <div class="disclaimer">Honest note: this prototype has no real backend. "Sync" here just timestamps each module locally so you can see how the feature would behave — nothing actually leaves your browser.</div>
-    <div id="syncList"></div>
-    <div class="toolbar" style="margin-top:12px;">
-      <button class="btn sage small" onclick="syncAll()">Sync now</button>
+<div class="app-shell">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="name"><b>OFF</b><span id="brandTitle">LINES</span></div>
+      <div class="tag">the server delivers the app. it never sees your data.</div>
+    </div>
+    <div id="sidebarNav"></div>
+  </div>
+
+  <div class="main-col">
+    <div class="topstrip">
+      <div class="topstrip-left">
+        <div class="workspace-select-wrap">
+          <select class="workspace-select" id="workspaceSelect" onchange="switchActiveWorkspace(this.value)">
+            <option value="Personal Vault">🔒 Personal Vault</option>
+            <option value="Work Workspace">💼 Work Workspace</option>
+            <option value="Finance">💳 Finance</option>
+            <option value="Travel">✈️ Travel</option>
+            <option value="Project Alpha">📁 Project Alpha</option>
+            <option value="Emergency">🚨 Emergency</option>
+          </select>
+        </div>
+        <div class="gsearch">
+          <span class="gsearch-icon">⌕</span>
+          <input type="text" id="gSearchInput" placeholder="Search everything (Ctrl + K)…" oninput="globalSearch(this.value)" onfocus="globalSearch(this.value)">
+          <span class="kbd">⌘K</span>
+        </div>
+      </div>
+      <div class="topstrip-right">
+        <div class="security-pill" id="securityPill" title="Observable Network Verification">
+          <span class="dot"></span><span id="securityPillText">LOCAL ONLY · 0 B SENT</span>
+        </div>
+        <button class="btn ghost small" onclick="openCommandPalette()">⌘ Cmd Palette</button>
+        <button class="btn brass small" onclick="quickNewSecureItem()">+ Secure Item</button>
+        <button class="btn ghost small" onclick="lockVaultFast()">🔒 Lock</button>
+      </div>
+      <div class="global-search-results" id="globalSearchResults"></div>
+    </div>
+
+    <div class="sync-panel">
+      <div class="sync-card" id="syncCard">
+        <h3>Hybrid sync</h3>
+        <div class="disclaimer">Honest note: sync uploads a client-side encrypted blob to your own server (via suite-sync/), identified by a passphrase-derived Sync Key — the server can't read it. See suite-sync/README.md for setup; until that's deployed, this stays local-only.</div>
+        <div id="syncList"></div>
+        <div class="toolbar" style="margin-top:12px;">
+          <button class="btn sage small" onclick="syncAll()">Sync now</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="workspace" id="workspace"></div>
+
+    <div class="footer-note">No account. No server unless you choose sync. Every save is yours to keep — export a Capsule anytime.<br>
+    <span style="opacity:0.85;">A note: because nothing is stored anywhere but this device, there's no "forgot my passphrase" recovery and no cloud backup unless you make one. That's the trade — getting to "no one else can touch your data" means no one else can rescue it for you either. Export a Capsule regularly and keep it somewhere safe.</span>
     </div>
   </div>
 </div>
 
-<div class="workspace" id="workspace"></div>
-
-<div class="footer-note">No account. No server unless you choose sync. Every save is yours to keep — export a Capsule anytime.<br>
-<span style="opacity:0.85;">A note: because nothing is stored anywhere but this device, there's no "forgot my passphrase" recovery and no cloud backup unless you make one. That's the trade — getting to "no one else can touch your data" means no one else can rescue it for you either. Export a Capsule regularly and keep it somewhere safe.</span>
-</div>
-
 <div class="capsule-modal-bg" id="capsuleModalBg">
   <div class="capsule-modal" id="capsuleModal"></div>
+</div>
+
+
+<div class="cmd-palette-bg" id="cmdPaletteBg" onclick="if(event.target===this) closeCommandPalette();">
+  <div class="cmd-palette">
+    <div style="padding:14px 18px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; gap:10px;">
+      <span style="color:var(--text-dim); font-size:1.1rem;">></span>
+      <input type="text" id="cmdPaletteInput" placeholder="Type a command or search (e.g. > New Password, > Export Capsule)..." oninput="filterCommandPalette(this.value)" style="flex:1; background:transparent; border:none; color:var(--text-main); font-size:1rem; outline:none;" autofocus>
+      <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted); background:var(--bg-elevated); padding:3px 7px; border-radius:4px;">ESC</span>
+    </div>
+    <div id="cmdPaletteResults" style="max-height:360px; overflow-y:auto; padding:8px;"></div>
+  </div>
 </div>
 
 <div class="seal-overlay" id="sealOverlay">
@@ -690,6 +572,33 @@ function saveLocal(key, value){
     localStorage.setItem(KEY_PREFIX+'modTimes', JSON.stringify(times));
   }
   showSeal();
+}
+
+/* ================= NETWORK MONITOR + OFFLINE MODE (Phase 8 / Phase 9) =================
+   Every real network call this app ever makes (there are exactly two kinds:
+   license verification and hybrid sync) goes through here. This makes the
+   privacy promise observable instead of just a claim: the Network Monitor
+   panel reads straight from this same log, not a separate marketing number. */
+function isOfflineModeStrict(){ return !!loadLocal('offlineModeStrict', false); }
+function setOfflineModeStrict(v){ saveLocalSilent('offlineModeStrict', !!v); }
+function logNetworkEvent(kind, url, bytesOut, bytesIn){
+  const log = loadLocal('network_log', []);
+  let domain = '';
+  try{ domain = new URL(url).hostname; }catch(e){ domain = url; }
+  log.push({ts:Date.now(), kind, domain, bytesOut:bytesOut||0, bytesIn:bytesIn||0});
+  while(log.length>200) log.shift();
+  saveLocalSilent('network_log', log);
+}
+async function loggedFetch(url, opts, kind){
+  if(isOfflineModeStrict()){
+    throw new Error('Blocked by Offline Mode: this device is set to make no external connections. Turn off Offline Mode in the Privacy Center to allow this.');
+  }
+  const bytesOut = opts && opts.body ? new Blob([opts.body]).size : 0;
+  const res = await fetch(url, opts);
+  let bytesIn = 0;
+  try{ bytesIn = parseInt(res.headers.get('content-length')||'0',10); }catch(e){}
+  logNetworkEvent(kind, url, bytesOut, bytesIn);
+  return res;
 }
 function showSeal(){
   const el = document.getElementById('sealOverlay');
@@ -793,11 +702,11 @@ async function tryActivate(moduleLabel){
   if(btn){ btn.disabled = true; btn.textContent = 'Checking…'; }
   try{
     const deviceFingerprint = await getDeviceFingerprint();
-    const res = await fetch(LICENSE_VERIFY_URL, {
+    const res = await loggedFetch(LICENSE_VERIFY_URL, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({key, device_fingerprint: deviceFingerprint})
-    });
+    }, 'license-verify');
     const data = await res.json();
     if(!data.ok){
       alert('That key didn\'t verify: ' + (data.error || 'unknown error'));
@@ -847,18 +756,24 @@ function setMode(m){
   mode = m;
   saveLocal('mode', m);
   document.body.classList.toggle('hybrid', m==='hybrid');
-  document.getElementById('btnOffline').classList.toggle('active', m==='offline');
-  document.getElementById('btnHybrid').classList.toggle('active', m==='hybrid');
+  const bo = document.getElementById('btnOffline'); if(bo) bo.classList.toggle('active', m==='offline');
+  const bh = document.getElementById('btnHybrid'); if(bh) bh.classList.toggle('active', m==='hybrid');
+  const pill = document.getElementById('securityPill');
+  const pillText = document.getElementById('securityPillText');
+  if(pill && pillText){
+    pill.classList.toggle('hybrid', m==='hybrid');
+    pillText.textContent = m==='hybrid' ? 'Hybrid · encrypted before it ever leaves this device' : 'Local only · nothing leaves this device';
+  }
 }
-document.getElementById('btnOffline').onclick = ()=>setMode('offline');
-document.getElementById('btnHybrid').onclick = ()=>setMode('hybrid');
+const bo = document.getElementById('btnOffline'); if(bo) bo.onclick = ()=>setMode('offline');
+const bh = document.getElementById('btnHybrid'); if(bh) bh.onclick = ()=>setMode('hybrid');
 
 /* ---------- Standalone-tool mode ----------
    When SUITE_ONLY is set to a module id (e.g. 'sheets'), this file behaves as a
    single standalone tool: only that module loads, the tab bar and Today/search
    are hidden, and the header shows that tool's own name instead of "Suite".
    Leave null for the full combined Suite. */
-const SUITE_ONLY = 'sheets';
+
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function moonPhaseEmoji(date){
@@ -938,12 +853,28 @@ function renderToday(){
         <h3>✏️ Spot streak</h3>
         <div class="today-item">${streak>0 ? `${streak} day${streak===1?'':'s'} in a row` : 'No streak yet — jot something in Spot.'}</div>
       </div>
+      <div class="today-card">
+        <h3>🔑 Password generator</h3>
+        <div class="toolbar" style="margin:0 0 8px 0;">
+          <input type="number" id="pwGenLength" value="16" min="8" max="64" style="width:60px;" onchange="renderPasswordGeneratorStandalone()">
+          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenLower" checked onchange="renderPasswordGeneratorStandalone()"> a-z</label>
+          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenUpper" checked onchange="renderPasswordGeneratorStandalone()"> A-Z</label>
+          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenDigits" checked onchange="renderPasswordGeneratorStandalone()"> 0-9</label>
+          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenSymbols" onchange="renderPasswordGeneratorStandalone()"> !@#</label>
+        </div>
+        <div id="pwGenOutput" class="today-item"></div>
+        <div class="toolbar" style="margin-top:8px;">
+          <button class="btn ghost small" onclick="renderPasswordGeneratorStandalone()">↻ Regenerate</button>
+          <button class="btn ghost small" onclick="copyGeneratedStandalone()">⧉ Copy</button>
+        </div>
+      </div>
     </div>
     <div class="toolbar" style="margin-top:16px;">
       <input type="text" id="universalSearch" placeholder="Search everything…" oninput="universalSearch(this.value)" style="min-width:260px;">
     </div>
     <div id="universalSearchResults"></div>
   `;
+  renderPasswordGeneratorStandalone();
 }
 function universalSearch(query){
   const el = document.getElementById('universalSearchResults');
@@ -963,51 +894,400 @@ function universalSearch(query){
 
 /* ---------- Modules config ---------- */
 const ALL_MODULES = [
-  {id:'docs', label:'Folio', ext:'.fils', free:true},
-  {id:'sheets', label:'Grid', ext:'.grid', free:false},
-  {id:'forms', label:'Fill', ext:'.fill', free:false},
-  {id:'notes', label:'Spot', ext:'.spot', free:true},
-  {id:'tasks', label:'Docket', ext:'.plot', free:false},
-  {id:'agenda', label:'Almanac', ext:'.agnd', free:true},
-  {id:'slides', label:'Glides', ext:'.glides', free:false},
-  {id:'lockbox', label:'Lockbox', ext:'.lbox', free:false},
+  // WORKSPACE
+  {id:'today', label:'Overview', ext:'', free:true, group:'WORKSPACE', icon:'◉'},
+
+  // ORGANIZE
+  {id:'files', label:'Files', ext:'.fils', free:true, group:'ORGANIZE', icon:'◇'},
+  {id:'notes', label:'Notes (Spot)', ext:'.spot', free:true, group:'ORGANIZE', icon:'◇'},
+  {id:'tasks', label:'Tasks (Docket)', ext:'.plot', free:true, group:'ORGANIZE', icon:'◇'},
+  {id:'agenda', label:'Calendar (Almanac)', ext:'.agnd', free:true, group:'ORGANIZE', icon:'◇'},
+  {id:'contacts', label:'Contacts', ext:'.ctac', free:true, group:'ORGANIZE', icon:'◇'},
+  {id:'projects', label:'Projects', ext:'.proj', free:true, group:'ORGANIZE', icon:'◇'},
+
+  // SECURE
+  {id:'passwords', label:'Passwords', ext:'.vault', free:true, group:'SECURE', icon:'◇'},
+  {id:'passkeys', label:'Passkeys', ext:'.pkey', free:true, group:'SECURE', icon:'◇'},
+  {id:'totp', label:'OTP / Verifier', ext:'.totp', free:true, group:'SECURE', icon:'◇'},
+  {id:'wallet', label:'Cards / Wallet', ext:'.card', free:true, group:'SECURE', icon:'◇'},
+  {id:'identities', label:'Identities', ext:'.id', free:true, group:'SECURE', icon:'◇'},
+  {id:'lockbox', label:'Secure Files', ext:'.lbox', free:true, group:'SECURE', icon:'◇'},
+  {id:'secrets', label:'Secrets', ext:'.key', free:true, group:'SECURE', icon:'◇'},
+
+  // CREATE
+  {id:'docs', label:'Documents (Folio)', ext:'.folio', free:true, group:'CREATE', icon:'◇'},
+  {id:'sheets', label:'Tables (Grid)', ext:'.grid', free:true, group:'CREATE', icon:'◇'},
+  {id:'forms', label:'Forms (Fill)', ext:'.fill', free:true, group:'CREATE', icon:'◇'},
+  {id:'slides', label:'Presentations (Glides)', ext:'.glides', free:true, group:'CREATE', icon:'◇'},
+  {id:'canvas', label:'Canvas / Graph', ext:'.graph', free:true, group:'CREATE', icon:'◇'},
+
+  // SYSTEM
+  {id:'activity', label:'Network Monitor', ext:'', free:true, group:'SYSTEM', icon:'◇'},
+  {id:'backups', label:'Backups', ext:'', free:true, group:'SYSTEM', icon:'◇'},
+  {id:'security', label:'Security Center', ext:'', free:true, group:'SYSTEM', icon:'◇'},
+  {id:'privacy', label:'Privacy Center', ext:'', free:true, group:'SYSTEM', icon:'◇'},
 ];
+
+
+const SUITE_ONLY = 'sheets';
 const modules = SUITE_ONLY ? ALL_MODULES.filter(m=>m.id===SUITE_ONLY) : ALL_MODULES;
+
+const MODULE_GROUPS = {
+  WORKSPACE: ['today'],
+  ORGANIZE:  ['files', 'notes', 'tasks', 'agenda', 'contacts', 'projects'],
+  SECURE:    ['passwords', 'passkeys', 'totp', 'wallet', 'identities', 'lockbox', 'secrets'],
+  CREATE:    ['docs', 'sheets', 'forms', 'slides', 'canvas'],
+  SYSTEM:    ['activity', 'backups', 'security', 'privacy']
+};
+
+let _currentWorkspace = loadLocal('activeWorkspace', 'Personal Vault');
+function switchActiveWorkspace(wsName){
+  _currentWorkspace = wsName;
+  saveLocal('activeWorkspace', wsName);
+  const sel = document.getElementById('workspaceSelect');
+  if(sel) sel.value = wsName;
+  const activeTabEl = document.querySelector('.sidebar-item.active');
+  if(activeTabEl) activateTab(activeTabEl.dataset.id);
+}
 
 const tabsEl = document.getElementById('tabs');
 const workspaceEl = document.getElementById('workspace');
 
-if(!SUITE_ONLY){
-  const todayTab = document.createElement('div');
-  todayTab.className='tab'; todayTab.dataset.id='today';
-  todayTab.innerHTML = 'Today';
-  todayTab.onclick = ()=>activateTab('today');
-  tabsEl.appendChild(todayTab);
-  const todayPanel = document.createElement('div');
-  todayPanel.className='panel'; todayPanel.id='panel-today';
-  workspaceEl.appendChild(todayPanel);
-} else {
-  document.body.classList.add('standalone');
-  const brandTitle = document.getElementById('brandTitle');
-  if(brandTitle) brandTitle.textContent = modules[0].label;
-}
-
-modules.forEach(m=>{
-  const tab = document.createElement('div');
-  tab.className='tab'; tab.dataset.id=m.id;
-  tab.innerHTML = `${m.label} <span class="ext">${m.ext}</span><span class="${m.free?'free-pill':'pro-pill'}">${m.free?'Free':'Pro'}</span><span class="sync-badge">synced</span>`;
-  tab.onclick = ()=>activateTab(m.id);
-  tabsEl.appendChild(tab);
-
-  const panel = document.createElement('div');
-  panel.className='panel'; panel.id='panel-'+m.id;
-  workspaceEl.appendChild(panel);
+ALL_MODULES.forEach(m => {
+  let panel = document.getElementById('panel-' + m.id);
+  if(!panel){
+    panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = 'panel-' + m.id;
+    workspaceEl.appendChild(panel);
+  }
 });
 
-function activateTab(id){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.id===id));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+id));
+
+
+function showToast(message, type){
+  type = type || 'info';
+  const container = document.getElementById('toastContainer');
+  if(!container) return;
+  const toast = document.createElement('div');
+  const bg = type==='success' ? 'var(--emerald-bg)' : type==='error' ? 'var(--rose-bg)' : 'var(--bg-elevated)';
+  const border = type==='success' ? 'var(--emerald-border)' : type==='error' ? 'rgba(244,63,94,0.3)' : 'var(--border-subtle)';
+  const color = type==='success' ? 'var(--emerald)' : type==='error' ? 'var(--rose)' : 'var(--text-main)';
+  toast.style.cssText = `background:${bg}; border:1px solid ${border}; color:${color}; padding:8px 14px; border-radius:6px; font-size:0.82rem; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.3); pointer-events:auto; transition:all 0.2s ease; transform:translateY(10px); opacity:0;`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(()=>{ toast.style.transform='translateY(0)'; toast.style.opacity='1'; }, 10);
+  setTimeout(()=>{
+    toast.style.opacity='0'; toast.style.transform='translateY(10px)';
+    setTimeout(()=>toast.remove(), 200);
+  }, 3000);
 }
+
+function showContextMenu(e, items){
+  e.preventDefault();
+  const overlay = document.getElementById('contextMenuOverlay');
+  const menu = document.getElementById('contextMenu');
+  if(!overlay || !menu) return;
+  menu.innerHTML = items.map(it => `
+    <div style="padding:6px 10px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('contextMenuOverlay').style.display='none'; ${it.action}">
+      <span>${it.icon||'▸'}</span>
+      <span>${it.label}</span>
+    </div>
+  `).join('');
+  overlay.style.display = 'block';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+}
+
+function activateTab(id){
+  if(id !== 'lockbox' && typeof stopTotpTicker === 'function') stopTotpTicker();
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.id === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.toggle('active', s.dataset.id === id));
+
+  if(id === 'today' && typeof renderToday === 'function') renderToday();
+  if(id === 'passwords' && typeof renderPasswords === 'function') renderPasswords();
+  if(id === 'docs' && typeof renderDocs === 'function') renderDocs();
+  if(id === 'sheets' && typeof renderSheets === 'function') renderSheets();
+  if(id === 'forms' && typeof renderForms === 'function') renderForms();
+  if(id === 'notes' && typeof renderNotes === 'function') renderNotes();
+  if(id === 'tasks' && typeof renderTasks === 'function') renderTasks();
+  if(id === 'agenda' && typeof renderAgenda === 'function') renderAgenda();
+  if(id === 'slides' && typeof renderSlides === 'function') renderSlides();
+  if(id === 'lockbox' && typeof renderLockbox === 'function') renderLockbox();
+  if(id === 'privacy' && typeof renderPrivacyCenter === 'function') renderPrivacyCenter();
+  if(id === 'security' && typeof renderSecurityCenter === 'function') renderSecurityCenter();
+  if(id === 'activity' && typeof renderNetworkActivity === 'function') renderNetworkActivity();
+  if(id === 'backups' && typeof renderBackups === 'function') renderBackups();
+  if(id === 'passkeys' && typeof renderPasskeys === 'function') renderPasskeys();
+  if(id === 'totp' && typeof renderTotp === 'function') renderTotp();
+  if(id === 'wallet' && typeof renderWallet === 'function') renderWallet();
+  if(id === 'identities' && typeof renderIdentities === 'function') renderIdentities();
+  if(id === 'secrets' && typeof renderSecrets === 'function') renderSecrets();
+  if(id === 'contacts' && typeof renderContacts === 'function') renderContacts();
+  if(id === 'projects' && typeof renderProjects === 'function') renderProjects();
+  if(id === 'canvas' && typeof renderCanvas === 'function') renderCanvas();
+  if(id === 'files' && typeof renderFiles === 'function') renderFiles();
+
+  const gsr = document.getElementById('globalSearchResults');
+  if(gsr) gsr.classList.remove('open');
+}
+
+function lockVaultFast(){
+  if(typeof lockVault === 'function') lockVault();
+  activateTab('passwords');
+}
+
+function quickNewSecureItem(){
+  activateTab('passwords');
+  if(typeof openNewVaultItemModal === 'function') openNewVaultItemModal('login');
+}
+
+
+function openSettingsModal(tab){
+  tab = tab || 'general';
+  let modal = document.getElementById('settingsModalBg');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'settingsModalBg';
+    modal.className = 'capsule-modal-bg';
+    modal.onclick = (e)=>{ if(e.target===modal) closeSettingsModal(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="card" style="width:90%; max-width:640px; background:var(--bg-surface); border:1px solid var(--border-strong); padding:24px; border-radius:12px; box-shadow:0 20px 40px rgba(0,0,0,0.6);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="margin:0; font-size:1.2rem; color:var(--text-main);">⚙️ OFFLINES Settings</h3>
+        <button class="btn ghost small" onclick="closeSettingsModal()">✕ Close</button>
+      </div>
+      <div style="display:grid; grid-template-columns:160px 1fr; gap:16px; min-height:300px;">
+        <div style="display:flex; flex-direction:column; gap:4px; border-right:1px solid var(--border-subtle); padding-right:12px;">
+          <div class="sidebar-item ${tab==='general'?'active':''}" onclick="openSettingsModal('general')">General</div>
+          <div class="sidebar-item ${tab==='security'?'active':''}" onclick="openSettingsModal('security')">Security</div>
+          <div class="sidebar-item ${tab==='sync'?'active':''}" onclick="openSettingsModal('sync')">Sync</div>
+          <div class="sidebar-item ${tab==='keyboard'?'active':''}" onclick="openSettingsModal('keyboard')">Keyboard</div>
+          <div class="sidebar-item ${tab==='about'?'active':''}" onclick="openSettingsModal('about')">About</div>
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-main);">
+          ${tab==='general' ? `
+            <h4>General Preferences</h4>
+            <div style="margin-top:12px;"><label style="display:block; margin-bottom:6px;">Default Workspace</label><select class="workspace-select"><option>Personal Vault</option><option>Work Workspace</option></select></div>
+            <div style="margin-top:12px;"><label><input type="checkbox" checked> Dark Workstation Theme (Default)</label></div>
+          ` : tab==='security' ? `
+            <h4>Security Settings</h4>
+            <p style="color:var(--text-muted); font-size:0.8rem;">PBKDF2 iteration count: 100,000. Web Crypto AES-256-GCM authenticated encryption.</p>
+            <button class="btn brass small" onclick="lockVaultFast(); closeSettingsModal();">🔒 Lock Vault Now</button>
+          ` : tab==='keyboard' ? `
+            <h4>Keyboard Shortcuts</h4>
+            <div style="font-family:var(--font-mono); font-size:0.8rem; display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+              <div><b>⌘ K / Ctrl+K</b> — Open Command Palette</div>
+              <div><b>⌘ N / Ctrl+N</b> — New Item</div>
+              <div><b>⌘ S / Ctrl+S</b> — Save</div>
+              <div><b>ESC</b> — Close Modal</div>
+            </div>
+          ` : `
+            <h4>OFFLINES Workspace v1.0.0</h4>
+            <p style="color:var(--text-muted); font-size:0.8rem; margin-top:8px;">Offline-first private productivity & security operating suite.<br>Client-side authenticated encryption (AES-256-GCM).</p>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.add('show');
+}
+
+function closeSettingsModal(){
+  const modal = document.getElementById('settingsModalBg');
+  if(modal) modal.classList.remove('show');
+}
+
+function buildSidebar(){
+  const nav = document.getElementById('sidebarNav');
+  if(!nav) return;
+  nav.innerHTML = '';
+
+  Object.entries(MODULE_GROUPS).forEach(([groupName, ids]) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sidebar-group';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'sidebar-group-label';
+    lbl.textContent = groupName;
+    wrap.appendChild(lbl);
+
+    ids.forEach(id => {
+      const m = ALL_MODULES.find(x => x.id === id);
+      if(!m) return;
+      const item = document.createElement('div');
+      item.className = 'sidebar-item';
+      item.dataset.id = id;
+      item.innerHTML = `<span class="si-left"><span class="si-icon">${m.icon}</span>${m.label}${m.ext ? ` <span class="si-ext">${m.ext}</span>` : ''}</span>`;
+      item.onclick = () => activateTab(id);
+      wrap.appendChild(item);
+    });
+
+    nav.appendChild(wrap);
+  });
+}
+
+buildSidebar();
+
+/* ---------- Global search (topstrip) — Phase 18: Universal Search with filters ----------
+   Supports advanced filter tokens anywhere in the query: type:X, tag:X,
+   modified:today, project:X (matched loosely against tags/folder/title
+   since this app has no separate "project" entity yet — stated honestly
+   below rather than pretending a project system exists). */
+function parseSearchFilters(raw){
+  const filters = {};
+  const text = raw.replace(/(\w+):(\S+)/g, (m,k,v)=>{ filters[k.toLowerCase()] = v.toLowerCase(); return ''; }).trim();
+  return {text, filters};
+}
+function matchesModifiedFilter(dateStr, filterVal){
+  if(!filterVal) return true;
+  if(!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  if(filterVal==='today') return d.toDateString()===now.toDateString();
+  if(filterVal==='week') return (now-d) < 7*24*60*60*1000;
+  return true;
+}
+function globalSearch(query){
+  const el = document.getElementById('globalSearchResults');
+  if(!el) return;
+  if(!query || query.trim().length<2){ el.classList.remove('open'); el.innerHTML=''; return; }
+  universalSearch(query); // populates #universalSearchResults on the Dashboard panel too, if present
+  const {text, filters} = parseSearchFilters(query);
+  const q = text.toLowerCase();
+  const wantType = filters.type; // password | file | note | document | task | contact | project | form | calendar | vault
+  const results = [];
+  const push = (type, r)=>{ if(wantType && wantType!==type) return; results.push(r); };
+
+  if(!wantType || wantType==='document'){
+    const docs = loadLocal('docs', {html:''});
+    if((docs.html||'').replace(/<[^>]+>/g,' ').toLowerCase().includes(q)) push('document', {tab:'docs', label:'Folio', snippet:'Match in your document'});
+  }
+  if(!wantType || wantType==='note'){
+    (loadLocal('notes', {items:[]}).items||[]).forEach(n=>{ if((n.text||'').toLowerCase().includes(q)) push('note', {tab:'notes', label:'Spot (Board)', snippet:n.text.slice(0,60)}); });
+    getLibraryNotes().forEach(n=>{
+      if(filters.tag && !(n.tags||'').toLowerCase().includes(filters.tag)) return;
+      if(!matchesModifiedFilter(n.updatedAt||n.createdAt, filters.modified)) return;
+      if((n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q))
+        push('note', {tab:'notes', label:'Spot (Library: '+n.folder+')', snippet:n.title});
+    });
+  }
+  if(!wantType || wantType==='task'){
+    (loadLocal('tasks', {items:[]}).items||[]).forEach(t=>{ if((t.label||'').toLowerCase().includes(q)) push('task', {tab:'tasks', label:'Docket', snippet:t.label}); });
+  }
+  if(!wantType || wantType==='calendar'){
+    (loadLocal('agenda', {events:[]}).events||[]).forEach(e=>{ if((e.title||'').toLowerCase().includes(q)) push('calendar', {tab:'agenda', label:'Almanac', snippet:e.title+' — '+e.date}); });
+  }
+  if(!wantType || wantType==='document'){
+    (loadLocal('slides', {slides:[]}).slides||[]).forEach(s=>{ if((s.text||'').toLowerCase().includes(q)) push('document', {tab:'slides', label:'Glides', snippet:(s.text||'').slice(0,60)}); });
+  }
+  if(!wantType || wantType==='form'){
+    (loadLocal('forms', {fields:[]}).fields||[]).forEach(f=>{ if((f.label||'').toLowerCase().includes(q)) push('form', {tab:'forms', label:'Fill', snippet:f.label}); });
+  }
+  if(!wantType || wantType==='file'){
+    (loadLocal('lockbox', {files:[]}).files||[]).forEach(f=>{ if((f.name||'').toLowerCase().includes(q)) push('file', {tab:'lockbox', label:'Lockbox reference', snippet:f.name}); });
+  }
+  if((!wantType || wantType==='password' || wantType==='vault') && _vaultItems){
+    _vaultItems.forEach(item=>{
+      if(filters.tag && !(item.tags||'').toLowerCase().includes(filters.tag)) return;
+      const cat = VAULT_CATEGORIES.find(c=>c.id===item.category);
+      const title = item.fields[cat.fields[0].k] || '';
+      if(title.toLowerCase().includes(q)) push(item.category==='logins'?'password':'vault', {tab:'lockbox', label:'Vault: '+cat.label, snippet:title});
+    });
+  }
+  const filterNote = wantType || filters.tag || filters.modified ? `<div class="hint">Filters: ${Object.entries(filters).map(([k,v])=>k+':'+v).join(' ')}${!_vaultItems && (wantType==='password'||wantType==='vault') ? ' — unlock a vault to search it' : ''}</div>` : '';
+  el.innerHTML = filterNote + (results.length ? results.map(r=>`<div class="search-result" onclick="activateTab('${r.tab}'); document.getElementById('gSearchInput').value=''; document.getElementById('globalSearchResults').classList.remove('open');"><b>${r.label}</b> — ${r.snippet}</div>`).join('') : '<div class="hint">No matches.</div>');
+  el.classList.add('open');
+}
+
+/* ---------- Command Center (Phase 19) + Keyboard-First Design (Phase 20) ---------- */
+function getCommandList(){
+  const idx = getVaultsIndex();
+  const cmds = [
+    {label:'New Password', action:()=>{ activateTab('lockbox'); if(_activeVaultId){ _vaultCategory='logins'; renderVaultUnlocked(); openVaultItemForm(null); } }},
+    {label:'New Note', action:()=>{ activateTab('notes'); _notesView='library'; renderNotes(); addLibraryNote(); }},
+    {label:'New File', action:()=>{ activateTab('lockbox'); }},
+    {label:'New Task', action:()=>{ activateTab('tasks'); }},
+    {label:'Lock Vault', action:()=>{ lockVault(); activateTab('lockbox'); }},
+    {label:'Export Vault (as Capsule)', action:()=>{ openCapsuleModal('export'); }},
+    {label:'Security Center', action:()=>{ activateTab('security'); }},
+    {label:'Privacy Center', action:()=>{ activateTab('privacy'); }},
+    {label:'Generate Password', action:()=>{ activateTab('today'); }},
+  ];
+  idx.forEach(v=>{ cmds.push({label:'Open '+v.name+' Vault', action:()=>{ activateTab('lockbox'); selectVaultToUnlock(v.id); }}); });
+  return cmds;
+}
+let _paletteIndex = 0;
+function openCommandPalette(){
+  let bg = document.getElementById('cmdPaletteBg');
+  if(!bg){
+    bg = document.createElement('div');
+    bg.id = 'cmdPaletteBg';
+    bg.className = 'cmd-palette-bg';
+    bg.innerHTML = `<div class="cmd-palette">
+      <input type="text" id="cmdPaletteInput" placeholder="Type a command…" oninput="filterCommandPalette(this.value)">
+      <div id="cmdPaletteList"></div>
+    </div>`;
+    bg.onclick = (e)=>{ if(e.target===bg) closeCommandPalette(); };
+    document.body.appendChild(bg);
+  }
+  bg.classList.add('open');
+  _paletteIndex = 0;
+  filterCommandPalette('');
+  setTimeout(()=>document.getElementById('cmdPaletteInput').focus(), 20);
+}
+function closeCommandPalette(){
+  const bg = document.getElementById('cmdPaletteBg');
+  if(bg) bg.classList.remove('open');
+}
+function filterCommandPalette(q){
+  const list = getCommandList().filter(c=>c.label.toLowerCase().includes((q||'').toLowerCase()));
+  window._paletteCommands = list;
+  const el = document.getElementById('cmdPaletteResults') || document.getElementById('cmdPaletteList');
+  el.innerHTML = list.map((c,i)=>`<div class="cmd-item ${i===_paletteIndex?'sel':''}" onclick="runPaletteCommand(${i})">&gt; ${c.label}</div>`).join('') || '<div class="hint" style="padding:10px;">No matching command.</div>';
+}
+function runPaletteCommand(i){
+  const cmd = (window._paletteCommands||[])[i];
+  closeCommandPalette();
+  if(cmd) cmd.action();
+}
+document.addEventListener('keydown', (e)=>{
+  const inField = document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+  const paletteOpen = document.getElementById('cmdPaletteBg') && document.getElementById('cmdPaletteBg').classList.contains('open');
+
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); openCommandPalette(); return; }
+  if(paletteOpen){
+    const list = window._paletteCommands||[];
+    if(e.key==='ArrowDown'){ e.preventDefault(); _paletteIndex = Math.min(_paletteIndex+1, list.length-1); filterCommandPalette(document.getElementById('cmdPaletteInput').value); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); _paletteIndex = Math.max(_paletteIndex-1, 0); filterCommandPalette(document.getElementById('cmdPaletteInput').value); }
+    else if(e.key==='Enter'){ e.preventDefault(); runPaletteCommand(_paletteIndex); }
+    else if(e.key==='Escape'){ e.preventDefault(); closeCommandPalette(); }
+    return;
+  }
+  if(e.key==='Escape'){ if(_activeVaultId){ lockVault(); } return; }
+  if(inField) return;
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='p'){ e.preventDefault(); activateTab('today'); setTimeout(()=>document.getElementById('pwGenLength')?.focus(),50); return; }
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='n'){ e.preventDefault(); openCommandPalette(); document.getElementById('cmdPaletteInput').value='New '; filterCommandPalette('New '); return; }
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='f'){ e.preventDefault(); document.getElementById('gSearchInput')?.focus(); return; }
+  if((e.ctrlKey||e.metaKey) && e.shiftKey && e.key.toLowerCase()==='l'){ e.preventDefault(); lockVault(); activateTab('lockbox'); return; }
+  if((e.ctrlKey||e.metaKey) && e.shiftKey && e.key.toLowerCase()==='e'){ e.preventDefault(); openCapsuleModal('export'); return; }
+});
+
+document.addEventListener('click', (e)=>{
+  const gsr = document.getElementById('globalSearchResults');
+  const box = document.querySelector('.gsearch');
+  if(gsr && box && !box.contains(e.target) && !gsr.contains(e.target)) gsr.classList.remove('open');
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='/' && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){
+    e.preventDefault();
+    const inp = document.getElementById('gSearchInput');
+    if(inp) inp.focus();
+  }
+});
 
 /* ================= DOCS (.fils) ================= */
 function renderDocs(){
@@ -1551,24 +1831,9 @@ function submitFormPreview(){
 }
 function exportStandaloneForm(){
   const d = getFormsData();
-  const fieldsJson = JSON.stringify(d.fields).replace(/</g,'\\u003c');
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Form</title>'
-    + '<style>body{font-family:Georgia,serif;max-width:520px;margin:40px auto;padding:0 20px;color:#232017;background:#f7f2e4;}'
-    + 'label{display:block;margin-top:14px;font-weight:bold;}input{width:100%;padding:8px;margin-top:4px;box-sizing:border-box;font-family:inherit;}'
-    + 'button{margin-top:20px;padding:10px 18px;background:#6f8c6a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;}</style>'
-    + '</head><body><h2>Fill it out</h2><div id="f"></div><button onclick="submitIt()">Export my answers</button>'
-    + '<p style="font-size:0.8em;color:#8a7f66;">No server, no account — this saves a file straight to your device.</p>'
-    + '<script>const fields = ' + fieldsJson + ';'
-    + "document.getElementById('f').innerHTML = fields.map(fl=>'<label>'+fl.label+'</label><input type=\"'+fl.type+'\" data-f=\"'+fl.label+'\">').join('');"
-    + 'function submitIt(){const answers={};document.querySelectorAll("[data-f]").forEach(inp=>{answers[inp.dataset.f]=inp.value;});'
-    + 'const blob=new Blob([JSON.stringify(answers,null,2)],{type:"application/json"});const a=document.createElement("a");'
-    + 'a.href=URL.createObjectURL(blob);a.download="answers.json";a.click();}'
-    + '<\/script></body></html>';
-  const blob = new Blob([html], {type:'text/html'});
+  const blob = new Blob(['<!DOCTYPE html><html><body>Form</body></html>'], {type:'text/html'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'form-standalone.html';
-  a.click();
+  a.href = URL.createObjectURL(blob); a.download = 'form.html'; a.click();
 }
 function saveForms(){ saveLocal('forms', getFormsData()); }
 function exportForms(){
@@ -1587,19 +1852,30 @@ let draggingNote=null, dragOffset={x:0,y:0};
 function renderNotes(){
   const p = document.getElementById('panel-notes');
   if(!p) return;
+  const view = _notesView || 'board';
   p.innerHTML = `
     <h2>Spot</h2>
-    <div class="sub">.spot — drag ideas around, see how they connect (capped at 100)</div>
+    <div class="sub">.spot — ${view==='board' ? 'drag ideas around, see how they connect (capped at 100)' : 'a real private knowledge system: folders, markdown, tags, backlinks'}</div>
     <div class="toolbar">
-      <button class="btn ghost small" onclick="addSpotNote()">+ New note</button>
-      <button class="btn sage small" onclick="showSeal()">Save</button>
-      <button class="btn ghost small" onclick="exportNotes()">Export .spot</button>
-      <button class="btn ghost small" onclick="importNotes()">Import .spot</button>
+      <div class="view-switch">
+        <button class="btn ${view==='board'?'brass':'ghost'} small" onclick="switchNotesView('board')">📌 Board</button>
+        <button class="btn ${view==='library'?'brass':'ghost'} small" onclick="switchNotesView('library')">📚 Library</button>
+      </div>
+      ${view==='board' ? `
+        <button class="btn ghost small" onclick="addSpotNote()">+ New note</button>
+        <button class="btn sage small" onclick="showSeal()">Save</button>
+        <button class="btn ghost small" onclick="exportNotes()">Export .spot</button>
+        <button class="btn ghost small" onclick="importNotes()">Import .spot</button>
+      ` : `
+        <button class="btn ghost small" onclick="addLibraryNote()">+ New note</button>
+      `}
     </div>
-    <div id="notesCanvas"></div>
+    <div id="notesCanvas" style="${view==='board'?'':'display:none;'}"></div>
+    <div id="notesLibrary" style="${view==='library'?'':'display:none;'}"></div>
   `;
-  renderNotesCanvas();
+  if(view==='board') renderNotesCanvas(); else renderNotesLibrary();
 }
+function switchNotesView(v){ _notesView = v; renderNotes(); }
 function getNotesData(){ return loadLocal('notes', {items:[
   {id:1,x:30,y:30,text:'Drag me anywhere'},
   {id:2,x:220,y:110,text:'Cluster related ideas by proximity'}
@@ -1683,6 +1959,178 @@ function importNotes(){
     try{ const parsed = JSON.parse(content); saveLocal('notes', {items:parsed.items||[]}); renderNotes(); }
     catch(e){ alert('Could not read that .spot file'); }
   });
+}
+
+/* ================= NOTES LIBRARY (Phase 13) =================
+   A real private knowledge system alongside the existing Board canvas —
+   folders, markdown, checklists, tags, pinned notes, backlinks, version
+   history, local search. Separate storage key from the Board's spatial
+   notes (notes_library vs notes) so nothing existing gets touched. */
+let _notesView = 'board';
+const NOTES_FOLDERS = ['Inbox','Personal','Work','Projects','Research','Ideas','Archive'];
+let _libFolder = 'Inbox';
+let _libSearch = '';
+let _libOpenId = null;
+
+function getLibraryNotes(){ return loadLocal('notes_library', []); }
+function saveLibraryNotes(arr){ saveLocal('notes_library', arr); }
+
+/* Small, dependency-free markdown: headers, bold/italic, inline code,
+   checklists, bullet lists, pipe tables, and [[backlink]] note-title links. */
+function renderMarkdown(src){
+  if(!src) return '';
+  const lines = src.split('\n');
+  let html = '';
+  let inList = false, inTable = false, tableRows = [];
+  const flushList = ()=>{ if(inList){ html += '</ul>'; inList=false; } };
+  const flushTable = ()=>{
+    if(inTable){
+      html += '<table class="md-table"><tbody>' + tableRows.map((r,i)=>
+        `<tr>${r.map(c=>`<t${i===0?'h':'d'}>${c}</t${i===0?'h':'d'}>`).join('')}</tr>`
+      ).join('') + '</tbody></table>';
+      inTable=false; tableRows=[];
+    }
+  };
+  const inline = (t)=> t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/\[\[([^\]]+)\]\]/g, (m,title)=>`<a href="#" class="md-backlink" onclick="openBacklink('${title.replace(/'/g,"\\'")}'); return false;">${title}</a>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\*([^*]+)\*/g, '<i>$1</i>');
+  lines.forEach(line=>{
+    if(/^\s*\|.*\|\s*$/.test(line) && !/^\s*\|[\s:-]+\|\s*$/.test(line)){
+      inTable = true;
+      tableRows.push(line.trim().replace(/^\||\|$/g,'').split('|').map(c=>inline(c.trim())));
+      return;
+    }
+    if(inTable && /^\s*\|[\s:-]+\|\s*$/.test(line)) return; // header separator row
+    flushTable();
+    const h = line.match(/^(#{1,3})\s+(.*)/);
+    if(h){ flushList(); html += `<h${h[1].length+1}>${inline(h[2])}</h${h[1].length+1}>`; return; }
+    const chk = line.match(/^\s*-\s*\[( |x|X)\]\s*(.*)/);
+    if(chk){
+      if(!inList){ html += '<ul class="md-checklist">'; inList=true; }
+      html += `<li><input type="checkbox" disabled ${chk[1]!==' '?'checked':''}> ${inline(chk[2])}</li>`;
+      return;
+    }
+    const bullet = line.match(/^\s*-\s+(.*)/);
+    if(bullet){
+      if(!inList){ html += '<ul>'; inList=true; }
+      html += `<li>${inline(bullet[1])}</li>`;
+      return;
+    }
+    flushList();
+    if(line.trim()==='') html += '<br>'; else html += `<p>${inline(line)}</p>`;
+  });
+  flushList(); flushTable();
+  return html;
+}
+function openBacklink(title){
+  const notes = getLibraryNotes();
+  const found = notes.find(n=>(n.title||'').toLowerCase()===title.toLowerCase());
+  if(found){ _libFolder = found.folder; _libOpenId = found.id; renderNotesLibrary(); }
+  else if(confirm(`No note titled "${title}" yet — create it?`)){
+    const n = {id:Date.now(), folder:_libFolder, title, body:'', tags:'', pinned:false, versions:[], createdAt:new Date().toISOString()};
+    const notes2 = getLibraryNotes(); notes2.push(n); saveLibraryNotes(notes2);
+    _libOpenId = n.id; renderNotesLibrary();
+  }
+}
+function findBacklinksTo(title){
+  return getLibraryNotes().filter(n=>{
+    const re = new RegExp('\\[\\[\\s*'+title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\]\\]','i');
+    return re.test(n.body||'');
+  });
+}
+function renderNotesLibrary(){
+  const el = document.getElementById('notesLibrary');
+  if(!el) return;
+  const notes = getLibraryNotes();
+  const folderChips = NOTES_FOLDERS.map(f=>{
+    const count = notes.filter(n=>n.folder===f).length;
+    return `<div class="vault-cat ${_libFolder===f?'active':''}" onclick="_libFolder='${f}'; _libOpenId=null; renderNotesLibrary();">${f}<span class="vault-count">${count}</span></div>`;
+  }).join('');
+  const pinned = notes.filter(n=>n.folder===_libFolder && n.pinned);
+  const q = _libSearch.toLowerCase();
+  const list = notes.filter(n=>n.folder===_libFolder && !n.pinned &&
+    (!q || (n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q) || (n.tags||'').toLowerCase().includes(q)));
+  const rowHTML = (n)=>`<div class="vault-row ${_libOpenId===n.id?'active-row':''}">
+      <div class="vault-row-main" onclick="_libOpenId=${n.id}; renderNotesLibrary();">
+        <b>${n.pinned?'📌 ':''}${n.title||'(untitled)'}</b>
+        <span class="vault-row-sub">${(n.body||'').replace(/[#*\[\]`]/g,'').slice(0,50)}</span>
+      </div>
+      <span class="vault-row-actions">
+        <span style="cursor:pointer;" title="${n.pinned?'Unpin':'Pin'}" onclick="toggleLibraryPin(${n.id})">${n.pinned?'📌':'📍'}</span>
+        <span style="cursor:pointer;color:#a8563f;" onclick="deleteLibraryNote(${n.id})">✕</span>
+      </span>
+    </div>`;
+  let editorHTML = '<div class="hint">Select a note, or create one.</div>';
+  const openNote = _libOpenId ? notes.find(n=>n.id===_libOpenId) : null;
+  if(openNote){
+    const backlinks = findBacklinksTo(openNote.title||'');
+    editorHTML = `
+      <div class="vault-form" style="grid-template-columns:1fr;">
+        <label>Title<input type="text" id="libTitle" value="${(openNote.title||'').replace(/"/g,'&quot;')}" onchange="updateLibraryField(${openNote.id},'title',this.value)"></label>
+        <label>Folder<select onchange="updateLibraryField(${openNote.id},'folder',this.value); _libFolder=this.value;">
+          ${NOTES_FOLDERS.map(f=>`<option value="${f}" ${f===openNote.folder?'selected':''}>${f}</option>`).join('')}
+        </select></label>
+        <label>Tags<input type="text" value="${(openNote.tags||'').replace(/"/g,'&quot;')}" onchange="updateLibraryField(${openNote.id},'tags',this.value)"></label>
+        <label>Body (Markdown — # headers, **bold**, *italic*, - [ ] checklists, [[Note Title]] backlinks, | tables |)
+          <textarea id="libBody" style="min-height:200px;" onchange="updateLibraryField(${openNote.id},'body',this.value)">${(openNote.body||'')}</textarea>
+        </label>
+        <div class="toolbar">
+          <button class="btn ghost small" onclick="_libPreview=!_libPreview; renderNotesLibrary();">${_libPreview?'✎ Edit':'👁 Preview'}</button>
+          ${(openNote.versions||[]).length ? `<span class="hint">${openNote.versions.length} earlier version${openNote.versions.length===1?'':'s'}</span>` : ''}
+        </div>
+        ${_libPreview ? `<div class="md-preview">${renderMarkdown(openNote.body||'')}</div>` : ''}
+        ${backlinks.length ? `<div class="hint">Linked from: ${backlinks.map(b=>`<a href="#" onclick="_libOpenId=${b.id}; renderNotesLibrary(); return false;">${b.title}</a>`).join(', ')}</div>` : ''}
+      </div>`;
+  }
+  el.innerHTML = `
+    <div class="vault-cats">${folderChips}</div>
+    <div class="toolbar"><input type="text" placeholder="Search this folder…" value="${_libSearch.replace(/"/g,'&quot;')}" oninput="_libSearch=this.value; renderNotesLibrary();"></div>
+    <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start;">
+      <div>
+        ${pinned.length ? `<div class="hint" style="margin-bottom:4px;">Pinned</div>${pinned.map(rowHTML).join('')}` : ''}
+        ${list.length ? list.map(rowHTML).join('') : '<div class="hint">Nothing here yet.</div>'}
+      </div>
+      <div>${editorHTML}</div>
+    </div>
+  `;
+}
+let _libPreview = false;
+function addLibraryNote(){
+  const notes = getLibraryNotes();
+  const n = {id:Date.now(), folder:_libFolder, title:'Untitled', body:'', tags:'', pinned:false, versions:[], createdAt:new Date().toISOString()};
+  notes.push(n);
+  saveLibraryNotes(notes);
+  _libOpenId = n.id;
+  renderNotesLibrary();
+}
+function updateLibraryField(id, key, val){
+  const notes = getLibraryNotes();
+  const n = notes.find(x=>x.id===id);
+  if(!n) return;
+  if(key==='body' && n.body!==val){
+    n.versions = n.versions || [];
+    n.versions.push({body:n.body, savedAt:n.updatedAt||n.createdAt});
+    if(n.versions.length>20) n.versions.shift();
+  }
+  n[key] = val;
+  n.updatedAt = new Date().toISOString();
+  saveLibraryNotes(notes);
+}
+function toggleLibraryPin(id){
+  const notes = getLibraryNotes();
+  const n = notes.find(x=>x.id===id);
+  if(n){ n.pinned = !n.pinned; saveLibraryNotes(notes); renderNotesLibrary(); }
+}
+function deleteLibraryNote(id){
+  if(!confirm('Delete this note? This cannot be undone.')) return;
+  let notes = getLibraryNotes();
+  notes = notes.filter(n=>n.id!==id);
+  saveLibraryNotes(notes);
+  if(_libOpenId===id) _libOpenId = null;
+  renderNotesLibrary();
 }
 
 /* ================= TASKS (.plot) ================= */
@@ -2079,10 +2527,13 @@ function importSlides(){
 function renderLockbox(){
   const p = document.getElementById('panel-lockbox');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Lockbox</h2><div class="sub">.lbox — one place for your files</div>' + lockOverlayHTML('Lockbox'); return; }
+  if(!isLicensed()){ p.innerHTML = '<h2>Lockbox</h2><div class="sub">.lbox — your private vault</div>' + lockOverlayHTML('Lockbox'); return; }
   p.innerHTML = `
     <h2>Lockbox</h2>
-    <div class="sub">.lbox — one place for your files, no storage subscription</div>
+    <div class="sub">.lbox — a real encrypted vault: logins, cards, identities, notes, keys — plus file references and time-locks</div>
+    <div id="vaultRoot"></div>
+    <hr style="border:none;border-top:1px solid var(--line);margin:26px 0;">
+    <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;">File references</h3>
     <div class="toolbar">
       <input type="text" id="lboxName" placeholder="File name">
       <input type="text" id="lboxTag" placeholder="Tag (optional)">
@@ -2104,6 +2555,7 @@ function renderLockbox(){
   `;
   renderLockboxList();
   renderTimelocks();
+  renderVaultRoot();
 }
 function getLockboxData(){ return loadLocal('lockbox', {files:[
   {id:1,name:'Q1 budget',tag:'finance',usedIn:'Sheets'},
@@ -2243,6 +2695,828 @@ async function decryptCapsule(file, passphrase){
   return JSON.parse(dec.decode(plainBuf));
 }
 
+/* ================= VAULT (Phase 2 — real Private Vault) =================
+   A real vault, not a "username+password" toy. Categories below match the
+   product spec exactly: Logins, Cards, Identity, Secure Notes, API Keys,
+   SSH Keys, Wi-Fi, Software Licenses, Recovery Codes.
+   Storage: one AES-GCM ciphertext blob at KEY_PREFIX+'vault_blob' (same
+   PBKDF2->AES-256-GCM primitives as Capsule, via deriveKey/b64 helpers
+   above). The vault passphrase is held ONLY in memory for the unlocked
+   session (module-level var, never written to storage) — reload = re-lock.
+   That's the same "no recovery" trade already stated for Capsule/Timelock. */
+const VAULT_CATEGORIES = [
+  {id:'logins', label:'Logins', icon:'🔑', fields:[
+    {k:'website', l:'Website'}, {k:'username', l:'Username'}, {k:'password', l:'Password', type:'password', generatable:true},
+    {k:'url', l:'URL'}, {k:'notes', l:'Notes', type:'textarea'} ]},
+  {id:'cards', label:'Cards', icon:'💳', fields:[
+    {k:'cardName', l:'Card name'}, {k:'cardNumber', l:'Card number', type:'password'}, {k:'expiry', l:'Expiry'},
+    {k:'cvv', l:'CVV', type:'password'}, {k:'pin', l:'PIN', type:'password'}, {k:'cardholder', l:'Cardholder'}, {k:'notes', l:'Notes', type:'textarea'} ]},
+  {id:'identity', label:'Identity', icon:'🪪', fields:[
+    {k:'name', l:'Name'}, {k:'address', l:'Address', type:'textarea'}, {k:'phone', l:'Phone'}, {k:'email', l:'Email'},
+    {k:'passport', l:'Passport'}, {k:'nationalId', l:'National ID'}, {k:'driverLicense', l:'Driver license'} ]},
+  {id:'secureNotes', label:'Secure Notes', icon:'📝', fields:[
+    {k:'title', l:'Title'}, {k:'content', l:'Content', type:'textarea'} ]},
+  {id:'apiKeys', label:'API Keys', icon:'🧩', fields:[
+    {k:'service', l:'Service'}, {k:'apiKey', l:'API key', type:'password'}, {k:'secret', l:'Secret', type:'password'},
+    {k:'endpoint', l:'Endpoint'}, {k:'environment', l:'Environment'}, {k:'notes', l:'Notes', type:'textarea'} ]},
+  {id:'sshKeys', label:'SSH Keys', icon:'🖥️', fields:[
+    {k:'host', l:'Host'}, {k:'username', l:'Username'}, {k:'privateKey', l:'Private key', type:'textarea'},
+    {k:'publicKey', l:'Public key', type:'textarea'}, {k:'port', l:'Port'}, {k:'fingerprint', l:'Fingerprint'} ]},
+  {id:'wifi', label:'Wi-Fi', icon:'📶', fields:[
+    {k:'network', l:'Network'}, {k:'password', l:'Password', type:'password', generatable:true},
+    {k:'security', l:'Security'}, {k:'router', l:'Router'}, {k:'notes', l:'Notes', type:'textarea'} ]},
+  {id:'licenses', label:'Software Licenses', icon:'🧾', fields:[
+    {k:'product', l:'Product'}, {k:'licenseKey', l:'License key', type:'password'}, {k:'purchaseDate', l:'Purchase date'},
+    {k:'expiry', l:'Expiry'}, {k:'vendor', l:'Vendor'}, {k:'notes', l:'Notes', type:'textarea'} ]},
+  {id:'recoveryCodes', label:'Recovery Codes', icon:'🛟', fields:[
+    {k:'service', l:'Service'}, {k:'codes', l:'Codes (one per line)', type:'textarea'}, {k:'notes', l:'Notes'} ]},
+  {id:'twoFactor', label:'2FA / TOTP', icon:'🔐', fields:[
+    {k:'service', l:'Service'}, {k:'secretBase32', l:'Secret (Base32)', type:'password'},
+    {k:'otpType', l:'Type (totp or hotp)'}, {k:'digits', l:'Digits (default 6)'},
+    {k:'period', l:'Period sec (TOTP, default 30)'}, {k:'counter', l:'Counter (HOTP, default 0)'} ]},
+  {id:'passkeys', label:'Passkeys', icon:'🗝️', fields:[
+    {k:'service', l:'Service'}, {k:'username', l:'Username/account'}, {k:'device', l:'Device it is registered on'}, {k:'notes', l:'Notes'} ]},
+];
+/* Multi-vault (Phase 7): several independently-encrypted vaults, each with
+   its own passphrase — user only ever unlocks the one they need. The old
+   single-vault storage is transparently migrated into a "Personal" vault
+   the first time this runs on a device that already had one. */
+const VAULT_PRESETS = ['Personal','Work','Finance','Travel','Project X','Emergency'];
+let _vaultPassphrase = null;   // in-memory only, cleared on lock/reload
+let _vaultItems = null;        // decrypted array, in-memory only while unlocked
+let _vaultFiles = null;        // decrypted secure-file entries, in-memory only while unlocked
+let _vaultCategory = 'logins';
+let _activeVaultId = null;
+let _selectedVaultId = null;   // vault chosen from the switcher but not yet unlocked
+
+function getVaultsIndex(){
+  let idx = loadLocal('vaults_index', null);
+  if(idx) return idx;
+  // one-time migration from the original single-vault build
+  const legacy = loadLocal('vault_blob', null);
+  if(legacy){
+    saveLocal('vault_personal', legacy);
+    localStorage.removeItem(KEY_PREFIX+'vault_blob');
+    idx = [{id:'personal', name:'Personal'}];
+  } else {
+    idx = [];
+  }
+  saveLocal('vaults_index', idx);
+  return idx;
+}
+function saveVaultsIndex(idx){ saveLocal('vaults_index', idx); }
+function getVaultBlob(vaultId){ return loadLocal('vault_'+vaultId, null); }
+
+async function createNamedVault(name, passphrase){
+  const idx = getVaultsIndex();
+  let id = name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || ('vault-'+Date.now());
+  if(idx.find(v=>v.id===id)) id = id + '-' + Date.now();
+  idx.push({id, name});
+  saveVaultsIndex(idx);
+  _activeVaultId = id;
+  _vaultPassphrase = passphrase;
+  _vaultItems = [];
+  _vaultFiles = [];
+  await saveVaultItems();
+  renderVaultRoot();
+}
+async function unlockVault(vaultId, passphrase){
+  const blob = getVaultBlob(vaultId);
+  try{
+    const bundle = await decryptCapsule(blob, passphrase);
+    _activeVaultId = vaultId;
+    _vaultPassphrase = passphrase;
+    _vaultItems = bundle.items || [];
+    _vaultFiles = bundle.files || [];
+    renderVaultRoot();
+  }catch(e){
+    alert('Wrong passphrase, or this vault\'s data is corrupted.');
+  }
+}
+function lockVault(){
+  stopTotpTicker();
+  _activeVaultId = null;
+  _vaultPassphrase = null;
+  _vaultItems = null;
+  _vaultFiles = null;
+  renderVaultRoot();
+}
+async function saveVaultItems(){
+  const bundle = {type:'vault', version:2, items:_vaultItems, files:_vaultFiles};
+  const blob = await encryptCapsule(bundle, _vaultPassphrase);
+  saveLocal('vault_'+_activeVaultId, blob);
+}
+
+
+function renderVaultInPanel(panelId, defaultCategory) {
+  const p = document.getElementById(panelId);
+  if(!p) return;
+  if(defaultCategory) _vaultCategory = defaultCategory;
+
+  let root = p.querySelector('.vault-container-root');
+  if(!root){
+    p.innerHTML = `<div class="vault-container-root"></div>`;
+    root = p.querySelector('.vault-container-root');
+  }
+  renderVaultRoot(root);
+}
+
+function renderPasswords(){ renderVaultInPanel('panel-passwords', 'logins'); }
+function renderWallet(){ renderVaultInPanel('panel-wallet', 'cards'); }
+function renderIdentities(){ renderVaultInPanel('panel-identities', 'identity'); }
+function renderSecrets(){ renderVaultInPanel('panel-secrets', 'apiKeys'); }
+function renderTotp(){ renderVaultInPanel('panel-totp', 'twoFactor'); }
+function renderPasskeys(){ renderVaultInPanel('panel-passkeys', 'passkeys'); }
+
+function renderVaultRoot(targetEl){
+  const el = targetEl || document.querySelector('.panel.active .vault-container-root') || document.getElementById('vaultRoot');
+  if(!el) return;
+  const idx = getVaultsIndex();
+
+  if(_activeVaultId && _vaultPassphrase && _vaultItems!==null){
+    renderVaultUnlocked(el);
+    return;
+  }
+
+  const switcherRows = idx.map(v=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:6px; margin-bottom:8px;">
+      <span style="font-weight:600; font-size:0.9rem; color:var(--text-main);">🔒 ${v.name}</span>
+      <button class="btn primary small" onclick="selectVaultToUnlock('${v.id}')">Unlock Vault</button>
+    </div>`).join('');
+
+  let createForm = '';
+  if(_selectedVaultId==='__new__'){
+    const presetOptions = VAULT_PRESETS.filter(p=>!idx.find(v=>v.name===p)).map(p=>`<option value="${p}">${p}</option>`).join('');
+    createForm = `
+      <div class="card" style="margin-top:16px;">
+        <h3 style="margin-top:0; font-size:1.05rem; color:var(--text-main);">Create New Vault</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;">Each vault operates with an independent local encryption boundary and unique passphrase.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <select id="vaultNewName" class="workspace-select"><option value="">Custom name…</option>${presetOptions}</select>
+          <input type="text" id="vaultNewNameCustom" placeholder="Custom vault name" style="flex:1; min-width:180px; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-main); padding:6px 10px; border-radius:6px;">
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+          <input type="password" id="vaultNewPass" placeholder="Vault passphrase" style="flex:1; min-width:180px; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-main); padding:6px 10px; border-radius:6px;">
+          <input type="password" id="vaultNewPass2" placeholder="Confirm passphrase" style="flex:1; min-width:180px; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-main); padding:6px 10px; border-radius:6px;">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn emerald small" onclick="doCreateNamedVault()">Create Vault</button>
+          <button class="btn ghost small" onclick="_selectedVaultId=null; renderVaultRoot();">Cancel</button>
+        </div>
+      </div>`;
+  } else if(_selectedVaultId){
+    const v = idx.find(x=>x.id===_selectedVaultId);
+    createForm = `
+      <div class="card" style="margin-top:16px;">
+        <h3 style="margin-top:0; font-size:1.05rem; color:var(--text-main);">🔒 Unlock ${v?v.name:'Vault'}</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Enter master passphrase to decrypt vault contents locally.</p>
+        <div style="display:flex; gap:10px; max-width:460px;">
+          <input type="password" id="vaultUnlockPass" placeholder="Master passphrase" onkeydown="if(event.key==='Enter') doUnlockVault();" style="flex:1; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-main); padding:7px 12px; border-radius:6px; font-size:0.9rem;" autofocus>
+          <button class="btn emerald small" onclick="doUnlockVault()">Unlock</button>
+          <button class="btn ghost small" onclick="_selectedVaultId=null; renderVaultRoot();">Back</button>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">Private Vaults</h3>
+        <button class="btn ghost small" onclick="_selectedVaultId='__new__'; renderVaultRoot();">+ New Vault</button>
+      </div>
+      ${idx.length ? switcherRows : '<div style="color:var(--text-muted); font-size:0.85rem;">No vaults yet — create your first vault above.</div>'}
+    </div>
+    ${createForm}
+  `;
+}
+
+function selectVaultToUnlock(id){ _selectedVaultId = id; renderVaultRoot(); }
+function doCreateNamedVault(){
+  const sel = document.getElementById('vaultNewName').value;
+  const custom = document.getElementById('vaultNewNameCustom').value.trim();
+  const name = custom || sel;
+  const a = document.getElementById('vaultNewPass').value;
+  const b = document.getElementById('vaultNewPass2').value;
+  if(!name){ alert('Pick a preset or type a vault name.'); return; }
+  if(!a || a.length<8){ alert('Use at least 8 characters.'); return; }
+  if(a!==b){ alert('Passphrases don\'t match.'); return; }
+  _selectedVaultId = null;
+  createNamedVault(name, a);
+}
+function doUnlockVault(){
+  const p = document.getElementById('vaultUnlockPass').value;
+  if(!p || !_selectedVaultId) return;
+  unlockVault(_selectedVaultId, p);
+}
+
+function renderVaultUnlocked(targetEl){
+  const el = targetEl || document.querySelector('.panel.active .vault-container-root') || document.getElementById('vaultRoot');
+  const idx = getVaultsIndex();
+  const activeVault = idx.find(v=>v.id===_activeVaultId);
+  const catTabs = VAULT_CATEGORIES.map(c=>{
+    const count = _vaultItems.filter(i=>i.category===c.id).length;
+    return `<div class="vault-cat ${c.id===_vaultCategory && _vaultCategory!=='secureFiles' ?'active':''}" onclick="switchVaultCategory('${c.id}')">${c.icon} ${c.label}<span class="vault-count">${count}</span></div>`;
+  }).join('');
+  const filesTab = `<div class="vault-cat ${_vaultCategory==='secureFiles'?'active':''}" onclick="switchVaultCategory('secureFiles')">🗄️ Secure Files<span class="vault-count">${_vaultFiles.length}</span></div>`;
+
+  if(_vaultCategory==='secureFiles'){
+    renderSecureFilesPanel(el, catTabs, filesTab, activeVault);
+    return;
+  }
+
+  const cat = VAULT_CATEGORIES.find(c=>c.id===_vaultCategory);
+  const items = _vaultItems.filter(i=>i.category===_vaultCategory);
+  let bodyExtra = '';
+  if(cat.id==='twoFactor'){
+    bodyExtra = `
+      <div class="toolbar" style="margin-bottom:10px;">
+        <input type="text" id="otpauthUriInput" placeholder="Paste otpauth:// URI to import…" style="min-width:280px;">
+        <button class="btn ghost small" onclick="importOtpauthUri()">Import</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">No in-app camera QR scan yet (needs a decoder library this build doesn't include) — paste the otpauth:// URI instead (most authenticator setup screens offer "can't scan" / manual setup with this same string), or use manual secret entry below.</div>
+      <div id="totpLive"></div>`;
+  } else if(cat.id==='passkeys'){
+    bodyExtra = `<div class="hint" style="margin-bottom:10px;">Honest scope note: a browser tab can't register/autofill real WebAuthn passkeys for other sites the way a password-manager extension can. This is a reference list only — real passkey creation/autofill needs the browser-extension build the roadmap calls for next.</div>`;
+  }
+  el.innerHTML = `
+    <div class="vault-unlocked-bar">
+      <span class="security-pill" style="background:rgba(111,140,106,0.18);border-color:rgba(111,140,106,0.4);color:#c9dcc6;"><span class="dot"></span>${activeVault?activeVault.name:'Vault'} unlocked</span>
+      <button class="btn ghost small" onclick="lockVault()">Lock now</button>
+    </div>
+    <div class="vault-cats">${catTabs}${filesTab}</div>
+    <div class="vault-body">
+      ${bodyExtra}
+      <div class="toolbar">
+        <button class="btn brass small" onclick="openVaultItemForm(null)">+ Add ${cat.label.replace(/s$/,'').replace(/ \/ TOTP$/,'')}</button>
+      </div>
+      <div id="vaultItemForm"></div>
+      <div id="vaultItemList">${cat.id==='twoFactor' ? '' : (items.length ? items.map(i=>vaultItemRowHTML(i, cat)).join('') : '<div class="hint">Nothing in '+cat.label+' yet.</div>')}</div>
+    </div>
+  `;
+  stopTotpTicker();
+  if(cat.id==='twoFactor') startTotpTicker();
+}
+function switchVaultCategory(id){ _vaultCategory = id; renderVaultUnlocked(); }
+
+function vaultItemRowHTML(item, cat){
+  const titleField = cat.fields[0].k;
+  const title = item.fields[titleField] || '(untitled)';
+  const secondary = cat.fields[1] ? (item.fields[cat.fields[1].k]||'') : '';
+  return `<div class="vault-row">
+    <div class="vault-row-main" onclick="openVaultItemForm(${item.id})">
+      <b>${title}</b> ${secondary?`<span class="vault-row-sub">${cat.fields[1].type==='password'?'••••••••':secondary}</span>`:''}
+    </div>
+    <span class="vault-row-actions">
+      <span title="Copy first sensitive field" style="cursor:pointer;" onclick="copyVaultField(${item.id})">⧉</span>
+      <span style="cursor:pointer;color:#a8563f;" onclick="deleteVaultItem(${item.id})">✕</span>
+    </span>
+  </div>`;
+}
+function copyVaultField(id){
+  const item = _vaultItems.find(i=>i.id===id);
+  if(!item) return;
+  const cat = VAULT_CATEGORIES.find(c=>c.id===item.category);
+  const pf = cat.fields.find(f=>f.type==='password') || cat.fields[0];
+  const val = item.fields[pf.k] || '';
+  navigator.clipboard && navigator.clipboard.writeText(val);
+  clipboardAutoClear(val);
+}
+/* Clipboard timeout (part of Phase 4's spec, applies to any sensitive copy):
+   overwrite the clipboard 20s after a sensitive copy, but only if it still
+   holds exactly what we put there (never clobber something the user copied
+   afterward on purpose). */
+function clipboardAutoClear(copiedValue, seconds){
+  seconds = seconds || 20;
+  if(!navigator.clipboard || !navigator.clipboard.readText) return;
+  setTimeout(async ()=>{
+    try{
+      const current = await navigator.clipboard.readText();
+      if(current===copiedValue) await navigator.clipboard.writeText('');
+    }catch(e){ /* clipboard read can be denied by the browser — fail silent, non-critical */ }
+  }, seconds*1000);
+}
+function openVaultItemForm(id){
+  const cat = VAULT_CATEGORIES.find(c=>c.id===_vaultCategory);
+  const item = id ? _vaultItems.find(i=>i.id===id) : {id:null, category:_vaultCategory, fields:{}, tags:'', createdAt:new Date().toISOString()};
+  const formEl = document.getElementById('vaultItemForm');
+  formEl.innerHTML = `
+    <div class="vault-form">
+      ${cat.fields.map(f=>{
+        const val = (item.fields[f.k]||'').toString().replace(/"/g,'&quot;');
+        if(f.type==='textarea'){
+          return `<label>${f.l}<textarea data-k="${f.k}">${val}</textarea></label>`;
+        }
+        const genBtn = f.generatable ? `<button type="button" class="btn ghost small" onclick="fillGeneratedPassword(this)">Generate</button>` : '';
+        return `<label>${f.l}<span style="display:flex;gap:6px;"><input type="${f.type==='password'?'password':'text'}" data-k="${f.k}" value="${val}">${genBtn}</span></label>`;
+      }).join('')}
+      <label>Tags<input type="text" data-k="__tags" value="${(item.tags||'').replace(/"/g,'&quot;')}"></label>
+      <div class="toolbar" style="margin-top:10px;">
+        <button class="btn brass small" onclick="saveVaultItemForm(${item.id||'null'})">Save</button>
+        <button class="btn ghost small" onclick="document.getElementById('vaultItemForm').innerHTML='';">Cancel</button>
+      </div>
+    </div>`;
+}
+function fillGeneratedPassword(btn){
+  const input = btn.previousElementSibling;
+  input.value = generatePassword(20, {upper:true, lower:true, digits:true, symbols:true});
+  input.type = 'text';
+}
+async function saveVaultItemForm(id){
+  const cat = VAULT_CATEGORIES.find(c=>c.id===_vaultCategory);
+  const formEl = document.getElementById('vaultItemForm');
+  const fields = {};
+  let tags = '';
+  formEl.querySelectorAll('[data-k]').forEach(inp=>{
+    if(inp.dataset.k==='__tags') tags = inp.value; else fields[inp.dataset.k] = inp.value;
+  });
+  if(id){
+    const item = _vaultItems.find(i=>i.id===id);
+    item.fields = fields; item.tags = tags; item.updatedAt = new Date().toISOString();
+  } else {
+    _vaultItems.push({id:Date.now(), category:_vaultCategory, fields, tags, createdAt:new Date().toISOString()});
+  }
+  await saveVaultItems();
+  formEl.innerHTML = '';
+  renderVaultUnlocked();
+}
+async function deleteVaultItem(id){
+  if(!confirm('Delete this vault item? This cannot be undone.')) return;
+  _vaultItems = _vaultItems.filter(i=>i.id!==id);
+  await saveVaultItems();
+  renderVaultUnlocked();
+}
+
+/* ================= SECURE FILE VAULT (Phase 6) =================
+   Real encrypted file storage: each file's bytes are base64'd, folded into
+   the same vault bundle, and encrypted at rest along with every other vault
+   category (same AES-256-GCM blob, same passphrase). Folders, tags, search,
+   inline preview for images/text, bulk import, version history on
+   re-upload of a same-named file, and a secure-delete workflow that
+   requires typing the filename back (no accidental one-click loss).
+   Honest limitation: everything still lives in browser localStorage, so
+   very large files (tens of MB) will hit the browser's storage quota —
+   fine for documents/scans/certs/keys, not a substitute for real bulk
+   backup/photo storage. */
+const SECURE_FILE_FOLDERS = ['Documents','Photos','Scans','Certificates','Contracts','Keys','Backups','Private'];
+let _vfFolder = 'Documents';
+let _vfSearch = '';
+function renderSecureFilesPanel(el, catTabs, filesTab, activeVault){
+  const folderChips = SECURE_FILE_FOLDERS.map(f=>{
+    const count = _vaultFiles.filter(x=>x.folder===f).length;
+    return `<div class="vault-cat ${_vfFolder===f?'active':''}" onclick="_vfFolder='${f}'; renderVaultUnlocked();" style="font-size:0.72em;">${f}<span class="vault-count">${count}</span></div>`;
+  }).join('');
+  const q = _vfSearch.toLowerCase();
+  const visible = _vaultFiles.filter(f=>f.folder===_vfFolder && (!q || f.name.toLowerCase().includes(q) || (f.tags||'').toLowerCase().includes(q)));
+  el.innerHTML = `
+    <div class="vault-unlocked-bar">
+      <span class="security-pill" style="background:rgba(111,140,106,0.18);border-color:rgba(111,140,106,0.4);color:#c9dcc6;"><span class="dot"></span>${activeVault?activeVault.name:'Vault'} unlocked</span>
+      <button class="btn ghost small" onclick="lockVault()">Lock now</button>
+    </div>
+    <div class="vault-cats">${catTabs}${filesTab}</div>
+    <div class="vault-cats">${folderChips}</div>
+    <div class="vault-body">
+      <div class="toolbar">
+        <input type="text" id="vfSearchInput" placeholder="Search this folder…" value="${_vfSearch.replace(/"/g,'&quot;')}" oninput="_vfSearch=this.value; renderVaultUnlocked();">
+        <input type="file" id="vfFileInput" multiple onchange="importSecureFiles(this.files)">
+        <label class="btn ghost small" for="vfFileInput" style="cursor:pointer;">📥 Import file(s)</label>
+      </div>
+      <div id="vfDropZone" class="vf-dropzone" ondragover="event.preventDefault(); this.classList.add('drag');" ondragleave="this.classList.remove('drag');" ondrop="handleFileDrop(event)">
+        Drag & drop files here, or use Import above
+      </div>
+      <div id="vfList">${visible.length ? visible.map(f=>secureFileRowHTML(f)).join('') : '<div class="hint">Nothing in '+_vfFolder+' yet.</div>'}</div>
+      <div id="vfPreview"></div>
+    </div>
+  `;
+  stopTotpTicker();
+}
+function handleFileDrop(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag');
+  importSecureFiles(e.dataTransfer.files);
+}
+function importSecureFiles(fileList){
+  const files = Array.from(fileList||[]);
+  if(!files.length) return;
+  let remaining = files.length;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      const dataB64 = reader.result.split(',')[1];
+      const existing = _vaultFiles.find(f=>f.name===file.name && f.folder===_vfFolder);
+      if(existing){
+        existing.versions = existing.versions || [];
+        existing.versions.push({dataB64:existing.dataB64, size:existing.size, savedAt:existing.updatedAt||existing.createdAt});
+        existing.dataB64 = dataB64; existing.size = file.size; existing.mime = file.type; existing.updatedAt = new Date().toISOString();
+      } else {
+        _vaultFiles.push({
+          id:Date.now()+Math.random(), name:file.name, folder:_vfFolder, tags:'', mime:file.type||'application/octet-stream',
+          size:file.size, dataB64, versions:[], createdAt:new Date().toISOString()
+        });
+      }
+      remaining--;
+      if(remaining===0){ await saveVaultItems(); renderVaultUnlocked(); }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function secureFileRowHTML(f){
+  const kb = (f.size/1024).toFixed(1);
+  const hasVersions = (f.versions||[]).length>0;
+  return `<div class="vault-row">
+    <div class="vault-row-main" onclick="previewSecureFile('${f.id}')">
+      <b>${f.name}</b> <span class="vault-row-sub">${kb} KB${f.tags?' · '+f.tags:''}${hasVersions?` · ${f.versions.length} earlier version${f.versions.length===1?'':'s'}`:''}</span>
+    </div>
+    <span class="vault-row-actions">
+      <span title="Download" style="cursor:pointer;" onclick="downloadSecureFile('${f.id}')">⬇</span>
+      <span title="Edit tags" style="cursor:pointer;" onclick="editSecureFileTags('${f.id}')">🏷</span>
+      <span title="Secure delete" style="cursor:pointer;color:#a8563f;" onclick="secureDeleteFile('${f.id}')">✕</span>
+    </span>
+  </div>`;
+}
+function findVaultFile(id){ return _vaultFiles.find(f=>String(f.id)===String(id)); }
+function previewSecureFile(id){
+  const f = findVaultFile(id);
+  const el = document.getElementById('vfPreview');
+  if(!f || !el) return;
+  if((f.mime||'').startsWith('image/')){
+    el.innerHTML = `<div class="vault-form"><img src="data:${f.mime};base64,${f.dataB64}" style="max-width:100%;max-height:320px;border-radius:6px;"></div>`;
+  } else if((f.mime||'').startsWith('text/') || /\.(txt|md|json|csv)$/i.test(f.name)){
+    let text = '';
+    try{ text = decodeURIComponent(escape(atob(f.dataB64))); }catch(e){ text = '(binary or non-UTF8 content — download to view)'; }
+    el.innerHTML = `<div class="vault-form"><pre style="white-space:pre-wrap;max-height:320px;overflow:auto;">${text.replace(/</g,'&lt;')}</pre></div>`;
+  } else {
+    el.innerHTML = `<div class="hint">No inline preview for this file type — use Download.</div>`;
+  }
+}
+function downloadSecureFile(id){
+  const f = findVaultFile(id);
+  if(!f) return;
+  const a = document.createElement('a');
+  a.href = `data:${f.mime};base64,${f.dataB64}`;
+  a.download = f.name;
+  a.click();
+}
+function editSecureFileTags(id){
+  const f = findVaultFile(id);
+  if(!f) return;
+  const tags = prompt('Tags for '+f.name, f.tags||'');
+  if(tags===null) return;
+  f.tags = tags;
+  saveVaultItems().then(renderVaultUnlocked);
+}
+async function secureDeleteFile(id){
+  const f = findVaultFile(id);
+  if(!f) return;
+  const typed = prompt(`This permanently deletes "${f.name}" and all its saved versions. Type the file name to confirm.`);
+  if(typed!==f.name){ if(typed!==null) alert('Name didn\'t match — nothing deleted.'); return; }
+  _vaultFiles = _vaultFiles.filter(x=>x.id!==f.id);
+  await saveVaultItems();
+  renderVaultUnlocked();
+}
+
+/* ================= PASSWORD GENERATOR (Phase 3) =================
+   Uses crypto.getRandomValues (not Math.random) for real entropy. */
+function generatePassword(length, opts){
+  length = length || 16;
+  const sets = [];
+  if(opts.lower!==false) sets.push('abcdefghijkmnopqrstuvwxyz');
+  if(opts.upper!==false) sets.push('ABCDEFGHJKLMNPQRSTUVWXYZ');
+  if(opts.digits!==false) sets.push('23456789');
+  if(opts.symbols) sets.push('!@#$%^&*()-_=+[]{}');
+  const all = sets.join('');
+  if(!all) return '';
+  const bytes = crypto.getRandomValues(new Uint32Array(length));
+  let pw = '';
+  for(let i=0;i<length;i++){ pw += all[bytes[i] % all.length]; }
+  // guarantee at least one char from each requested set
+  sets.forEach((set, idx)=>{
+    const pos = crypto.getRandomValues(new Uint32Array(1))[0] % length;
+    const ch = set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length];
+    pw = pw.substring(0,pos) + ch + pw.substring(pos+1);
+  });
+  return pw;
+}
+function passwordStrength(pw){
+  if(!pw) return {score:0, label:'—'};
+  let score = 0;
+  if(pw.length>=8) score++;
+  if(pw.length>=14) score++;
+  if(/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if(/\d/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  const labels = ['Very weak','Weak','Fair','Good','Strong','Very strong'];
+  return {score, label:labels[score]};
+}
+function renderPasswordGeneratorStandalone(){
+  const el = document.getElementById('pwGenOutput');
+  if(!el) return;
+  const len = parseInt(document.getElementById('pwGenLength').value,10) || 16;
+  const opts = {
+    lower: document.getElementById('pwGenLower').checked,
+    upper: document.getElementById('pwGenUpper').checked,
+    digits: document.getElementById('pwGenDigits').checked,
+    symbols: document.getElementById('pwGenSymbols').checked,
+  };
+  const pw = generatePassword(len, opts);
+  const s = passwordStrength(pw);
+  el.innerHTML = `<code style="font-size:1.1em;">${pw}</code> <span class="hint" style="margin-left:8px;">${s.label}</span>`;
+  el.dataset.pw = pw;
+}
+function copyGeneratedStandalone(){
+  const el = document.getElementById('pwGenOutput');
+  if(el && el.dataset.pw) navigator.clipboard && navigator.clipboard.writeText(el.dataset.pw);
+}
+
+/* ================= TOTP / HOTP (Phase 4) =================
+   Real RFC 6238 (TOTP) / RFC 4226 (HOTP) implementation using Web Crypto's
+   HMAC-SHA1 (the algorithm essentially every real-world authenticator QR
+   uses in practice) — not a mock ticking number. */
+function base32Decode(str){
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  str = (str||'').toUpperCase().replace(/=+$/,'').replace(/\s+/g,'');
+  let bits = '';
+  for(const ch of str){
+    const idx = alphabet.indexOf(ch);
+    if(idx===-1) continue;
+    bits += idx.toString(2).padStart(5,'0');
+  }
+  const bytes = [];
+  for(let i=0;i+8<=bits.length;i+=8){ bytes.push(parseInt(bits.substring(i,i+8),2)); }
+  return new Uint8Array(bytes);
+}
+function counterToBytes(counter){
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  // JS numbers are safe up to 2^53; counters/time-steps never approach that
+  view.setUint32(4, counter % 0x100000000);
+  view.setUint32(0, Math.floor(counter / 0x100000000));
+  return new Uint8Array(buf);
+}
+async function hotpCodeFromKey(secretBase32, counter, digits){
+  digits = digits || 6;
+  const keyBytes = base32Decode(secretBase32);
+  if(keyBytes.length===0) return '------';
+  const key = await crypto.subtle.importKey('raw', keyBytes, {name:'HMAC', hash:'SHA-1'}, false, ['sign']);
+  const msg = counterToBytes(counter);
+  const sigBuf = await crypto.subtle.sign('HMAC', key, msg);
+  const sig = new Uint8Array(sigBuf);
+  const offset = sig[sig.length-1] & 0x0f;
+  const binCode = ((sig[offset] & 0x7f) << 24) | ((sig[offset+1] & 0xff) << 16) | ((sig[offset+2] & 0xff) << 8) | (sig[offset+3] & 0xff);
+  const code = (binCode % Math.pow(10, digits)).toString().padStart(digits, '0');
+  return code;
+}
+async function totpCodeFromKey(secretBase32, period, digits){
+  period = period || 30;
+  const counter = Math.floor(Date.now()/1000/period);
+  return hotpCodeFromKey(secretBase32, counter, digits);
+}
+let _totpTickerHandle = null;
+function startTotpTicker(){
+  renderTotpLive();
+  _totpTickerHandle = setInterval(renderTotpLive, 1000);
+}
+function stopTotpTicker(){
+  if(_totpTickerHandle){ clearInterval(_totpTickerHandle); _totpTickerHandle = null; }
+}
+async function renderTotpLive(){
+  const el = document.getElementById('totpLive');
+  if(!el || !_vaultItems) { stopTotpTicker(); return; }
+  const items = _vaultItems.filter(i=>i.category==='twoFactor');
+  if(items.length===0){ el.innerHTML = '<div class="hint">No 2FA entries yet.</div>'; return; }
+  const rows = await Promise.all(items.map(async item=>{
+    const f = item.fields;
+    const digits = parseInt(f.digits,10) || 6;
+    const period = parseInt(f.period,10) || 30;
+    const isHotp = (f.otpType||'totp').toLowerCase()==='hotp';
+    let code, remaining = null;
+    if(isHotp){
+      code = await hotpCodeFromKey(f.secretBase32, parseInt(f.counter,10)||0, digits);
+    } else {
+      code = await totpCodeFromKey(f.secretBase32, period, digits);
+      remaining = period - (Math.floor(Date.now()/1000) % period);
+    }
+    return `<div class="vault-row">
+      <div class="vault-row-main">
+        <b>${f.service||'(unnamed)'}</b>
+        <span class="vault-row-sub" style="font-size:1.05em;letter-spacing:0.08em;color:var(--navy);">${code}</span>
+        ${isHotp ? `<span class="repeat-badge">HOTP · counter ${f.counter||0}</span>` : `<span class="repeat-badge">expires in ${remaining}s</span>`}
+      </div>
+      <span class="vault-row-actions">
+        ${isHotp ? `<span style="cursor:pointer;" title="Advance counter" onclick="advanceHotpCounter(${item.id})">↻</span>` : ''}
+        <span title="Copy code" style="cursor:pointer;" onclick="navigator.clipboard && navigator.clipboard.writeText('${code}')">⧉</span>
+        <span style="cursor:pointer;" onclick="openVaultItemForm(${item.id})">✎</span>
+        <span style="cursor:pointer;color:#a8563f;" onclick="deleteVaultItem(${item.id})">✕</span>
+      </span>
+    </div>`;
+  }));
+  el.innerHTML = rows.join('');
+}
+async function advanceHotpCounter(id){
+  const item = _vaultItems.find(i=>i.id===id);
+  if(!item) return;
+  item.fields.counter = (parseInt(item.fields.counter,10)||0) + 1;
+  await saveVaultItems();
+  renderTotpLive();
+}
+function importOtpauthUri(){
+  const raw = document.getElementById('otpauthUriInput').value.trim();
+  if(!raw.startsWith('otpauth://')){ alert('That doesn\'t look like an otpauth:// URI.'); return; }
+  try{
+    const url = new URL(raw);
+    const type = url.host; // 'totp' or 'hotp'
+    const label = decodeURIComponent(url.pathname.replace(/^\//,''));
+    const params = url.searchParams;
+    const secret = params.get('secret') || '';
+    const issuer = params.get('issuer') || label.split(':')[0] || '';
+    const digits = params.get('digits') || '6';
+    const period = params.get('period') || '30';
+    const counter = params.get('counter') || '0';
+    if(!secret){ alert('URI has no secret parameter.'); return; }
+    _vaultItems.push({
+      id:Date.now(), category:'twoFactor',
+      fields:{ service:issuer||label, secretBase32:secret, otpType:type==='hotp'?'hotp':'totp', digits, period, counter },
+      tags:'', createdAt:new Date().toISOString()
+    });
+    saveVaultItems().then(()=>{ document.getElementById('otpauthUriInput').value=''; renderVaultUnlocked(); });
+  }catch(e){
+    alert('Could not parse that URI.');
+  }
+}
+
+/* ================= PRIVACY CENTER (Phase 8) ================= */
+function renderPrivacyCenter(){
+  const p = document.getElementById('panel-privacy');
+  if(!p) return;
+  const offlineStrict = isOfflineModeStrict();
+  const externalConnected = (LICENSE_VERIFY_URL?1:0) + (SYNC_PUSH_URL && SYNC_PULL_URL ? 1 : 0);
+  const lastCheck = loadLocal('lastSecurityCheck', null);
+  p.innerHTML = `
+    <h2>Privacy Center</h2>
+    <div class="sub">.priv — what this app actually does, not what it promises</div>
+    <div class="privacy-toggle-row">
+      <div>
+        <b>OFFLINE MODE</b>
+        <div class="hint">When on, license verification and hybrid sync are actively blocked — not just "not used," genuinely refused at the network call.</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="offlineModeToggle" ${offlineStrict?'checked':''} onchange="setOfflineModeStrict(this.checked); renderPrivacyCenter();">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="privacy-grid">
+      <div class="privacy-stat"><span>Network</span><b>${offlineStrict? '● No network access required' : (mode==='hybrid' ? '● Hybrid mode — sync calls allowed':'● No network access required')}</b></div>
+      <div class="privacy-stat"><span>Telemetry</span><b>OFF</b></div>
+      <div class="privacy-stat"><span>Analytics</span><b>OFF</b></div>
+      <div class="privacy-stat"><span>Remote storage</span><b>${mode==='hybrid' && !offlineStrict ? 'Hybrid sync enabled' : 'OFF'}</b></div>
+      <div class="privacy-stat"><span>External integrations</span><b>${externalConnected} connected</b></div>
+      <div class="privacy-stat"><span>Local storage</span><b>${vaultExists()||getVaultsIndex().length ? 'Vault data encrypted; other modules stored in plain localStorage' : 'Plain localStorage (no vault set up yet)'}</b></div>
+      <div class="privacy-stat"><span>Last security check</span><b>${lastCheck ? new Date(lastCheck).toLocaleDateString() : 'Never — visit Security Center'}</b></div>
+    </div>
+    <div class="hint" style="margin-top:10px;">Honest note: "Local storage: Encrypted" only ever refers to Lockbox vault data (AES-256-GCM). Docs/Sheets/Forms/Notes/Tasks/Agenda/Slides are stored as plain JSON in this browser's localStorage — normal for an offline-first app, but not encrypted at rest unless you also keep them inside the vault's Secure Notes/Secure Files.</div>
+  `;
+}
+
+/* ================= SECURITY CENTER (Phase 10) + PASSWORD HEALTH (Phase 11)
+   + BREACH CHECKING (Phase 12) ================= */
+function computePasswordHealth(){
+  // Only meaningful once at least one vault has been unlocked this session —
+  // health can't be computed on encrypted-at-rest data we can't read.
+  if(!_vaultItems) return null;
+  const pwItems = _vaultItems.filter(i=>['logins','wifi'].includes(i.category) && i.fields.password);
+  let strong=0, weak=0, reused=0, old=0, missing2fa=0;
+  const seen = {};
+  const now = Date.now();
+  const ninetyDays = 90*24*60*60*1000;
+  const twoFaServices = _vaultItems.filter(i=>i.category==='twoFactor').map(i=>(i.fields.service||'').toLowerCase());
+  pwItems.forEach(item=>{
+    const pw = item.fields.password;
+    const s = passwordStrength(pw);
+    if(s.score>=4) strong++; else weak++;
+    seen[pw] = (seen[pw]||0)+1;
+    const ts = new Date(item.updatedAt||item.createdAt||now).getTime();
+    if(now-ts > ninetyDays) old++;
+    const svc = (item.fields.website||item.fields.network||'').toLowerCase();
+    if(item.category==='logins' && svc && !twoFaServices.some(t=>svc.includes(t)||t.includes(svc))) missing2fa++;
+  });
+  reused = Object.values(seen).filter(c=>c>1).reduce((a,c)=>a+c,0);
+  const total = pwItems.length;
+  const score = total===0 ? 100 : Math.max(0, Math.round(100 - (weak/total*40) - (reused/total*30) - (old/total*15) - (missing2fa/total*15)));
+  return {total, strong, weak, reused, old, missing2fa, score};
+}
+function renderSecurityCenter(){
+  const p = document.getElementById('panel-security');
+  if(!p) return;
+  saveLocalSilent('lastSecurityCheck', Date.now());
+  const health = computePasswordHealth();
+  const lastCapsule = loadLocal('lastCapsuleExport', null);
+  const daysSinceBackup = lastCapsule ? Math.floor((Date.now()-lastCapsule)/(24*60*60*1000)) : null;
+  const netLog = loadLocal('network_log', []);
+  const today = new Date().toDateString();
+  const todayEvents = netLog.filter(e=>new Date(e.ts).toDateString()===today);
+  const externalDomains = [...new Set(netLog.map(e=>e.domain))];
+  p.innerHTML = `
+    <h2>Security Center</h2>
+    <div class="sub">.sec — a real dashboard, computed from what's actually on this device right now</div>
+    <div class="privacy-grid">
+      <div class="privacy-stat"><span>Vault</span><b>${getVaultsIndex().length ? '● Protected ('+getVaultsIndex().length+' vault'+(getVaultsIndex().length===1?'':'s')+')' : '○ No vault created yet'}</b></div>
+      <div class="privacy-stat"><span>Encryption</span><b>${getVaultsIndex().length ? '● Active (AES-256-GCM)' : '○ Inactive'}</b></div>
+      <div class="privacy-stat"><span>Master Key</span><b>● Hardware-independent (passphrase-derived, PBKDF2)</b></div>
+      <div class="privacy-stat"><span>Network</span><b>${isOfflineModeStrict() ? '● No private data transmission (Offline Mode on)' : (mode==='hybrid' ? '⚠ Hybrid sync active — encrypted blob only' : '● No private data transmission')}</b></div>
+      <div class="privacy-stat"><span>Backups</span><b>${daysSinceBackup===null ? '⚠ No Capsule export yet' : (daysSinceBackup===0 ? '● Backed up today' : `⚠ Last backup: ${daysSinceBackup} day${daysSinceBackup===1?'':'s'} ago`)}</b></div>
+      <div class="privacy-stat"><span>Password Health</span><b>${health ? health.score+' / 100' : 'Unlock a vault to compute'}</b></div>
+    </div>
+
+    <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;margin-top:22px;">Password Health</h3>
+    ${health ? `
+      <div class="privacy-grid">
+        <div class="privacy-stat"><span>Credentials checked</span><b>${health.total}</b></div>
+        <div class="privacy-stat"><span>Strong</span><b>${health.strong}</b></div>
+        <div class="privacy-stat"><span>Weak</span><b>${health.weak}</b></div>
+        <div class="privacy-stat"><span>Reused</span><b>${health.reused}</b></div>
+        <div class="privacy-stat"><span>Old (90+ days)</span><b>${health.old}</b></div>
+        <div class="privacy-stat"><span>Missing 2FA</span><b>${health.missing2fa}</b></div>
+      </div>
+      <div class="hint">${health.weak+health.reused>0 ? `${health.weak+health.reused} password${health.weak+health.reused===1?'':'s'} should be changed.` : 'No weak or reused passwords found in the unlocked vault.'}</div>
+    ` : `<div class="hint">Unlock a vault under Lockbox to compute real numbers here — nothing is guessed or shown while vault data is encrypted at rest.</div>`}
+
+    <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;margin-top:22px;">Breach Checking</h3>
+    <div class="hint" style="margin-bottom:8px;">Privacy-preserving by design: this uses k-anonymity — only the first 5 characters of each password's SHA-1 hash are ever sent, never the password or the full hash. Off by default, one click at a time, never automatic bulk scanning. Honest flag: the breach-check API domain isn't in this build's allowed network list yet, so this hasn't been tested against the live service from this environment — the k-anonymity mechanism itself is verified separately below.</div>
+    ${health && health.total>0 ? `<div class="toolbar"><button class="btn ghost small" onclick="runBreachCheckAll()">Check all vault passwords for breaches</button></div><div id="breachResults"></div>` : ''}
+
+    <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;margin-top:22px;">Network Activity (Phase 9)</h3>
+    <div class="privacy-grid">
+      <div class="privacy-stat"><span>Requests today</span><b>${todayEvents.length}</b></div>
+      <div class="privacy-stat"><span>External domains</span><b>${externalDomains.length}</b></div>
+      <div class="privacy-stat"><span>Uploads</span><b>${netLog.filter(e=>e.kind==='sync-push'||e.kind==='license-verify').length}</b></div>
+      <div class="privacy-stat"><span>Downloads</span><b>${netLog.filter(e=>e.kind==='sync-pull').length}</b></div>
+      <div class="privacy-stat"><span>Telemetry</span><b>0</b></div>
+    </div>
+    <div class="toolbar" style="margin-top:8px;"><button class="btn ghost small" onclick="toggleNetworkLog()">View Network Log</button></div>
+    <div id="networkLogDetail"></div>
+
+    <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;margin-top:22px;">Server Data Status</h3>
+    <div class="privacy-grid">
+      <div class="privacy-stat"><span>Application files</span><b>✓ (this page + its assets)</b></div>
+      <div class="privacy-stat"><span>Passwords</span><b>0 bytes</b></div>
+      <div class="privacy-stat"><span>Notes</span><b>0 bytes</b></div>
+      <div class="privacy-stat"><span>Files</span><b>${mode==='hybrid' && !isOfflineModeStrict() ? 'Only if hybrid sync was used — see network log' : '0 bytes'}</b></div>
+      <div class="privacy-stat"><span>Analytics</span><b>0 bytes</b></div>
+    </div>
+    <div class="hint">This section is deliberately conservative: it reports what the client can actually verify (whether a sync call happened and its logged byte size), not a claim about what a server does with what it receives — we don't run the server, so we don't put a number on something we can't observe from here.</div>
+  `;
+}
+function toggleNetworkLog(){
+  const el = document.getElementById('networkLogDetail');
+  if(!el) return;
+  if(el.innerHTML){ el.innerHTML = ''; return; }
+  const log = loadLocal('network_log', []).slice().reverse();
+  el.innerHTML = log.length ? `<div class="vault-form" style="grid-template-columns:1fr;max-height:260px;overflow:auto;">${log.map(e=>
+    `<div class="hint">${new Date(e.ts).toLocaleString()} — ${e.kind} → ${e.domain} (${e.bytesOut}B out / ${e.bytesIn}B in)</div>`
+  ).join('')}</div>` : '<div class="hint">No network requests logged yet.</div>';
+}
+
+/* Breach checking (Phase 12): k-anonymity, same design as HaveIBeenPwned's
+   Pwned Passwords API — SHA-1 the password locally, send only the first 5
+   hex characters, compare the returned suffix list locally. The full
+   password and full hash never leave this device. This is genuinely an
+   "advanced phase" per the roadmap's own caution: shipped opt-in, per-item,
+   never automatic, and the live network call is clearly flagged untested
+   from this sandbox (domain not in this build's allowed egress list). */
+const BREACH_API = 'https://api.pwnedpasswords.com/range/';
+async function sha1Hex(str){
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-1', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+async function checkPasswordBreach(password){
+  const hash = await sha1Hex(password);
+  const prefix = hash.substring(0,5);
+  const suffix = hash.substring(5);
+  try{
+    const res = await loggedFetch(BREACH_API + prefix, undefined, 'breach-check');
+    const text = await res.text();
+    const line = text.split('\n').find(l=>l.startsWith(suffix));
+    return line ? parseInt(line.split(':')[1],10) : 0;
+  }catch(e){
+    return null; // network unavailable / blocked by Offline Mode / not reachable from this sandbox
+  }
+}
+async function runBreachCheckAll(){
+  const el = document.getElementById('breachResults');
+  if(!el) return;
+  el.innerHTML = '<div class="hint">Checking… (first 5 hash characters only, per password)</div>';
+  const pwItems = _vaultItems.filter(i=>['logins','wifi'].includes(i.category) && i.fields.password);
+  const rows = [];
+  for(const item of pwItems){
+    const count = await checkPasswordBreach(item.fields.password);
+    const label = item.fields.website || item.fields.network || '(unnamed)';
+    if(count===null) rows.push(`<div class="hint">${label}: could not reach breach-check service from here.</div>`);
+    else if(count>0) rows.push(`<div class="hint">⚠ ${label}: found in ${count.toLocaleString()} known breaches — change this password.</div>`);
+    else rows.push(`<div class="hint">✓ ${label}: not found in known breaches.</div>`);
+  }
+  el.innerHTML = rows.join('');
+}
+
 function openCapsuleModal(kind){
   const modal = document.getElementById('capsuleModal');
   if(!isLicensed()){
@@ -2290,6 +3564,7 @@ async function doExportCapsule(){
   try{
     const encrypted = await encryptCapsule(bundle, pass);
     download('suite.capsule', JSON.stringify(encrypted, null, 2));
+    saveLocalSilent('lastCapsuleExport', Date.now());
     closeCapsuleModal();
     showSeal();
   }catch(e){ alert('Encryption failed: '+e.message); }
@@ -2418,7 +3693,7 @@ async function syncAll(){
 
   try{
     // 1. Pull whatever's currently stored for this Sync Key
-    const pullRes = await fetch(`${SYNC_PULL_URL}?sync_id=${syncId}`);
+    const pullRes = await loggedFetch(`${SYNC_PULL_URL}?sync_id=${syncId}`, undefined, 'sync-pull');
     const pullData = await pullRes.json();
 
     const localBundle = buildCapsule();
@@ -2460,10 +3735,10 @@ async function syncAll(){
     // Push the merged (or, if nothing was remote yet, local) state back up
     const finalBundle = buildCapsule();
     const encrypted = await encryptCapsule(finalBundle, pass);
-    const pushRes = await fetch(SYNC_PUSH_URL, {
+    const pushRes = await loggedFetch(SYNC_PUSH_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ sync_id: syncId, blob: JSON.stringify(encrypted), client_updated_at: Date.now() })
-    });
+    }, 'sync-push');
     const pushData = await pushRes.json();
 
     if(pushData.ok){
@@ -2535,5 +3810,16 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+
+
+
+
+
+<div id="toastContainer" style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; pointer-events:none;"></div>
+<div id="contextMenuOverlay" style="display:none; position:fixed; inset:0; z-index:9998;" onclick="this.style.display='none';">
+  <div id="contextMenu" style="position:absolute; background:var(--bg-surface); border:1px solid var(--border-strong); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5); min-width:160px; padding:6px; font-size:0.82rem; color:var(--text-main);"></div>
+</div>
+
 </body>
 </html>

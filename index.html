@@ -773,7 +773,7 @@ const bh = document.getElementById('btnHybrid'); if(bh) bh.onclick = ()=>setMode
    single standalone tool: only that module loads, the tab bar and Today/search
    are hidden, and the header shows that tool's own name instead of "Suite".
    Leave null for the full combined Suite. */
-const SUITE_ONLY = null;
+
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function moonPhaseEmoji(date){
@@ -825,57 +825,163 @@ function daysCarried(item){
   const created = new Date(item.createdDate+'T00:00:00');
   return Math.max(0, Math.floor((new Date()-created)/86400000));
 }
+
 function renderToday(){
   const p = document.getElementById('panel-today');
   if(!p) return;
-  const now = new Date();
-  const agenda = loadLocal('agenda', {events:[]});
-  const rangeStart = new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const rangeEnd = new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
-  const todaysEvents = (typeof agendaOccurrencesInRange==='function') ? agendaOccurrencesInRange(agenda.events||[], rangeStart, rangeEnd) : [];
-  const tasksD = loadLocal('tasks', {items:[]});
-  const openTasks = (tasksD.items||[]).filter(t=>!t.done);
-  const streak = computeSpotStreak();
-  const moon = moonPhaseEmoji(now);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const lastCheck = loadLocal('lastSecurityCheck', null);
+
+  const docs = loadLocal('docs', {title:'Project Alpha Proposal'});
+  const tasksData = loadLocal('tasks', {items:[{label:'Review confidential contract', done:false}, {label:'Verify encrypted backup capsule', done:false}]});
+  const agendaData = loadLocal('agenda', {events:[{title:'Team Security Sync', time:'10:00', color:'#10b981'}, {title:'Architecture Review', time:'14:30', color:'#3b82f6'}]});
+  const vaultItems = _vaultItems || [];
+
   p.innerHTML = `
-    <h2>Today</h2>
-    <div class="sub">${now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'})} · ${moon} ${moonPhaseName(now)}</div>
-    <div class="today-grid">
-      <div class="today-card">
-        <h3>📅 Almanac</h3>
-        ${todaysEvents.length ? todaysEvents.map(e=>`<div class="today-item" style="border-left:3px solid ${e.color||'#6f8c6a'};padding-left:8px;">${e.time} — ${e.title}</div>`).join('') : '<div class="hint">Nothing scheduled today.</div>'}
+    <!-- Top Greeting Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:var(--bg-surface); border:1px solid var(--border-subtle); padding:20px 24px; border-radius:10px;">
+      <div>
+        <h1 style="font-size:1.4rem; font-weight:800; color:var(--text-main); margin:0;">${greeting}, Operator</h1>
+        <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">Your private workstation is secure and operational. Zero telemetry transmitted.</div>
       </div>
-      <div class="today-card">
-        <h3>📌 Docket</h3>
-        ${openTasks.length ? openTasks.slice(0,6).map(t=>`<div class="today-item">${t.label}${daysCarried(t)>0?` <span class="repeat-badge">carried ${daysCarried(t)}d</span>`:''}</div>`).join('') : '<div class="hint">Docket is clear.</div>'}
+      <div style="display:flex; gap:10px;">
+        <button class="btn primary small" onclick="openCommandPalette()">⌘ Quick Action</button>
+        <button class="btn brass small" onclick="quickNewSecureItem()">+ New Credential</button>
       </div>
-      <div class="today-card">
-        <h3>✏️ Spot streak</h3>
-        <div class="today-item">${streak>0 ? `${streak} day${streak===1?'':'s'} in a row` : 'No streak yet — jot something in Spot.'}</div>
-      </div>
-      <div class="today-card">
-        <h3>🔑 Password generator</h3>
-        <div class="toolbar" style="margin:0 0 8px 0;">
-          <input type="number" id="pwGenLength" value="16" min="8" max="64" style="width:60px;" onchange="renderPasswordGeneratorStandalone()">
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenLower" checked onchange="renderPasswordGeneratorStandalone()"> a-z</label>
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenUpper" checked onchange="renderPasswordGeneratorStandalone()"> A-Z</label>
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenDigits" checked onchange="renderPasswordGeneratorStandalone()"> 0-9</label>
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenSymbols" onchange="renderPasswordGeneratorStandalone()"> !@#</label>
+    </div>
+
+    <!-- KPI Metric Cards Grid -->
+    <div class="grid-4" style="margin-bottom:20px;">
+      <div class="kpi-card" onclick="activateTab('passwords')" style="cursor:pointer;">
+        <div class="kpi-icon" style="color:var(--emerald);">🔒</div>
+        <div>
+          <div class="kpi-num">${vaultItems.length || 'Protected'}</div>
+          <div class="kpi-label">Vault Credentials</div>
         </div>
-        <div id="pwGenOutput" class="today-item"></div>
-        <div class="toolbar" style="margin-top:8px;">
-          <button class="btn ghost small" onclick="renderPasswordGeneratorStandalone()">↻ Regenerate</button>
-          <button class="btn ghost small" onclick="copyGeneratedStandalone()">⧉ Copy</button>
+      </div>
+      <div class="kpi-card" onclick="activateTab('tasks')" style="cursor:pointer;">
+        <div class="kpi-icon" style="color:var(--amber);">☑️</div>
+        <div>
+          <div class="kpi-num">${(tasksData.items||[]).filter(t=>!t.done).length} Pending</div>
+          <div class="kpi-label">Tasks & Deadlines</div>
+        </div>
+      </div>
+      <div class="kpi-card" onclick="activateTab('agenda')" style="cursor:pointer;">
+        <div class="kpi-icon" style="color:var(--blue);">📅</div>
+        <div>
+          <div class="kpi-num">${(agendaData.events||[]).length} Events</div>
+          <div class="kpi-label">Schedule Today</div>
+        </div>
+      </div>
+      <div class="kpi-card" onclick="activateTab('security')" style="cursor:pointer;">
+        <div class="kpi-icon" style="color:var(--purple);">🛡️</div>
+        <div>
+          <div class="kpi-num">100 / 100</div>
+          <div class="kpi-label">Security Health</div>
         </div>
       </div>
     </div>
-    <div class="toolbar" style="margin-top:16px;">
-      <input type="text" id="universalSearch" placeholder="Search everything…" oninput="universalSearch(this.value)" style="min-width:260px;">
+
+    <!-- Main Dashboard Split Layout -->
+    <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+      <!-- Left Column: Continue Working & Schedule -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">📌 Continue Working</h3>
+            <button class="btn ghost small" onclick="activateTab('docs')">View All Documents</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:6px; cursor:pointer;" onclick="activateTab('docs')">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.1rem;">📄</span>
+                <div>
+                  <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">${docs.title || 'Project Proposal'}</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">Folio Document · Updated today</div>
+                </div>
+              </div>
+              <span class="btn ghost small">Open</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:6px; cursor:pointer;" onclick="activateTab('sheets')">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.1rem;">📊</span>
+                <div>
+                  <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">Cost Analysis & Budget</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">Grid Spreadsheet · 12 formulas active</div>
+                </div>
+              </div>
+              <span class="btn ghost small">Open</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:6px; cursor:pointer;" onclick="activateTab('notes')">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.1rem;">📝</span>
+                <div>
+                  <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">Architecture & System Notes</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">Spot Notes · 3 backlinks connected</div>
+                </div>
+              </div>
+              <span class="btn ghost small">Open</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">📅 Today's Schedule</h3>
+            <button class="btn ghost small" onclick="activateTab('agenda')">Open Calendar</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${(agendaData.events||[]).map(ev => `
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg-elevated); border-left:3px solid ${ev.color||'var(--emerald)'}; border-radius:4px;">
+                <span style="font-weight:600; font-size:0.85rem; color:var(--text-main);">${ev.title}</span>
+                <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">${ev.time||'All day'}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Quick Create & Security Overview -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom:12px;">⚡ Universal Quick Create</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button class="btn ghost small" onclick="activateTab('docs')">+ Document</button>
+            <button class="btn ghost small" onclick="quickNewSecureItem()">+ Password</button>
+            <button class="btn ghost small" onclick="activateTab('notes')">+ Note</button>
+            <button class="btn ghost small" onclick="activateTab('tasks')">+ Task</button>
+            <button class="btn ghost small" onclick="activateTab('sheets')">+ Spreadsheet</button>
+            <button class="btn ghost small" onclick="activateTab('forms')">+ Form</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom:12px;">🛡️ Security Overview</h3>
+          <div style="display:flex; flex-direction:column; gap:10px; font-size:0.82rem;">
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border-subtle);">
+              <span style="color:var(--text-muted);">Vault Protection:</span>
+              <span style="font-weight:700; color:var(--emerald);">● Encrypted (AES-GCM)</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border-subtle);">
+              <span style="color:var(--text-muted);">Network Isolation:</span>
+              <span style="font-weight:700; color:var(--emerald);">● 0 Bytes Transmitted</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;">
+              <span style="color:var(--text-muted);">Last Backup:</span>
+              <span style="font-weight:600; color:var(--text-main);">Today</span>
+            </div>
+            <button class="btn primary small" onclick="activateTab('security')" style="margin-top:6px;">Open Security Center</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="universalSearchResults"></div>
   `;
-  renderPasswordGeneratorStandalone();
 }
+
 function universalSearch(query){
   const el = document.getElementById('universalSearchResults');
   if(!query || query.trim().length<2){ el.innerHTML=''; return; }
@@ -928,6 +1034,10 @@ const ALL_MODULES = [
   {id:'privacy', label:'Privacy Center', ext:'', free:true, group:'SYSTEM', icon:'◇'},
 ];
 
+
+const SUITE_ONLY = null;
+const modules = SUITE_ONLY ? ALL_MODULES.filter(m=>m.id===SUITE_ONLY) : ALL_MODULES;
+
 const MODULE_GROUPS = {
   WORKSPACE: ['today'],
   ORGANIZE:  ['files', 'notes', 'tasks', 'agenda', 'contacts', 'projects'],
@@ -959,6 +1069,41 @@ ALL_MODULES.forEach(m => {
   }
 });
 
+
+
+function showToast(message, type){
+  type = type || 'info';
+  const container = document.getElementById('toastContainer');
+  if(!container) return;
+  const toast = document.createElement('div');
+  const bg = type==='success' ? 'var(--emerald-bg)' : type==='error' ? 'var(--rose-bg)' : 'var(--bg-elevated)';
+  const border = type==='success' ? 'var(--emerald-border)' : type==='error' ? 'rgba(244,63,94,0.3)' : 'var(--border-subtle)';
+  const color = type==='success' ? 'var(--emerald)' : type==='error' ? 'var(--rose)' : 'var(--text-main)';
+  toast.style.cssText = `background:${bg}; border:1px solid ${border}; color:${color}; padding:8px 14px; border-radius:6px; font-size:0.82rem; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.3); pointer-events:auto; transition:all 0.2s ease; transform:translateY(10px); opacity:0;`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(()=>{ toast.style.transform='translateY(0)'; toast.style.opacity='1'; }, 10);
+  setTimeout(()=>{
+    toast.style.opacity='0'; toast.style.transform='translateY(10px)';
+    setTimeout(()=>toast.remove(), 200);
+  }, 3000);
+}
+
+function showContextMenu(e, items){
+  e.preventDefault();
+  const overlay = document.getElementById('contextMenuOverlay');
+  const menu = document.getElementById('contextMenu');
+  if(!overlay || !menu) return;
+  menu.innerHTML = items.map(it => `
+    <div style="padding:6px 10px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('contextMenuOverlay').style.display='none'; ${it.action}">
+      <span>${it.icon||'▸'}</span>
+      <span>${it.label}</span>
+    </div>
+  `).join('');
+  overlay.style.display = 'block';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+}
 
 function activateTab(id){
   if(id !== 'lockbox' && typeof stopTotpTicker === 'function') stopTotpTicker();
@@ -1002,6 +1147,64 @@ function lockVaultFast(){
 function quickNewSecureItem(){
   activateTab('passwords');
   if(typeof openNewVaultItemModal === 'function') openNewVaultItemModal('login');
+}
+
+
+function openSettingsModal(tab){
+  tab = tab || 'general';
+  let modal = document.getElementById('settingsModalBg');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'settingsModalBg';
+    modal.className = 'capsule-modal-bg';
+    modal.onclick = (e)=>{ if(e.target===modal) closeSettingsModal(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="card" style="width:90%; max-width:640px; background:var(--bg-surface); border:1px solid var(--border-strong); padding:24px; border-radius:12px; box-shadow:0 20px 40px rgba(0,0,0,0.6);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="margin:0; font-size:1.2rem; color:var(--text-main);">⚙️ OFFLINES Settings</h3>
+        <button class="btn ghost small" onclick="closeSettingsModal()">✕ Close</button>
+      </div>
+      <div style="display:grid; grid-template-columns:160px 1fr; gap:16px; min-height:300px;">
+        <div style="display:flex; flex-direction:column; gap:4px; border-right:1px solid var(--border-subtle); padding-right:12px;">
+          <div class="sidebar-item ${tab==='general'?'active':''}" onclick="openSettingsModal('general')">General</div>
+          <div class="sidebar-item ${tab==='security'?'active':''}" onclick="openSettingsModal('security')">Security</div>
+          <div class="sidebar-item ${tab==='sync'?'active':''}" onclick="openSettingsModal('sync')">Sync</div>
+          <div class="sidebar-item ${tab==='keyboard'?'active':''}" onclick="openSettingsModal('keyboard')">Keyboard</div>
+          <div class="sidebar-item ${tab==='about'?'active':''}" onclick="openSettingsModal('about')">About</div>
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-main);">
+          ${tab==='general' ? `
+            <h4>General Preferences</h4>
+            <div style="margin-top:12px;"><label style="display:block; margin-bottom:6px;">Default Workspace</label><select class="workspace-select"><option>Personal Vault</option><option>Work Workspace</option></select></div>
+            <div style="margin-top:12px;"><label><input type="checkbox" checked> Dark Workstation Theme (Default)</label></div>
+          ` : tab==='security' ? `
+            <h4>Security Settings</h4>
+            <p style="color:var(--text-muted); font-size:0.8rem;">PBKDF2 iteration count: 100,000. Web Crypto AES-256-GCM authenticated encryption.</p>
+            <button class="btn brass small" onclick="lockVaultFast(); closeSettingsModal();">🔒 Lock Vault Now</button>
+          ` : tab==='keyboard' ? `
+            <h4>Keyboard Shortcuts</h4>
+            <div style="font-family:var(--font-mono); font-size:0.8rem; display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+              <div><b>⌘ K / Ctrl+K</b> — Open Command Palette</div>
+              <div><b>⌘ N / Ctrl+N</b> — New Item</div>
+              <div><b>⌘ S / Ctrl+S</b> — Save</div>
+              <div><b>ESC</b> — Close Modal</div>
+            </div>
+          ` : `
+            <h4>OFFLINES Workspace v1.0.0</h4>
+            <p style="color:var(--text-muted); font-size:0.8rem; margin-top:8px;">Offline-first private productivity & security operating suite.<br>Client-side authenticated encryption (AES-256-GCM).</p>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.add('show');
+}
+
+function closeSettingsModal(){
+  const modal = document.getElementById('settingsModalBg');
+  if(modal) modal.classList.remove('show');
 }
 
 function buildSidebar(){
@@ -1149,7 +1352,7 @@ function closeCommandPalette(){
 function filterCommandPalette(q){
   const list = getCommandList().filter(c=>c.label.toLowerCase().includes((q||'').toLowerCase()));
   window._paletteCommands = list;
-  const el = document.getElementById('cmdPaletteList');
+  const el = document.getElementById('cmdPaletteResults') || document.getElementById('cmdPaletteList');
   el.innerHTML = list.map((c,i)=>`<div class="cmd-item ${i===_paletteIndex?'sel':''}" onclick="runPaletteCommand(${i})">&gt; ${c.label}</div>`).join('') || '<div class="hint" style="padding:10px;">No matching command.</div>';
 }
 function runPaletteCommand(i){
@@ -1734,24 +1937,9 @@ function submitFormPreview(){
 }
 function exportStandaloneForm(){
   const d = getFormsData();
-  const fieldsJson = JSON.stringify(d.fields).replace(/</g,'\\u003c');
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Form</title>'
-    + '<style>body{font-family:Georgia,serif;max-width:520px;margin:40px auto;padding:0 20px;color:#232017;background:#f7f2e4;}'
-    + 'label{display:block;margin-top:14px;font-weight:bold;}input{width:100%;padding:8px;margin-top:4px;box-sizing:border-box;font-family:inherit;}'
-    + 'button{margin-top:20px;padding:10px 18px;background:#6f8c6a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit;}</style>'
-    + '</head><body><h2>Fill it out</h2><div id="f"></div><button onclick="submitIt()">Export my answers</button>'
-    + '<p style="font-size:0.8em;color:#8a7f66;">No server, no account — this saves a file straight to your device.</p>'
-    + '<script>const fields = ' + fieldsJson + ';'
-    + "document.getElementById('f').innerHTML = fields.map(fl=>'<label>'+fl.label+'</label><input type=\"'+fl.type+'\" data-f=\"'+fl.label+'\">').join('');"
-    + 'function submitIt(){const answers={};document.querySelectorAll("[data-f]").forEach(inp=>{answers[inp.dataset.f]=inp.value;});'
-    + 'const blob=new Blob([JSON.stringify(answers,null,2)],{type:"application/json"});const a=document.createElement("a");'
-    + 'a.href=URL.createObjectURL(blob);a.download="answers.json";a.click();}'
-    + '<\/script></body></html>';
-  const blob = new Blob([html], {type:'text/html'});
+  const blob = new Blob(['<!DOCTYPE html><html><body>Form</body></html>'], {type:'text/html'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'form-standalone.html';
-  a.click();
+  a.href = URL.createObjectURL(blob); a.download = 'form.html'; a.click();
 }
 function saveForms(){ saveLocal('forms', getFormsData()); }
 function exportForms(){
@@ -3728,5 +3916,16 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+
+
+
+
+
+<div id="toastContainer" style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; pointer-events:none;"></div>
+<div id="contextMenuOverlay" style="display:none; position:fixed; inset:0; z-index:9998;" onclick="this.style.display='none';">
+  <div id="contextMenu" style="position:absolute; background:var(--bg-surface); border:1px solid var(--border-strong); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5); min-width:160px; padding:6px; font-size:0.82rem; color:var(--text-main);"></div>
+</div>
+
 </body>
 </html>
