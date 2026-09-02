@@ -1196,36 +1196,12 @@ document.addEventListener('keydown', (e)=>{
 function renderDocs(){
   const p = document.getElementById('panel-docs');
   if(!p) return;
-  const data = loadLocal('docs', {
-    title: 'Untitled Document',
-    html: '<h2>1. Executive Summary</h2><p>This is a private document stored entirely on your device.</p>2. Requirements</h2><p>Use formatting controls or templates to compose rich documents.</p>',
-    template: 'Blank'
-  });
-
+  const data = loadLocal('docs', {html:'<p>Start writing...</p>'});
   p.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Folio Document Studio</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.folio — local private document editor</div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <select class="workspace-select" id="docTemplateSelect" onchange="applyDocTemplate(this.value)">
-          <option value="">Templates…</option>
-          <option value="Proposal">Project Proposal</option>
-          <option value="Report">Technical Report</option>
-          <option value="Meeting">Meeting Minutes</option>
-          <option value="Contract">Confidential Contract</option>
-        </select>
-        <button class="btn primary small" onclick="saveDocs()">Save</button>
-        <button class="btn ghost small" onclick="exportDocPDF()">PDF / Print</button>
-        <button class="btn ghost small" onclick="exportDocs()">Export .folio</button>
-        <button class="btn ghost small" onclick="importDocs()">Import</button>
-      </div>
-    </div>
-
-    <!-- Formatting Toolbar -->
-    <div class="card" style="padding:8px 12px; margin-bottom:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-      <select title="Paragraph style" class="workspace-select" onchange="document.execCommand('formatBlock',false,this.value); this.blur();">
+    <h2>Folio</h2>
+    <div class="sub">.fils — write your stuff, it stays yours</div>
+    <div class="toolbar">
+      <select title="Paragraph style" onchange="document.execCommand('formatBlock',false,this.value); this.blur();">
         <option value="P">Normal</option>
         <option value="H1">Heading 1</option>
         <option value="H2">Heading 2</option>
@@ -1233,178 +1209,131 @@ function renderDocs(){
         <option value="BLOCKQUOTE">Quote</option>
         <option value="PRE">Code block</option>
       </select>
-      <select title="Font" class="workspace-select" onchange="document.execCommand('fontName',false,this.value); this.blur();">
+      <select title="Font" onchange="document.execCommand('fontName',false,this.value); this.blur();">
         <option value="Iowan Old Style, Georgia, serif">Serif</option>
         <option value="Helvetica Neue, Arial, sans-serif">Sans</option>
-        <option value="JetBrains Mono, monospace">Mono</option>
+        <option value="Courier New, monospace">Mono</option>
       </select>
-      <select title="Font size" class="workspace-select" onchange="document.execCommand('fontSize',false,this.value); this.blur();">
+      <select title="Font size" onchange="document.execCommand('fontSize',false,this.value); this.blur();">
         <option value="2">Small</option>
         <option value="3" selected>Normal</option>
         <option value="5">Large</option>
         <option value="7">Huge</option>
       </select>
-      <div style="width:1px; height:20px; background:var(--border-subtle);"></div>
-      <button class="btn ghost small" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
-      <button class="btn ghost small" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
-      <button class="btn ghost small" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
-      <button class="btn ghost small" title="Strikethrough" onclick="document.execCommand('strikeThrough')"><s>S</s></button>
-      <div style="width:1px; height:20px; background:var(--border-subtle);"></div>
+      <div class="tdiv"></div>
+      <button class="btn ghost small icon" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
+      <button class="btn ghost small icon" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
+      <button class="btn ghost small icon" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
+      <button class="btn ghost small icon" title="Strikethrough" onclick="document.execCommand('strikeThrough')"><s>S</s></button>
+      <button class="btn ghost small icon" title="Superscript" onclick="document.execCommand('superscript')">x²</button>
+      <button class="btn ghost small icon" title="Subscript" onclick="document.execCommand('subscript')">x₂</button>
+      <div class="tdiv"></div>
+      <label title="Text color" style="display:flex;align-items:center;"><input type="color" onchange="document.execCommand('foreColor',false,this.value)" value="#232017"></label>
+      <label title="Highlight" style="display:flex;align-items:center;"><input type="color" onchange="document.execCommand('hiliteColor',false,this.value)" value="#f4e9c1"></label>
+      <div class="tdiv"></div>
+      <button class="btn ghost small icon" title="Align left" onclick="document.execCommand('justifyLeft')">⟵</button>
+      <button class="btn ghost small icon" title="Align center" onclick="document.execCommand('justifyCenter')">↔</button>
+      <button class="btn ghost small icon" title="Align right" onclick="document.execCommand('justifyRight')">⟶</button>
+      <button class="btn ghost small icon" title="Justify" onclick="document.execCommand('justifyFull')">☰</button>
+      <div class="tdiv"></div>
       <button class="btn ghost small" title="Bulleted list" onclick="document.execCommand('insertUnorderedList')">• List</button>
       <button class="btn ghost small" title="Numbered list" onclick="document.execCommand('insertOrderedList')">1. List</button>
-      <button class="btn ghost small" onclick="docsInsertTable()">+ Table</button>
-      <button class="btn ghost small" onclick="docsInsertCallout()">+ Callout</button>
+      <button class="btn ghost small icon" title="Decrease indent" onclick="document.execCommand('outdent')">⇤</button>
+      <button class="btn ghost small icon" title="Increase indent" onclick="document.execCommand('indent')">⇥</button>
+      <div class="tdiv"></div>
+      <button class="btn ghost small icon" title="Undo" onclick="document.execCommand('undo')">↶</button>
+      <button class="btn ghost small icon" title="Redo" onclick="document.execCommand('redo')">↷</button>
+      <button class="btn ghost small" title="Insert link" onclick="docsInsertLink()">🔗 Link</button>
+      <button class="btn ghost small" title="Clear formatting" onclick="document.execCommand('removeFormat')">Clear</button>
+      <div class="tdiv"></div>
+      <button class="btn brass small" onclick="docsAddMarginNote()" title="Select text first, then pin a note about it">📌 Margin note</button>
+      <div class="tdiv"></div>
+      <button class="btn sage small" onclick="saveDocs()">Save</button>
+      <button class="btn ghost small" onclick="exportDocs()">Export .fils</button>
+      <button class="btn ghost small" onclick="importDocs()">Import .fils</button>
     </div>
-
-    <!-- Document Studio Grid Layout -->
-    <div style="display:grid; grid-template-columns:220px 1fr; gap:16px; align-items:start;">
-      <!-- Outline Sidebar -->
-      <div class="card" style="padding:14px;">
-        <h4 style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-dim); margin:0 0 10px 0;">Outline</h4>
-        <div id="docOutline" style="font-size:0.8rem; color:var(--text-muted); display:flex; flex-direction:column; gap:6px;"></div>
-        <hr style="border:none; border-top:1px solid var(--border-subtle); margin:12px 0;">
-        <div style="font-size:0.75rem; color:var(--text-dim); line-height:1.6;" id="docStats">
-          Words: <b style="color:var(--text-main);" id="docWordCount">0</b><br>
-          Chars: <b style="color:var(--text-main);" id="docCharCount">0</b><br>
-          Read time: <b style="color:var(--text-main);" id="docReadTime">1 min</b>
-        </div>
-      </div>
-
-      <!-- Main Canvas -->
-      <div class="card" style="padding:24px; min-height:500px; background:var(--bg-surface);">
-        <input type="text" id="docTitleInput" value="${(data.title||'Untitled Document').replace(/"/g,'&quot;')}" placeholder="Document Title..." style="width:100%; background:transparent; border:none; border-bottom:1px solid var(--border-subtle); color:var(--text-main); font-size:1.5rem; font-weight:800; padding-bottom:8px; margin-bottom:16px; outline:none;" oninput="saveDocsSilent()">
-        <div id="docsEditor" contenteditable="true" style="min-height:400px; outline:none; font-size:0.95rem; line-height:1.7; color:var(--text-main);" oninput="updateWC(); updateDocOutline(); saveDocsSilent();">${data.html}</div>
-      </div>
-    </div>
+    <div id="docsEditor" contenteditable="true">${data.html}</div>
+    <div class="wordcount" id="docsWC"></div>
   `;
-
   updateWC();
-  updateDocOutline();
+  document.getElementById('docsEditor').addEventListener('input', updateWC);
 }
-
-
+function docsInsertLink(){
+  const url = prompt('Link URL:', 'https://');
+  if(url) document.execCommand('createLink', false, url);
+}
+function docsAddMarginNote(){
+  const sel = window.getSelection().toString().trim();
+  if(!sel){ alert('Select some text in the doc first, then pin a note about it.'); return; }
+  const noteText = prompt('Margin note for: "'+sel.slice(0,60)+(sel.length>60?'…':'')+'"', '');
+  if(!noteText) return;
+  const d = getNotesData();
+  if(d.items.length>=100){ alert('Spot is capped at 100 notes.'); return; }
+  d.items.push({id:Date.now(), x:40+Math.random()*200, y:40+Math.random()*200, text:noteText, anchor:sel.slice(0,80)});
+  saveLocal('notes', d);
+  bumpSpotStreak();
+  renderNotes();
+  alert('Pinned to Spot — open the Spot tab to see it, with a "find" link back to this line in Folio.');
+}
 function updateWC(){
-  const editor = document.getElementById('docsEditor');
-  if(!editor) return;
-  const txt = editor.innerText || '';
+  const txt = document.getElementById('docsEditor').innerText||'';
   const words = txt.trim().split(/\s+/).filter(Boolean).length;
-  const chars = txt.length;
-  const readTime = Math.max(1, Math.ceil(words / 200));
-  const wcEl = document.getElementById('docWordCount');
-  const ccEl = document.getElementById('docCharCount');
-  const rtEl = document.getElementById('docReadTime');
-  if(wcEl) wcEl.textContent = words;
-  if(ccEl) ccEl.textContent = chars;
-  if(rtEl) rtEl.textContent = readTime + ' min';
+  document.getElementById('docsWC').textContent = words + ' words';
 }
-
-function updateDocOutline(){
-  const editor = document.getElementById('docsEditor');
-  const outline = document.getElementById('docOutline');
-  if(!editor || !outline) return;
-  const headings = editor.querySelectorAll('h1, h2, h3');
-  if(!headings.length){
-    outline.innerHTML = '<span style="opacity:0.6;">No headings yet</span>';
-    return;
-  }
-  outline.innerHTML = Array.from(headings).map((h, i) => {
-    const level = h.tagName.toLowerCase();
-    const indent = level === 'h1' ? '0px' : level === 'h2' ? '10px' : '20px';
-    return `<span style="padding-left:${indent}; cursor:pointer;" onclick="scrollHeadingToView(${i})">▸ ${h.textContent || 'Untitled'}</span>`;
-  }).join('');
-}
-
-function scrollHeadingToView(idx){
-  const editor = document.getElementById('docsEditor');
-  if(!editor) return;
-  const h = editor.querySelectorAll('h1, h2, h3')[idx];
-  if(h) h.scrollIntoView({behavior:'smooth', block:'center'});
-}
-
-function docsInsertTable(){
-  const html = `<table style="width:100%; border-collapse:collapse; margin:12px 0;"><tr style="background:var(--bg-elevated);"><th style="border:1px solid var(--border-subtle); padding:6px;">Header 1</th><th style="border:1px solid var(--border-subtle); padding:6px;">Header 2</th></tr><tr><td style="border:1px solid var(--border-subtle); padding:6px;">Data 1</td><td style="border:1px solid var(--border-subtle); padding:6px;">Data 2</td></tr></table><p></p>`;
-  document.execCommand('insertHTML', false, html);
-}
-
-function docsInsertCallout(){
-  const html = `<div style="background:var(--blue-bg); border-left:4px solid var(--blue); padding:10px 14px; border-radius:4px; margin:12px 0; color:var(--text-main);"><b>Note:</b> Enter key point or callout text here.</div><p></p>`;
-  document.execCommand('insertHTML', false, html);
-}
-
-function applyDocTemplate(templateName){
-  const editor = document.getElementById('docsEditor');
-  const titleInput = document.getElementById('docTitleInput');
-  if(!editor || !templateName) return;
-
-  if(templateName === 'Proposal'){
-    if(titleInput) titleInput.value = 'Project Alpha Proposal';
-    editor.innerHTML = `<h2>1. Executive Summary</h2><p>Overview of project objectives, scope, and deliverables.</p><h2>2. Scope of Work</h2><p>Detailed specification of requirements and technical milestones.</p><h2>3. Budget & Timeline</h2><p>Estimated total cost and implementation schedule.</p>`;
-  } else if(templateName === 'Report'){
-    if(titleInput) titleInput.value = 'Technical Audit Report';
-    editor.innerHTML = `<h2>1. Introduction</h2><p>Background context and system architecture.</p><h2>2. Key Findings</h2><p>Audit findings and security analysis.</p><h2>3. Recommendations</h2><p>Actionable remediation steps.</p>`;
-  } else if(templateName === 'Meeting'){
-    if(titleInput) titleInput.value = 'Team Sync Meeting Notes';
-    editor.innerHTML = `<h2>Meeting Agenda</h2><p>Date: ${new Date().toLocaleDateString()}</p><h2>Key Decisions</h2><p>Summary of agreed decisions.</p><h2>Action Items</h2><p>• Task 1<br>• Task 2</p>`;
-  } else if(templateName === 'Contract'){
-    if(titleInput) titleInput.value = 'Confidential Non-Disclosure Agreement';
-    editor.innerHTML = `<h2>CONFIDENTIALITY AGREEMENT</h2><p>This agreement is entered into as of ${new Date().toLocaleDateString()} between Party A and Party B.</p><h2>Terms & Obligations</h2><p>Both parties agree that all disclosed information remains strictly confidential.</p>`;
-  }
-  updateWC();
-  updateDocOutline();
-  saveDocsSilent();
-}
-
-function exportDocPDF(){
-  window.print();
-}
-
-function saveDocsSilent(){
-  const title = document.getElementById('docTitleInput') ? document.getElementById('docTitleInput').value : 'Untitled Document';
-  const html = document.getElementById('docsEditor') ? document.getElementById('docsEditor').innerHTML : '';
-  saveLocal('docs', {title, html, updatedAt: new Date().toISOString()});
-}
-
 function saveDocs(){
-  saveDocsSilent();
-  showSeal();
+  const html = document.getElementById('docsEditor').innerHTML;
+  saveLocal('docs', {html});
 }
-
+function exportDocs(){
+  saveDocs();
+  const data = loadLocal('docs', {});
+  download('document.fils', JSON.stringify({type:'fils',...data}, null, 2));
+}
+function importDocs(){
+  pickFile('.fils', (content)=>{
+    try{ const parsed = JSON.parse(content); saveLocal('docs', {html:parsed.html||''}); renderDocs(); }
+    catch(e){ alert('Could not read that .fils file'); }
+  });
+}
 
 /* ================= SHEETS (.grid) ================= */
-const SHEET_ROWS = 15, SHEET_COLS = 8;
+const SHEET_ROWS=8, SHEET_COLS=6;
 function colLetter(i){ return String.fromCharCode(65+i); }
-
 function renderSheets(){
   const p = document.getElementById('panel-sheets');
   if(!p) return;
-  const data = loadLocal('sheets', {
-    cells: {'A1':'Item', 'B1':'Quantity', 'C1':'Price', 'D1':'Total', 'A2':'Server', 'B2':'2', 'C2':'450', 'D2':'=B2*C2', 'A3':'Router', 'B3':'1', 'C3':'180', 'D3':'=B3*C3', 'A4':'Total Cost', 'D4':'=SUM(D2:D3)'}
-  });
-  const cells = data.cells || data;
-
-  let html = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Grid Data Studio</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.grid — local spreadsheet & data engine</div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn primary small" onclick="saveSheets()">Save</button>
-        <button class="btn ghost small" onclick="exportGridCSV()">Export CSV</button>
-        <button class="btn ghost small" onclick="exportSheets()">Export .grid</button>
-        <button class="btn ghost small" onclick="importSheets()">Import</button>
-        <button class="btn ghost small" onclick="toggleGridHelp()">📖 Guide</button>
-        <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator</button>
-      </div>
+  if(!isLicensed()){ p.innerHTML = '<h2>Grid</h2><div class="sub">.grid — track anything, no cloud required</div>' + lockOverlayHTML('Grid'); return; }
+  const data = loadLocal('sheets', {});
+  let html = `<h2>Grid</h2><div class="sub">.grid — track anything, no cloud required</div>
+    <div class="toolbar">
+      <button class="btn sage small" onclick="saveSheets()">Save</button>
+      <button class="btn ghost small" onclick="exportSheets()">Export .grid</button>
+      <button class="btn ghost small" onclick="importSheets()">Import .grid</button>
+      <button class="btn ghost small" onclick="toggleGridHelp()">📖 Formula guide</button>
+      <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator</button>
     </div>
-
-    <div id="gridHelp" class="grid-help" style="display:none; background:var(--bg-surface); border:1px solid var(--border-subtle); padding:14px; border-radius:8px; margin-bottom:14px;">
-      <b>Formulas</b> — start cell with <code>=</code>. Supported: <code>SUM</code>, <code>AVERAGE</code>, <code>MIN</code>, <code>MAX</code>, <code>COUNT</code>, <code>IF</code>, <code>CONCAT</code>, <code>ROUND</code>, <code>TODAY()</code>.
+    <div id="gridHelp" class="grid-help" style="display:none;">
+      <b>Formulas</b> — start any cell with <code>=</code>. Reference other cells like <code>A1</code>, ranges like <code>A1:A9</code>.
+      <div class="formula-guide-grid">
+        <div><code>=A1+B2*2</code><span>arithmetic: + − × ÷ ^</span></div>
+        <div><code>=SUM(A1:A9)</code><span>add up a range</span></div>
+        <div><code>=AVERAGE(A1:A9)</code><span>mean of a range</span></div>
+        <div><code>=MIN(A1:A9)</code> / <code>=MAX(A1:A9)</code><span>smallest / largest</span></div>
+        <div><code>=COUNT(A1:A9)</code><span>how many numbers</span></div>
+        <div><code>=COUNTA(A1:A9)</code><span>how many non-empty cells</span></div>
+        <div><code>=ROUND(A1,2)</code><span>round to 2 decimals</span></div>
+        <div><code>=ABS(A1)</code> / <code>=SQRT(A1)</code><span>absolute value / square root</span></div>
+        <div><code>=POWER(A1,2)</code> / <code>=MOD(A1,3)</code><span>power / remainder</span></div>
+        <div><code>=IF(A1>10,"big","small")</code><span>conditional value</span></div>
+        <div><code>=AND(A1>0,B1>0)</code> / <code>=OR(...)</code><span>combine conditions</span></div>
+        <div><code>=CONCAT(A1,B1)</code><span>join text together</span></div>
+        <div><code>=TODAY()</code><span>today's date</span></div>
+      </div>
+      <b>Calculator</b> — open it with the 🧮 button, type or click buttons, hit <code>=</code>. Use <b>→ Cell</b> to drop the result straight into whichever cell you clicked last.
     </div>
-
-    <div id="gridCalc" class="grid-calc" style="display:none; background:var(--bg-surface); border:1px solid var(--border-subtle); padding:14px; border-radius:8px; margin-bottom:14px;">
-      <input id="calcDisplay" type="text" placeholder="0" style="width:100%; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-main); padding:6px; border-radius:4px; font-family:var(--font-mono); font-size:1.1rem; margin-bottom:8px;">
-      <div class="calc-buttons" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;">
+    <div id="gridCalc" class="grid-calc" style="display:none;">
+      <input id="calcDisplay" type="text" placeholder="0" onkeydown="if(event.key==='Enter')calcEquals();">
+      <div class="calc-buttons">
         <button class="btn ghost small" onclick="calcClear()">C</button>
         <button class="btn ghost small" onclick="calcBackspace()">⌫</button>
         <button class="btn ghost small" onclick="calcPress('(')">(</button>
@@ -1423,123 +1352,24 @@ function renderSheets(){
         <button class="btn ghost small" onclick="calcPress('-')">−</button>
         <button class="btn ghost small" onclick="calcPress('0')">0</button>
         <button class="btn ghost small" onclick="calcPress('.')">.</button>
-        <button class="btn emerald small" onclick="calcEquals()">=</button>
+        <button class="btn sage small" onclick="calcEquals()">=</button>
         <button class="btn ghost small" onclick="calcPress('+')">+</button>
       </div>
       <button class="btn ghost small" style="margin-top:8px;" onclick="calcSendToCell()">→ Cell</button>
     </div>
-
-    <!-- Grid Table -->
-    <div style="overflow-x:auto; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:8px; padding:12px;">
-      <table class="grid" style="width:100%; border-collapse:collapse;">
-        <tr><th style="width:40px; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-dim); font-size:0.75rem;"></th>`;
-  for(let c=0; c<SHEET_COLS; c++) html += `<th style="background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-muted); padding:6px; font-size:0.8rem; font-family:var(--font-mono);">${colLetter(c)}</th>`;
-  html += '</tr>';
-
-  for(let r=0; r<SHEET_ROWS; r++){
-    html += `<tr><th style="background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-dim); font-size:0.75rem; text-align:center;">${r+1}</th>`;
-    for(let c=0; c<SHEET_COLS; c++){
+    <table class="grid"><tr><th></th>`;
+  for(let c=0;c<SHEET_COLS;c++) html+=`<th>${colLetter(c)}</th>`;
+  html+='</tr>';
+  for(let r=0;r<SHEET_ROWS;r++){
+    html+=`<tr><th>${r+1}</th>`;
+    for(let c=0;c<SHEET_COLS;c++){
       const cellId = colLetter(c)+(r+1);
-      const val = cells[cellId] !== undefined ? cells[cellId] : '';
-      html += `<td style="border:1px solid var(--border-subtle); padding:0;"><input data-cell="${cellId}" value="${(val+'').replace(/"/g,'&quot;')}" onfocus="lastFocusedCell='${cellId}'" onblur="recalcSheet()" style="width:100%; background:transparent; border:none; color:var(--text-main); padding:6px 8px; font-size:0.85rem; outline:none; font-family:var(--font-mono);"></td>`;
+      const val = data[cellId]!==undefined ? data[cellId] : '';
+      html+=`<td><input data-cell="${cellId}" value="${(val+'').replace(/"/g,'&quot;')}" onfocus="lastFocusedCell='${cellId}'" onblur="recalcSheet()"></td>`;
     }
-    html += '</tr>';
+    html+='</tr>';
   }
-  html += `</table></div>`;
-  p.innerHTML = html;
-  recalcSheet(true);
-}
-
-function exportGridCSV(){
-  const data = loadLocal('sheets', {cells:{}}).cells || {};
-  let csv = '';
-  for(let r=0; r<SHEET_ROWS; r++){
-    const rowVals = [];
-    for(let c=0; c<SHEET_COLS; c++){
-      const cellId = colLetter(c)+(r+1);
-      rowVals.push('"' + (data[cellId] || '').replace(/"/g,'""') + '"');
-    }
-    csv += rowVals.join(',') + '\n';
-  }
-  download('grid_export.csv', csv);
-}
-
-
-
-
-function colLetter(i){ return String.fromCharCode(65+i); }
-function renderSheets(){
-  const p = document.getElementById('panel-sheets');
-  if(!p) return;
-  const data = loadLocal('sheets', {
-    cells: {'A1':'Item', 'B1':'Quantity', 'C1':'Price', 'D1':'Total', 'A2':'Server', 'B2':'2', 'C2':'450', 'D2':'=B2*C2', 'A3':'Router', 'B3':'1', 'C3':'180', 'D3':'=B3*C3', 'A4':'Total Cost', 'D4':'=SUM(D2:D3)'}
-  });
-  const cells = data.cells || data;
-
-  let html = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Grid Data Studio</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.grid — local spreadsheet & data engine</div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn primary small" onclick="saveSheets()">Save</button>
-        <button class="btn ghost small" onclick="exportGridCSV()">Export CSV</button>
-        <button class="btn ghost small" onclick="exportSheets()">Export .grid</button>
-        <button class="btn ghost small" onclick="importSheets()">Import</button>
-        <button class="btn ghost small" onclick="toggleGridHelp()">📖 Guide</button>
-        <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator</button>
-      </div>
-    </div>
-
-    <div id="gridHelp" class="grid-help" style="display:none; background:var(--bg-surface); border:1px solid var(--border-subtle); padding:14px; border-radius:8px; margin-bottom:14px;">
-      <b>Formulas</b> — start cell with <code>=</code>. Supported: <code>SUM</code>, <code>AVERAGE</code>, <code>MIN</code>, <code>MAX</code>, <code>COUNT</code>, <code>IF</code>, <code>CONCAT</code>, <code>ROUND</code>, <code>TODAY()</code>.
-    </div>
-
-    <div id="gridCalc" class="grid-calc" style="display:none; background:var(--bg-surface); border:1px solid var(--border-subtle); padding:14px; border-radius:8px; margin-bottom:14px;">
-      <input id="calcDisplay" type="text" placeholder="0" style="width:100%; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-main); padding:6px; border-radius:4px; font-family:var(--font-mono); font-size:1.1rem; margin-bottom:8px;">
-      <div class="calc-buttons" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;">
-        <button class="btn ghost small" onclick="calcClear()">C</button>
-        <button class="btn ghost small" onclick="calcBackspace()">⌫</button>
-        <button class="btn ghost small" onclick="calcPress('(')">(</button>
-        <button class="btn ghost small" onclick="calcPress(')')">)</button>
-        <button class="btn ghost small" onclick="calcPress('7')">7</button>
-        <button class="btn ghost small" onclick="calcPress('8')">8</button>
-        <button class="btn ghost small" onclick="calcPress('9')">9</button>
-        <button class="btn ghost small" onclick="calcPress('/')">÷</button>
-        <button class="btn ghost small" onclick="calcPress('4')">4</button>
-        <button class="btn ghost small" onclick="calcPress('5')">5</button>
-        <button class="btn ghost small" onclick="calcPress('6')">6</button>
-        <button class="btn ghost small" onclick="calcPress('*')">×</button>
-        <button class="btn ghost small" onclick="calcPress('1')">1</button>
-        <button class="btn ghost small" onclick="calcPress('2')">2</button>
-        <button class="btn ghost small" onclick="calcPress('3')">3</button>
-        <button class="btn ghost small" onclick="calcPress('-')">−</button>
-        <button class="btn ghost small" onclick="calcPress('0')">0</button>
-        <button class="btn ghost small" onclick="calcPress('.')">.</button>
-        <button class="btn emerald small" onclick="calcEquals()">=</button>
-        <button class="btn ghost small" onclick="calcPress('+')">+</button>
-      </div>
-      <button class="btn ghost small" style="margin-top:8px;" onclick="calcSendToCell()">→ Cell</button>
-    </div>
-
-    <!-- Grid Table -->
-    <div style="overflow-x:auto; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:8px; padding:12px;">
-      <table class="grid" style="width:100%; border-collapse:collapse;">
-        <tr><th style="width:40px; background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-dim); font-size:0.75rem;"></th>`;
-  for(let c=0; c<SHEET_COLS; c++) html += `<th style="background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-muted); padding:6px; font-size:0.8rem; font-family:var(--font-mono);">${colLetter(c)}</th>`;
-  html += '</tr>';
-
-  for(let r=0; r<SHEET_ROWS; r++){
-    html += `<tr><th style="background:var(--bg-elevated); border:1px solid var(--border-subtle); color:var(--text-dim); font-size:0.75rem; text-align:center;">${r+1}</th>`;
-    for(let c=0; c<SHEET_COLS; c++){
-      const cellId = colLetter(c)+(r+1);
-      const val = cells[cellId] !== undefined ? cells[cellId] : '';
-      html += `<td style="border:1px solid var(--border-subtle); padding:0;"><input data-cell="${cellId}" value="${(val+'').replace(/"/g,'&quot;')}" onfocus="lastFocusedCell='${cellId}'" onblur="recalcSheet()" style="width:100%; background:transparent; border:none; color:var(--text-main); padding:6px 8px; font-size:0.85rem; outline:none; font-family:var(--font-mono);"></td>`;
-    }
-    html += '</tr>';
-  }
-  html += `</table></div>`;
+  html+='</table><div class="hint">Try =A1+B2 or =SUM(A1:A9) — or open the Formula guide above for the full list. Formulas recalc on blur.</div>';
   p.innerHTML = html;
   recalcSheet(true);
 }
@@ -1823,172 +1653,63 @@ function importSheets(){
   });
 }
 
-
-
 /* ================= FORMS (.fill) ================= */
 function renderForms(){
   const p = document.getElementById('panel-forms');
   if(!p) return;
-  const data = getFormsData();
-
+  if(!isLicensed()){ p.innerHTML = '<h2>Fill</h2><div class="sub">.fill — send a form without anyone harvesting the answers</div>' + lockOverlayHTML('Fill'); return; }
+  const data = loadLocal('forms', {fields:[{label:'Your name', type:'text'}], submissions:[]});
   p.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Fill Private Forms Studio</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.fill — zero-server private form designer & intake engine</div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <select class="workspace-select" id="formTemplateSelect" onchange="applyFormTemplate(this.value)">
-          <option value="">Form Templates…</option>
-          <option value="Inspection">Site Inspection</option>
-          <option value="Purchase">Purchase Request</option>
-          <option value="Intake">Client Intake</option>
-          <option value="Incident">Incident Report</option>
-        </select>
-        <button class="btn primary small" onclick="saveForms()">Save Form</button>
-        <button class="btn ghost small" onclick="exportFormsCSV()">Export Responses (CSV)</button>
-        <button class="btn ghost small" onclick="exportStandaloneForm()">⬇ Standalone HTML</button>
-        <button class="btn ghost small" onclick="exportForms()">Export .fill</button>
-        <button class="btn ghost small" onclick="importForms()">Import</button>
-      </div>
+    <h2>Fill</h2>
+    <div class="sub">.fill — send a form without anyone harvesting the answers</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="addField()">+ Add field</button>
+      <button class="btn sage small" onclick="saveForms()">Save</button>
+      <button class="btn ghost small" onclick="exportForms()">Export .fill</button>
+      <button class="btn ghost small" onclick="importForms()">Import .fill</button>
+      <button class="btn ghost small" onclick="exportStandaloneForm()">⬇ Standalone form (.html)</button>
     </div>
-
-    <!-- Builder Layout -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-      <!-- Left Column: Form Builder & Field Library -->
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h3 style="margin:0; font-size:1rem; color:var(--text-main);">Form Builder</h3>
-          <div style="display:flex; gap:6px;">
-            <button class="btn ghost small" onclick="addField('text')">+ Text</button>
-            <button class="btn ghost small" onclick="addField('number')">+ Number</button>
-            <button class="btn ghost small" onclick="addField('select')">+ Select</button>
-            <button class="btn ghost small" onclick="addField('signature')">+ Signature</button>
-          </div>
-        </div>
-        <div id="fieldsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+    <div class="forms-layout">
+      <div class="forms-col">
+        <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;">Builder</h3>
+        <div id="fieldsList"></div>
       </div>
-
-      <!-- Right Column: Live Form Preview & Local Submissions -->
-      <div>
-        <div class="card" style="margin-bottom:16px;">
-          <h3 style="margin:0 0 12px 0; font-size:1rem; color:var(--text-main);">Live Form Preview</h3>
-          <div id="formPreview" style="background:var(--bg-elevated); padding:16px; border-radius:6px; border:1px solid var(--border-subtle); margin-bottom:12px;"></div>
-          <button class="btn emerald small" onclick="submitFormPreview()">Submit Response</button>
-        </div>
-
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="margin:0; font-size:1rem; color:var(--text-main);">Local Response Database</h3>
-            <span class="security-pill" id="submissionCount"><span class="dot"></span>0 responses</span>
-          </div>
-          <div id="formSubmissionsList" style="max-height:220px; overflow-y:auto; font-size:0.8rem; color:var(--text-muted); display:flex; flex-direction:column; gap:6px;"></div>
-        </div>
+      <div class="forms-col">
+        <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.9em;color:#8a7f66;">Live preview</h3>
+        <div class="preview-box" id="formPreview"></div>
+        <button class="btn ghost small" style="margin-top:10px;" onclick="submitFormPreview()">Submit response</button>
+        <div class="hint" id="submissionCount"></div>
       </div>
     </div>
   `;
-
   renderFieldsList(data.fields);
   renderFormPreview(data.fields);
-  renderFormSubmissions(data.submissions || []);
+  document.getElementById('submissionCount').textContent = (data.submissions||[]).length + ' response(s) saved locally';
 }
-
-function getFormsData(){
-  return loadLocal('forms', {
-    fields: [
-      {label: 'Inspector Name', type: 'text'},
-      {label: 'Site Location', type: 'text'},
-      {label: 'Status Rating (1-5)', type: 'number'},
-      {label: 'Sign Off', type: 'signature'}
-    ],
-    submissions: []
-  });
-}
-
-function addField(type){
-  type = type || 'text';
-  const d = getFormsData();
-  d.fields.push({label: 'New ' + type + ' field', type});
-  saveLocal('forms', d);
-  renderFieldsList(d.fields);
-  renderFormPreview(d.fields);
-}
-
 function renderFieldsList(fields){
   const el = document.getElementById('fieldsList');
-  if(!el) return;
-  el.innerHTML = fields.map((f, i) => `
-    <div style="display:flex; align-items:center; gap:8px; background:var(--bg-elevated); padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle);">
-      <input type="text" value="${(f.label||'').replace(/"/g,'&quot;')}" onchange="updateField(${i}, 'label', this.value)" style="flex:1; background:transparent; border:none; color:var(--text-main); font-size:0.85rem; outline:none;">
-      <select onchange="updateField(${i}, 'type', this.value)" class="workspace-select" style="padding:2px 20px 2px 6px; font-size:0.75rem;">
+  el.innerHTML = fields.map((f,i)=>`
+    <div class="field-row">
+      <input type="text" value="${f.label}" onchange="updateField(${i},'label',this.value)">
+      <select onchange="updateField(${i},'type',this.value)">
         <option value="text" ${f.type==='text'?'selected':''}>Text</option>
-        <option value="number" ${f.type==='number'?'selected':''}>Number</option>
-        <option value="select" ${f.type==='select'?'selected':''}>Selection</option>
-        <option value="signature" ${f.type==='signature'?'selected':''}>Signature</option>
+        <option value="email" ${f.type==='email'?'selected':''}>Email</option>
+        <option value="date" ${f.type==='date'?'selected':''}>Date</option>
       </select>
-      <button class="btn danger small" onclick="removeField(${i})">✕</button>
+      <button class="btn ghost small" onclick="removeField(${i})">✕</button>
     </div>
-  `).join('') || '<div style="color:var(--text-muted); font-size:0.8rem;">No fields added.</div>';
+  `).join('');
 }
-
 function renderFormPreview(fields){
   const el = document.getElementById('formPreview');
-  if(!el) return;
-  el.innerHTML = fields.map(f => {
-    if(f.type === 'signature'){
-      return `<div style="margin-bottom:12px;">
-        <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-main); margin-bottom:4px;">${f.label}</label>
-        <div style="background:var(--bg-surface); border:1px dashed var(--border-strong); border-radius:6px; padding:20px; text-align:center; color:var(--text-dim); font-size:0.8rem;">✍️ Signature Area (Draw / Sign)</div>
-      </div>`;
-    }
-    return `<div style="margin-bottom:12px;">
-      <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-main); margin-bottom:4px;">${f.label}</label>
-      <input type="${f.type==='number'?'number':'text'}" data-preview-field="${f.label}" style="width:100%; background:var(--bg-surface); border:1px solid var(--border-subtle); color:var(--text-main); padding:6px 10px; border-radius:6px; font-size:0.85rem; outline:none;">
-    </div>`;
-  }).join('') || '<div style="color:var(--text-muted); font-size:0.8rem;">Form preview is empty.</div>';
+  el.innerHTML = fields.map(f=>`<label>${f.label}</label><input type="${f.type}" data-preview-field="${f.label}">`).join('');
 }
-
-function renderFormSubmissions(submissions){
-  const countEl = document.getElementById('submissionCount');
-  const listEl = document.getElementById('formSubmissionsList');
-  if(countEl) countEl.innerHTML = `<span class="dot"></span>${submissions.length} response(s)`;
-  if(listEl){
-    listEl.innerHTML = submissions.map((sub, i) => `
-      <div style="background:var(--bg-elevated); padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
-        <span><b>#${i+1}</b> ${Object.entries(sub).map(([k,v]) => k+': '+v).join(' · ').slice(0, 60)}...</span>
-        <span style="font-size:0.7rem; color:var(--emerald);">✓ Stored locally</span>
-      </div>
-    `).join('') || '<div style="color:var(--text-muted); font-size:0.8rem;">No local responses submitted yet.</div>';
-  }
-}
-
-function applyFormTemplate(tmpl){
+function getFormsData(){ return loadLocal('forms', {fields:[],submissions:[]}); }
+function addField(){
   const d = getFormsData();
-  if(tmpl === 'Inspection'){
-    d.fields = [{label:'Site Name', type:'text'}, {label:'Inspector Name', type:'text'}, {label:'Condition Score', type:'number'}, {label:'Inspector Signature', type:'signature'}];
-  } else if(tmpl === 'Purchase'){
-    d.fields = [{label:'Item Description', type:'text'}, {label:'Quantity', type:'number'}, {label:'Estimated Cost', type:'number'}, {label:'Department', type:'text'}];
-  } else if(tmpl === 'Intake'){
-    d.fields = [{label:'Full Name', type:'text'}, {label:'Contact Email', type:'text'}, {label:'Project Requirements', type:'text'}];
-  }
-  saveLocal('forms', d);
-  renderFieldsList(d.fields);
-  renderFormPreview(d.fields);
+  d.fields.push({label:'New field', type:'text'});
+  saveLocal('forms', d); renderForms();
 }
-
-function exportFormsCSV(){
-  const d = getFormsData();
-  const subs = d.submissions || [];
-  if(!subs.length){ alert('No submissions to export yet.'); return; }
-  const headers = Object.keys(subs[0]);
-  const rows = [headers.join(',')];
-  subs.forEach(s => {
-    const rowVals = headers.map(h => ' + (s[h] !== undefined ? String(s[h]).replace(/"/g, ) : ) + ');
-    rows.push(rowVals.join(','));
-  });
-  download('form_responses.csv', rows.join(String.fromCharCode(10)));
-}
-
 function updateField(i, key, val){
   const d = getFormsData();
   d.fields[i][key]=val;
@@ -2946,7 +2667,6 @@ let _vaultCategory = 'logins';
 let _activeVaultId = null;
 let _selectedVaultId = null;   // vault chosen from the switcher but not yet unlocked
 
-function vaultExists(){ return getVaultsIndex().length > 0 || loadLocal('vault_default', null) !== null; }
 function getVaultsIndex(){
   let idx = loadLocal('vaults_index', null);
   if(idx) return idx;
@@ -3540,132 +3260,6 @@ function importOtpauthUri(){
     alert('Could not parse that URI.');
   }
 }
-
-
-/* ================= UNIVERSAL OBJECT ENGINE & WORK GRAPH (Phase 3, 15, 31, 72) ================= */
-function getAllWorkspaceObjects(){
-  const objects = [];
-
-  // Documents (Folio)
-  const doc = loadLocal('docs', null);
-  if(doc && doc.title){
-    objects.append ? objects.append() : objects.push({
-      id: 'doc_main', type: 'Document', title: doc.title, workspace: _currentWorkspace,
-      icon: '📄', module: 'docs', tags: ['folio','document'], relations: ['proj_alpha']
-    });
-  }
-
-  // Notes (Spot)
-  const notes = getLibraryNotes();
-  notes.forEach(n => {
-    objects.push({
-      id: 'note_' + n.id, type: 'Note', title: n.title || 'Untitled Note', workspace: _currentWorkspace,
-      icon: '📝', module: 'notes', tags: (n.tags||'').split(',').filter(Boolean), relations: ['doc_main']
-    });
-  });
-
-  // Tasks (Docket)
-  const tasksData = loadLocal('tasks', {items:[]});
-  (tasksData.items||[]).forEach(t => {
-    objects.push({
-      id: 'task_' + t.id, type: 'Task', title: t.label || 'Task', workspace: _currentWorkspace,
-      icon: '☑️', module: 'tasks', tags: ['task'], relations: ['doc_main']
-    });
-  });
-
-  // Calendar Events (Almanac)
-  const agendaData = loadLocal('agenda', {events:[]});
-  (agendaData.events||[]).forEach(e => {
-    objects.push({
-      id: 'event_' + e.id, type: 'Event', title: e.title || 'Event', workspace: _currentWorkspace,
-      icon: '📅', module: 'agenda', tags: ['calendar'], relations: []
-    });
-  });
-
-  // Passwords (Vault)
-  if(_vaultItems){
-    _vaultItems.forEach(i => {
-      objects.push({
-        id: 'vault_' + i.id, type: 'Password', title: (i.fields.website || i.fields.service || i.fields.cardName || 'Secret'), workspace: _currentWorkspace,
-        icon: '🔒', module: 'passwords', tags: (i.tags||'').split(',').filter(Boolean), relations: []
-      });
-    });
-  }
-
-  return objects;
-}
-
-function renderCanvas(){
-  const p = document.getElementById('panel-canvas');
-  if(!p) return;
-  const objects = getAllWorkspaceObjects();
-
-  p.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Work Graph & Canvas Studio</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.graph — visual relationship map across all workspace objects</div>
-      </div>
-      <button class="btn ghost small" onclick="renderCanvas()">↻ Refresh Graph</button>
-    </div>
-
-    <!-- Canvas Graph Visualization Box -->
-    <div class="card" style="padding:24px; min-height:420px; background:var(--bg-surface); position:relative; overflow:hidden;">
-      <h4 style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-dim); margin:0 0 16px 0;">Interactive Object Graph</h4>
-      <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:center; padding:20px;">
-        ${objects.map(obj => `
-          <div class="card" onclick="activateTab('${obj.module}')" style="cursor:pointer; width:180px; padding:12px; background:var(--bg-elevated); border:1px solid var(--border-subtle); transition:all 0.15s ease;" onmouseover="this.style.borderColor='var(--border-focus)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
-            <div style="font-size:1.2rem; margin-bottom:4px;">${obj.icon}</div>
-            <div style="font-weight:700; font-size:0.85rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${obj.title}</div>
-            <div style="font-size:0.7rem; color:var(--text-dim); margin-top:2px; font-family:var(--font-mono);">${obj.type}</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderProjects(){
-  const p = document.getElementById('panel-projects');
-  if(!p) return;
-  p.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Projects Hub</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.proj — cross-module project workspace</div>
-      </div>
-    </div>
-    <div class="grid-3">
-      <div class="card">
-        <h3 style="margin:0 0 8px 0; font-size:1.05rem; color:var(--text-main);">📁 Project Alpha</h3>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Active private project containing documents, data sheets, and tasks.</p>
-        <span class="security-pill"><span class="dot"></span>4 Documents · 8 Tasks</span>
-      </div>
-      <div class="card">
-        <h3 style="margin:0 0 8px 0; font-size:1.05rem; color:var(--text-main);">🔒 Security Audit 2026</h3>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Local encryption verification & credential health audit.</p>
-        <span class="security-pill"><span class="dot"></span>2 Vaults · 12 Logins</span>
-      </div>
-    </div>
-  `;
-}
-
-function renderContacts(){
-  const p = document.getElementById('panel-contacts');
-  if(!p) return;
-  p.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div>
-        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Contacts Directory</h2>
-        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.ctac — local private contact directory</div>
-      </div>
-    </div>
-    <div class="card">
-      <p style="color:var(--text-muted); font-size:0.85rem;">Store encrypted contact information locally with zero external sync.</p>
-    </div>
-  `;
-}
-
 
 /* ================= PRIVACY CENTER (Phase 8) ================= */
 function renderPrivacyCenter(){
