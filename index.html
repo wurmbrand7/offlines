@@ -1035,7 +1035,8 @@ const ALL_MODULES = [
 ];
 
 
-const SUITE_ONLY = null;
+const urlParams = new URLSearchParams(window.location.search);
+const SUITE_ONLY = urlParams.get('suite_only') || window.SUITE_ONLY || null;
 const modules = SUITE_ONLY ? ALL_MODULES.filter(m=>m.id===SUITE_ONLY) : ALL_MODULES;
 
 const MODULE_GROUPS = {
