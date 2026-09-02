@@ -21,7 +21,7 @@ on your existing PHP/MySQL cPanel stack — no new vendor, no recurring service 
 
 ## Deployment steps
 
-1. Create a MySQL database (can reuse the same one as `php-license/`, just needs its own table).
+1. Create a MySQL database (can reuse the same one as `suite-license/`, just needs its own table).
 2. Run `schema.sql` against it.
 3. Edit `config.php` with real DB credentials.
 4. Upload `push.php` and `pull.php` somewhere reachable — e.g. `public_html/suite-sync/`. Unlike the license folder, there's no private key here to hide, but you may still want to keep `config.php` blocked via `.htaccess`:
@@ -30,7 +30,7 @@ on your existing PHP/MySQL cPanel stack — no new vendor, no recurring service 
      Require all denied
    </Files>
    ```
-5. In `suite.html`, set:
+5. In `index.html`, set:
    ```js
    const SYNC_PUSH_URL = 'https://codersagent.com/suite-sync/push.php';
    const SYNC_PULL_URL = 'https://codersagent.com/suite-sync/pull.php';

@@ -2,7 +2,7 @@
   "name": "Suite — your files, your device",
   "short_name": "Suite",
   "description": "Docs, Sheets, Forms, Notes, Tasks, Agenda, Slides, and Lockbox — all local, no account.",
-  "start_url": "./suite.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

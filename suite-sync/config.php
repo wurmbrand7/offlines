@@ -1,7 +1,7 @@
 <?php
 /**
  * Fill in your actual cPanel MySQL credentials.
- * Can reuse the same database as php-license/ if you like — this just
+ * Can reuse the same database as suite-license/ if you like — this just
  * needs its own table (suite_sync_blobs), created via schema.sql.
  */
 return [

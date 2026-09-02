@@ -695,7 +695,7 @@ async function tryActivate(moduleLabel){
   const key = input ? input.value.trim() : '';
   if(!key){ alert('Enter your license key first.'); return; }
   if(!LICENSE_VERIFY_URL){
-    alert('The license server URL hasn\'t been configured yet in suite.html (LICENSE_VERIFY_URL) — this is a setup step, not a key problem.');
+    alert('The license server URL hasn\'t been configured yet in index.html (LICENSE_VERIFY_URL) — this is a setup step, not a key problem.');
     return;
   }
   const btn = document.querySelector(`[onclick="tryActivate('${moduleLabel}')"]`);
@@ -3785,7 +3785,7 @@ function promptSyncSetup(){
 
 async function syncAll(){
   if(!SYNC_PUSH_URL || !SYNC_PULL_URL){
-    alert('The sync server URLs haven\'t been configured yet in suite.html (SYNC_PUSH_URL / SYNC_PULL_URL) — that\'s a setup step, not a problem with your data.');
+    alert('The sync server URLs haven\'t been configured yet in index.html (SYNC_PUSH_URL / SYNC_PULL_URL) — that\'s a setup step, not a problem with your data.');
     return;
   }
   let pass = getSyncPassphrase();

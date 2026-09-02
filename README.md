@@ -5,9 +5,9 @@ This folder makes Suite installable, not just something you open in a browser ta
 ## What's done and working right now
 
 ### 1. Installable web app (PWA) — works today, no build step
-Files: `suite.html`, `manifest.json`, `sw.js`, `icons/`
+Files: `index.html`, `manifest.json`, `sw.js`, `icons/`
 
-Open `suite.html` on a real web server (or host it — see below) and:
+Open `index.html` on a real web server (or host it — see below) and:
 - **Android (Chrome):** you'll get an "Add to Home Screen" / "Install" prompt. Once installed it opens in its own window, own icon, own app-switcher entry — no browser chrome. Fully offline after first load.
 - **Desktop Chrome/Edge:** same thing — an install icon appears in the address bar.
 - **iOS (Safari):** Apple doesn't show an automatic install prompt. You open the site in Safari, tap Share → "Add to Home Screen." It then behaves like an app icon and opens full-screen without Safari's UI. This part is real and works today.
@@ -58,15 +58,15 @@ Same caveat as the desktop wrapper above: I can't run `npm install`/`npm run dis
 - **$9 one-time unlock:** Sheets, Forms, Tasks, Slides, Lockbox, and Capsule encryption
 
 ### How the license works (upgraded — server-verified, not just client-side)
-`suite.html` now calls a PHP endpoint (`php-license/verify.php`) that checks the key against a MySQL table on your existing cPanel host. On success, the server signs a token with a private key it alone holds; the app verifies that signature locally using Web Crypto (RSASSA-PKCS1-v1_5/SHA-256) against the matching public key. This closes the original bypass — editing localStorage to fake "licensed: true" no longer works, since the app checks a real cryptographic signature, not a flag.
+`index.html` now calls a PHP endpoint (`suite-license/verify.php`) that checks the key against a MySQL table on your existing cPanel host. On success, the server signs a token with a private key it alone holds; the app verifies that signature locally using Web Crypto (RSASSA-PKCS1-v1_5/SHA-256) against the matching public key. This closes the original bypass — editing localStorage to fake "licensed: true" no longer works, since the app checks a real cryptographic signature, not a flag.
 
 Activation needs internet **once**, at the moment someone enters a key. After that, the signed token is verified fully offline on every load — no ongoing network dependency.
 
-**Setup required before this works:** see `php-license/README.md` for the full deployment steps (create the MySQL table, upload the PHP files, set `LICENSE_VERIFY_URL` in `suite.html`). Until that's done, the unlock button will tell the user the license server isn't configured yet, rather than silently failing.
+**Setup required before this works:** see `suite-license/README.md` for the full deployment steps (create the MySQL table, upload the PHP files, set `LICENSE_VERIFY_URL` in `index.html`). Until that's done, the unlock button will tell the user the license server isn't configured yet, rather than silently failing.
 
 **Still honestly imperfect:** a valid key can be shared between people — nothing stops that. You can revoke a specific leaked key in the database (`revoked = 1`), which blocks new activations with it, though devices that already activated keep working (their token was already verified). Full protection against sharing would need device-binding, which adds real friction for a $9 product.
 
-**Update: basic device-binding is now built** — each key allows up to 3 distinct devices by default (configurable per key). A device is identified by a locally-computed, non-invasive fingerprint hash, not personal information. The 4th device to try activating a key gets a clear "limit reached" message. Full details and honest limitations in `php-license/README.md`.
+**Update: basic device-binding is now built** — each key allows up to 3 distinct devices by default (configurable per key). A device is identified by a locally-computed, non-invasive fingerprint hash, not personal information. The 4th device to try activating a key gets a clear "limit reached" message. Full details and honest limitations in `suite-license/README.md`.
 
 ### Issuing keys to customers
 Run `php issue-license.php buyer@email.com "order_ref"` on your server after a sale comes through (Stripe, Gumroad, manual — whatever you use to take payment). It inserts a new key into the database and prints it for you to email the customer.

@@ -3,7 +3,7 @@
 // localStorage on this device, whether or not this service worker is active.
 const CACHE_NAME = 'suite-cache-v1';
 const ASSETS = [
-  './suite.html',
+  './index.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

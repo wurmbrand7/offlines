@@ -7,7 +7,7 @@
  *    or
  *    200 { "ok": false, "error": "..." }
  *
- * The client (suite.html) verifies the signature itself using the matching public
+ * The client (index.html) verifies the signature itself using the matching public
  * key (embedded client-side, safe to expose — it's a public key). This means after
  * the first successful check, the app never needs to call this endpoint again for
  * that device: it just re-verifies the stored signed token locally, fully offline.
@@ -15,7 +15,7 @@
  * Device binding: each key allows up to `max_devices` (default 3) distinct devices,
  * identified by a fingerprint computed client-side from a few weak, non-invasive
  * signals. This isn't foolproof — nothing client-side ever fully is — but it stops
- * casual key-sharing past the allowed count. See php-license/README.md.
+ * casual key-sharing past the allowed count. See suite-license/README.md.
  */
 
 header('Content-Type: application/json');

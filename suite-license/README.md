@@ -14,7 +14,7 @@ calling home again for that device.
 | `verify.php` | The public endpoint the app calls to activate a key |
 | `issue-license.php` | CLI script you run after a sale, to create a new key |
 | `private.pem` | RSA private key — **signs tokens. Never expose this publicly.** |
-| `jwk.json` | The matching public key, already embedded in `suite.html` — safe to share, verifies but can't sign |
+| `jwk.json` | The matching public key, already embedded in `index.html` — safe to share, verifies but can't sign |
 
 ## Deployment steps on your cPanel host
 
@@ -35,7 +35,7 @@ calling home again for that device.
    (cPanel's Apache respects `.htaccess` by default — this blocks direct access to the sensitive files while still letting `verify.php` run normally.)
 
 5. **Note the final URL** of `verify.php`, e.g. `https://codersagent.com/suite-license/verify.php`.
-6. **Open `suite.html`** and set:
+6. **Open `index.html`** and set:
    ```js
    const LICENSE_VERIFY_URL = 'https://codersagent.com/suite-license/verify.php';
    ```
