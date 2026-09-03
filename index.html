@@ -1330,7 +1330,7 @@ function lockVaultFast(){
 
 function quickNewSecureItem(){
   activateTab('passwords');
-  if(typeof openNewVaultItemModal === 'function') openNewVaultItemModal('login');
+  if(typeof openVaultItemForm === 'function') openVaultItemForm(null);
 }
 
 
