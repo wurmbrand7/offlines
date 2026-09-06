@@ -740,6 +740,17 @@ body {
 <script>
 /* ---------- Storage helpers ---------- */
 const KEY_PREFIX = "suite_v1_";
+
+function escapeHTML(str){
+  if(str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function loadLocal(key, fallback){
   try{
     const raw = localStorage.getItem(KEY_PREFIX+key);
@@ -1120,7 +1131,7 @@ function renderToday(){
           <div style="display:flex; flex-direction:column; gap:8px;">
             ${(agendaData.events||[]).map(ev => `
               <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg-elevated); border-left:3px solid ${ev.color||'var(--emerald)'}; border-radius:4px;">
-                <span style="font-weight:600; font-size:0.85rem; color:var(--text-main);">${ev.title}</span>
+                <span style="font-weight:600; font-size:0.85rem; color:var(--text-main);">${escapeHTML(ev.title)}</span>
                 <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">${ev.time||'All day'}</span>
               </div>
             `).join('')}
@@ -2678,7 +2689,7 @@ function renderAgendaList(){
       <div class="date">${date}${agendaSelectedDate?' <span class="btn ghost small" style="cursor:pointer;" onclick="agendaSelectDay(\''+date+'\')">show whole month</span>':''}</div>
       ${grouped[date].sort((a,b)=>a.time.localeCompare(b.time)).map(ev=>`
         <div class="agenda-event" style="border-left:3px solid ${ev.color||'#6f8c6a'};padding-left:8px;">
-          <span>${ev.time} — ${ev.title}${ev.repeat?' <span class="repeat-badge">↻ '+ev.repeat+'</span>':''}</span>
+          <span>${ev.time} — ${escapeHTML(ev.title)}${ev.repeat?' <span class="repeat-badge">↻ '+ev.repeat+'</span>':''}</span>
           <span style="cursor:pointer;color:#a8563f;" onclick="removeAgendaEvent(${ev.id})">✕</span>
         </div>
       `).join('')}
@@ -2862,9 +2873,9 @@ function renderTimelocks(){
     const unlockDate = new Date(t.unlockDate+'T00:00:00');
     const locked = now < unlockDate;
     return `<div class="timelock-row">
-      <b>${t.name}</b> ${locked?`<span class="locked-badge">🔒 locked until ${t.unlockDate}</span>`:`<span class="unlocked-badge">🔓 unlocked</span>`}
+      <b>${escapeHTML(t.name)}</b> ${locked?`<span class="locked-badge">🔒 locked until ${t.unlockDate}</span>`:`<span class="unlocked-badge">🔓 unlocked</span>`}
       <span style="cursor:pointer;color:#a8563f;float:right;" onclick="removeTimelock(${t.id})">✕</span>
-      ${locked?'':`<div class="timelock-content">${t.content}</div>`}
+      ${locked?'':`<div class="timelock-content">${escapeHTML(t.content)}</div>`}
     </div>`;
   }).join('');
 }
@@ -2891,7 +2902,7 @@ function renderLockboxList(){
   if(d.files.length===0){ el.innerHTML='<div class="hint">Nothing here yet.</div>'; return; }
   el.innerHTML = d.files.map(f=>`
     <div class="lockbox-row">
-      <span>${f.name} ${f.tag?`<span class="tag-pill">${f.tag}</span>`:''}
+      <span>${escapeHTML(f.name)} ${f.tag?`<span class="tag-pill">${escapeHTML(f.tag)}</span>`:''}
         ${f.usedIn?`<div class="used-in">used in: ${f.usedIn}</div>`:''}
       </span>
       <span style="cursor:pointer;color:#a8563f;" onclick="removeLockboxFile(${f.id})">✕</span>
@@ -3414,7 +3425,7 @@ function secureFileRowHTML(f){
   const hasVersions = (f.versions||[]).length>0;
   return `<div class="vault-row">
     <div class="vault-row-main" onclick="previewSecureFile('${f.id}')">
-      <b>${f.name}</b> <span class="vault-row-sub">${kb} KB${f.tags?' · '+f.tags:''}${hasVersions?` · ${f.versions.length} earlier version${f.versions.length===1?'':'s'}`:''}</span>
+      <b>${escapeHTML(f.name)}</b> <span class="vault-row-sub">${kb} KB${f.tags?' · '+f.tags:''}${hasVersions?` · ${f.versions.length} earlier version${f.versions.length===1?'':'s'}`:''}</span>
     </div>
     <span class="vault-row-actions">
       <span title="Download" style="cursor:pointer;" onclick="downloadSecureFile('${f.id}')">⬇</span>
@@ -3457,7 +3468,7 @@ function editSecureFileTags(id){
 async function secureDeleteFile(id){
   const f = findVaultFile(id);
   if(!f) return;
-  const typed = prompt(`This permanently deletes "${f.name}" and all its saved versions. Type the file name to confirm.`);
+  const typed = prompt(`This permanently deletes "${escapeHTML(f.name)}" and all its saved versions. Type the file name to confirm.`);
   if(typed!==f.name){ if(typed!==null) alert('Name didn\'t match — nothing deleted.'); return; }
   _vaultFiles = _vaultFiles.filter(x=>x.id!==f.id);
   await saveVaultItems();
