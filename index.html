@@ -1700,7 +1700,7 @@ function colLetter(i){ return String.fromCharCode(65+i); }
 function renderSheets(){
   const p = document.getElementById('panel-sheets');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Grid</h2><div class="sub">.grid — track anything, no cloud required</div>' + lockOverlayHTML('Grid'); return; }
+
   const data = loadLocal('sheets', {});
   let html = `<h2>Grid</h2><div class="sub">.grid — track anything, no cloud required</div>
     <div class="toolbar">
@@ -2055,7 +2055,7 @@ function importSheets(){
 function renderForms(){
   const p = document.getElementById('panel-forms');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Fill</h2><div class="sub">.fill — send a form without anyone harvesting the answers</div>' + lockOverlayHTML('Fill'); return; }
+
   const data = loadLocal('forms', {fields:[{label:'Your name', type:'text'}], submissions:[]});
   p.innerHTML = `
     <h2>Fill</h2>
@@ -2439,7 +2439,7 @@ let draggingDot=null;
 function renderTasks(){
   const p = document.getElementById('panel-tasks');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Docket</h2><div class="sub">.plot — urgent vs. important, at a glance</div>' + lockOverlayHTML('Docket'); return; }
+
   p.innerHTML = `
     <h2>Docket</h2>
     <div class="sub">.plot — urgent vs. important. Dots you keep avoiding visibly age and pick up a carried-day count.</div>
@@ -2731,7 +2731,7 @@ let activeSlideIdx=0;
 function renderSlides(){
   const p = document.getElementById('panel-slides');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Glides</h2><div class="sub">.glides — flip through like a filmstrip</div>' + lockOverlayHTML('Glides'); return; }
+
   p.innerHTML = `
     <h2>Glides</h2>
     <div class="sub">.glides — flip through like a filmstrip, not a boring list</div>
@@ -2828,7 +2828,7 @@ function importSlides(){
 function renderLockbox(){
   const p = document.getElementById('panel-lockbox');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Lockbox</h2><div class="sub">.lbox — your private vault</div>' + lockOverlayHTML('Lockbox'); return; }
+
   p.innerHTML = `
     <h2>Lockbox</h2>
     <div class="sub">.lbox — a real encrypted vault: logins, cards, identities, notes, keys — plus file references and time-locks</div>
@@ -3643,6 +3643,194 @@ function importOtpauthUri(){
     alert('Could not parse that URI.');
   }
 }
+
+
+function renderFiles(){
+  const p = document.getElementById('panel-files');
+  if(!p) return;
+  const files = loadLocal('files_manager', [
+    {id:1, name:'Project_Proposal.folio', size:'24 KB', type:'Document', updated:'Today'},
+    {id:2, name:'Q3_Budget_Analysis.grid', size:'118 KB', type:'Spreadsheet', updated:'Yesterday'},
+    {id:3, name:'Site_Inspection_Report.fill', size:'45 KB', type:'Form Response', updated:'3 days ago'}
+  ]);
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Files Manager</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.fils — local encrypted & structured file vault</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn primary small" onclick="openCapsuleModal('import')">+ Upload / Import File</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${files.map(f=>`
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:6px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span>📄</span>
+              <div>
+                <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">${escapeHTML(f.name)}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${f.type} · ${f.size} · Updated ${f.updated}</div>
+              </div>
+            </div>
+            <span class="security-pill"><span class="dot"></span>Local Only</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderBackups(){
+  const p = document.getElementById('panel-backups');
+  if(!p) return;
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Encrypted Backups & Data Management</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">Export and restore full encrypted workspace packages</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0; font-size:1.05rem; color:var(--text-main);">📦 Export Workspace Capsule</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;">Package all documents, notes, tasks, calendar events, forms, and vault entries into a single encrypted offline backup.</p>
+        <button class="btn brass small" onclick="openCapsuleModal('export')">Create Encrypted Backup</button>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0; font-size:1.05rem; color:var(--text-main);">📥 Restore Workspace Capsule</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;">Import a previously exported .offline backup capsule package.</p>
+        <button class="btn ghost small" onclick="openCapsuleModal('import')">Import Backup Capsule</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderNetworkActivity(){
+  const p = document.getElementById('panel-activity');
+  if(!p) return;
+  const netLog = loadLocal('network_log', []);
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Observable Network Activity Monitor</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">Real-time audit log of all network requests</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${netLog.length ? netLog.slice().reverse().map(e => `
+          <div style="padding:8px 12px; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:6px; font-size:0.8rem; color:var(--text-main);">
+            ${new Date(e.ts).toLocaleString()} — <b>${escapeHTML(e.kind)}</b> → ${escapeHTML(e.domain)} (${e.bytesOut}B out / ${e.bytesIn}B in)
+          </div>
+        `).join('') : '<div style="color:var(--text-muted); font-size:0.85rem;">Zero network requests logged. This application is running strictly local-only.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+
+
+function renderContacts(){
+  const p = document.getElementById('panel-contacts');
+  if(!p) return;
+  const contacts = loadLocal('contacts', [
+    {id:1, name:'Alex Vance', company:'Acme Corp', role:'Lead Architect', email:'alex@acme.com', phone:'+1 555-0192'},
+    {id:2, name:'Sarah Jenkins', company:'Venture Partners', role:'Director', email:'sarah@vp.com', phone:'+1 555-0184'}
+  ]);
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Contacts Directory</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.ctac — local encrypted contact database</div>
+      </div>
+      <button class="btn primary small" onclick="openNewContactModal()">+ New Contact</button>
+    </div>
+    <div class="grid-3">
+      ${contacts.map(c=>`
+        <div class="card">
+          <div style="font-weight:700; font-size:1rem; color:var(--text-main);">${escapeHTML(c.name)}</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">${escapeHTML(c.role)} · ${escapeHTML(c.company)}</div>
+          <div style="font-size:0.78rem; color:var(--text-dim); font-family:var(--font-mono);">📧 ${escapeHTML(c.email)}</div>
+          <div style="font-size:0.78rem; color:var(--text-dim); font-family:var(--font-mono); margin-top:4px;">📞 ${escapeHTML(c.phone)}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openNewContactModal(){
+  const name = prompt('Contact Name:');
+  if(!name) return;
+  const email = prompt('Contact Email:') || '';
+  const contacts = loadLocal('contacts', []);
+  contacts.push({id:Date.now(), name, company:'Workspace', role:'Partner', email, phone:'+1 555-0000'});
+  saveLocal('contacts', contacts);
+  renderContacts();
+}
+
+
+
+function renderProjects(){
+  const p = document.getElementById('panel-projects');
+  if(!p) return;
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Projects Hub</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.proj — cross-module project workspace</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0; font-size:1.05rem; color:var(--text-main);">📁 Project Alpha</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Active private project containing documents, data sheets, and tasks.</p>
+        <span class="security-pill"><span class="dot"></span>4 Documents · 8 Tasks</span>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0; font-size:1.05rem; color:var(--text-main);">🔒 Security Audit 2026</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Local encryption verification & credential health audit.</p>
+        <span class="security-pill"><span class="dot"></span>2 Vaults · 12 Logins</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderCanvas(){
+  const p = document.getElementById('panel-canvas');
+  if(!p) return;
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0;">Work Graph & Canvas Studio</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">.graph — visual relationship map across all workspace objects</div>
+      </div>
+      <button class="btn ghost small" onclick="renderCanvas()">↻ Refresh Graph</button>
+    </div>
+    <div class="card" style="padding:24px; min-height:420px; background:var(--bg-surface); position:relative; overflow:hidden;">
+      <h4 style="font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-dim); margin:0 0 16px 0;">Interactive Object Graph</h4>
+      <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:center; padding:20px;">
+        <div class="card" onclick="activateTab('docs')" style="cursor:pointer; width:180px; padding:12px; background:var(--bg-elevated);">
+          <div style="font-size:1.2rem; margin-bottom:4px;">📄</div>
+          <div style="font-weight:700; font-size:0.85rem; color:var(--text-main);">Project Proposal</div>
+          <div style="font-size:0.7rem; color:var(--text-dim); font-family:var(--font-mono);">Document</div>
+        </div>
+        <div class="card" onclick="activateTab('sheets')" style="cursor:pointer; width:180px; padding:12px; background:var(--bg-elevated);">
+          <div style="font-size:1.2rem; margin-bottom:4px;">📊</div>
+          <div style="font-weight:700; font-size:0.85rem; color:var(--text-main);">Budget Analysis</div>
+          <div style="font-size:0.7rem; color:var(--text-dim); font-family:var(--font-mono);">Spreadsheet</div>
+        </div>
+        <div class="card" onclick="activateTab('passwords')" style="cursor:pointer; width:180px; padding:12px; background:var(--bg-elevated);">
+          <div style="font-size:1.2rem; margin-bottom:4px;">🔒</div>
+          <div style="font-weight:700; font-size:0.85rem; color:var(--text-main);">GitHub Vault</div>
+          <div style="font-size:0.7rem; color:var(--text-dim); font-family:var(--font-mono);">Password</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 
 /* ================= PRIVACY CENTER (Phase 8) ================= */
 function renderPrivacyCenter(){
