@@ -1,76 +1,77 @@
 # OFFLINES / Suite Current Product Specification
 
-**Specification Version:** 2026.12 (Session 12 Active Spec)
+**Specification Version:** 2026.13 (Session 13 Forensic Correction)
 **Status:** FULL OPEN DEVELOPMENT MODE
-**Authoritative Rule:** This document and Session 12 Directives override all historical architecture documents (`architecture.md`, `ENTITLEMENTS.md`, etc.).
+**Instruction Hierarchy & Authority:**
+1. Session 13 Task Specification Directives
+2. Actual Executable Source Code (`index.html` & ecosystem)
+3. Executable E2E Test Suite Results (`tests/verify_suite_e2e.py`)
+4. This Document (`SUITE_CURRENT_SPEC.md`)
+5. Historical Architecture & Audit Documentation
 
 ---
 
 ## 1. Product Status & Philosophy
 
-### Current Commercial Status
+### Commercial Policy
 - **NO PRICING**
 - **NO BILLING**
 - **NO LICENSING ENFORCEMENT**
 - **NO PRO UNLOCK LOCKS**
 - **NO SUBSCRIPTIONS**
 
-The entire OFFLINES suite must be 100% accessible and testable before any commercial model is introduced.
+Every module implemented in the source code is 100% open and testable before any commercial model is introduced.
 
-### Product Principle
-- **Serverless-by-Default & Local-First:** The server delivers static application assets (HTML, CSS, JS). The server NEVER receives or processes private user data.
-- **Zero-Server Isolation:** 100% of user data (documents, passwords, TOTP secrets, files, forms, spreadsheets, notes, calendar events) remains strictly localized on the user's device in Web Crypto memory, `localStorage`, and `IndexedDB`.
-
----
-
-## 2. Core Workspace Modules (All 23 Fully Unlocked)
-
-| Category | Module ID | Description | Development Access |
-| :--- | :--- | :--- | :--- |
-| **WORKSPACE** | `overview` | Workspace Dashboard & Security Health | Open / Unlocked |
-| | `projects` | Cross-module Project Containers | Open / Unlocked |
-| | `graph` | Work Graph Visual Relationship Engine | Open / Unlocked |
-| **ORGANIZE** | `files` | File Manager & Storage Inspector | Open / Unlocked |
-| | `spot` | Spot Block Notes & Backlinks | Open / Unlocked |
-| | `docket` | Docket Task Workflow | Open / Unlocked |
-| | `almanac` | Almanac Calendar & Time Planner | Open / Unlocked |
-| | `contacts` | Contacts Directory & Vault Links | Open / Unlocked |
-| **SECURE** | `passwords` | Multi-Vault Password Manager | Open / Unlocked |
-| | `passkeys` | Passkeys Registry | Open / Unlocked |
-| | `verifier` | Verifier 2FA TOTP Authenticator | Open / Unlocked |
-| | `forge` | Forge Credential Generator | Open / Unlocked |
-| | `lockbox` | Lockbox Encrypted File Vault | Open / Unlocked |
-| | `health` | Password Health Audit | Open / Unlocked |
-| **CREATE** | `folio` | Folio Document Studio | Open / Unlocked |
-| | `grid` | Grid Spreadsheet & Formulas Engine | Open / Unlocked |
-| | `fill` | Fill Form Builder & Responses | Open / Unlocked |
-| | `glides` | Glides Presentation Studio | Open / Unlocked |
-| **SYSTEM** | `privacy` | Network Transparency Monitor | Open / Unlocked |
-| | `backups` | Encrypted Backup Capsule | Open / Unlocked |
-| | `settings` | System Configuration | Open / Unlocked |
+### Storage Architecture & Invariants
+- **Actual Storage Primitives:** `localStorage` (scoped by prefix `suite_`) and Web Crypto API (`window.crypto.subtle`).
+- **Storage Correction:** Historical claims of `IndexedDB` usage have been removed to reflect actual source implementation.
+- **Serverless Data Isolation:** 100% of user data remains localized on the user device. The server only serves static application assets (HTML, CSS, JS, Manifest, Service Worker).
 
 ---
 
-## 3. Configuration & Feature Boundary
+## 2. Reconciled 23 Source Workspace Modules
+
+Catalog of the 23 modules defined in `ALL_MODULES` in `index.html`:
+
+| Category | Module ID | Label in UI | File Extension | Development Access |
+| :--- | :--- | :--- | :--- | :--- |
+| **WORKSPACE** | `today` | Overview | (Dashboard) | Open / Unlocked |
+| | `projects` | Projects | `.proj` | Open / Unlocked |
+| | `canvas` | Canvas / Graph | `.graph` | Open / Unlocked |
+| **ORGANIZE** | `files` | Files | `.fils` | Open / Unlocked |
+| | `notes` | Notes (Spot) | `.spot` | Open / Unlocked |
+| | `tasks` | Tasks (Docket) | `.plot` | Open / Unlocked |
+| | `agenda` | Calendar (Almanac) | `.agnd` | Open / Unlocked |
+| | `contacts` | Contacts | `.ctac` | Open / Unlocked |
+| **SECURE** | `passwords` | Passwords | `.vault` | Open / Unlocked |
+| | `passkeys` | Passkeys | `.pkey` | Open / Unlocked |
+| | `totp` | OTP / Verifier | `.totp` | Open / Unlocked |
+| | `wallet` | Cards / Wallet | `.card` | Open / Unlocked |
+| | `identities` | Identities | `.id` | Open / Unlocked |
+| | `lockbox` | Secure Files | `.lbox` | Open / Unlocked |
+| | `secrets` | Secrets | `.key` | Open / Unlocked |
+| **CREATE** | `docs` | Documents (Folio) | `.folio` | Open / Unlocked |
+| | `sheets` | Tables (Grid) | `.grid` | Open / Unlocked |
+| | `forms` | Forms (Fill) | `.fill` | Open / Unlocked |
+| | `slides` | Presentations (Glides) | `.glides` | Open / Unlocked |
+| **SYSTEM** | `activity` | Network Monitor | (Monitor) | Open / Unlocked |
+| | `backups` | Backups | (Capsule) | Open / Unlocked |
+| | `security` | Security Center | (Security) | Open / Unlocked |
+| | `privacy` | Privacy Center | (Privacy) | Open / Unlocked |
+
+---
+
+## 3. Configuration & Open Access Boundary
 
 ```javascript
-// Active Application Configuration
+// Active Application Configuration in index.html
 const OPEN_DEVELOPMENT_MODE = true;
-
-function isLicensed() {
-  // Always returns true in Open Development Mode
-  return true;
-}
+window._licensed = true;
+function isLicensed(){ return true; }
+async function refreshLicenseState(){ window._licensed = true; }
 ```
 
 When `OPEN_DEVELOPMENT_MODE` is active:
-1. Every module and feature is 100% accessible.
-2. No lock overlays (`lockOverlayHTML`) or paywalls appear.
-3. No license key input or server verification (`tryActivate`) is enforced.
-4. Users can export/import encrypted backup capsules without restriction.
-
----
-
-## 4. Verification & Testing
-
-All modules must be independently verified using automated Playwright tests and Node.js syntax checks. Any feature claiming `PASS` must be demonstrably functional.
+1. Every one of the 23 modules renders natively without lock prompts or paywall barriers.
+2. Encrypted Backup Capsule export and import operates freely without requiring license key entry.
+3. Network traffic passes through `loggedFetch()`, presenting an observable 0-byte transmit log.

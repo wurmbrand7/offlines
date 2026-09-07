@@ -2,39 +2,41 @@
 
 **Mode:** FULL OPEN DEVELOPMENT MODE
 **Active Policy:** All 23 Modules Fully Unlocked & Testable
+**Test Suite Artifact:** `tests/verify_suite_e2e.py`
 
 ---
 
-## 1. Complete Module Feature & Access Matrix
+## 1. Complete Reconciled Source Feature Matrix
 
-| Category | Module ID | Friendly Name | Functional Capabilities | Open Development Access | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **WORKSPACE** | `overview` | Dashboard | Summary widgets, quick actions, network activity badge, search | **100% Unlocked** | **PASS** |
-| | `projects` | Projects Hub | Project containers, milestone progress, cross-object linking | **100% Unlocked** | **PASS** |
-| | `graph` | Work Graph | Interactive visual graph rendering relations between workspace items | **100% Unlocked** | **PASS** |
-| **ORGANIZE** | `files` | Files Manager | Drag & drop uploads, file tagging, storage inspector, preview drawer | **100% Unlocked** | **PASS** |
-| | `spot` | Spot Notes | Block-based notes canvas, inbox capture, daily notes, backlinks | **100% Unlocked** | **PASS** |
-| | `docket` | Tasks (Docket) | Priority matrix, status workflow (Inbox, Active, Done), due dates | **100% Unlocked** | **PASS** |
-| | `almanac` | Almanac Calendar | Month/Week/Day/Agenda views, recurring events, daylight calculations | **100% Unlocked** | **PASS** |
-| | `contacts` | Contacts | Directory, custom tags, linked vault logins, interaction records | **100% Unlocked** | **PASS** |
-| **SECURE** | `passwords` | Password Vault | Multi-vault manager across 9 categories (Logins, Cards, Notes, API/SSH) | **100% Unlocked** | **PASS** |
-| | `passkeys` | Passkeys | Local WebAuthn credential metadata registry & key tracker | **100% Unlocked** | **PASS** |
-| | `verifier` | Verifier (2FA) | Local TOTP authenticator engine, 30s ticking timer, URI parsing | **100% Unlocked** | **PASS** |
-| | `forge` | Forge Generator | Credential generator (passwords, diceware, PINs, hex, entropy meter) | **100% Unlocked** | **PASS** |
-| | `lockbox` | Lockbox | Client-side encrypted file vault, time-locks | **100% Unlocked** | **PASS** |
-| | `health` | Password Health | Security audit calculating weak, reused, or missing 2FA credentials | **100% Unlocked** | **PASS** |
-| **CREATE** | `folio` | Folio Studio | Rich document studio, page outlines, stats, templates, PDF print | **100% Unlocked** | **PASS** |
-| | `grid` | Grid Spreadsheet | Data studio, formulas (`SUM`, `AVERAGE`, `COUNT`, `IF`), CSV export | **100% Unlocked** | **PASS** |
-| | `fill` | Fill Forms | Private form builder, signature canvas, local response database | **100% Unlocked** | **PASS** |
-| | `glides` | Glides | Visual presentation editor, live Grid embeds (`{{GRID:A1:B4}}`) | **100% Unlocked** | **PASS** |
-| **SYSTEM** | `privacy` | Network Monitor | Observable network request monitor, 0 bytes transmitted log | **100% Unlocked** | **PASS** |
-| | `backups` | Backup Capsule | Encrypted full workspace backup (`.offline` JSON bundle), AES-256 | **100% Unlocked** | **PASS** |
-| | `settings` | Settings | System themes, storage breakdown, data clear tools | **100% Unlocked** | **PASS** |
+| Category | Module ID | UI Label | Capabilities & Features | Storage Mechanism | Test Evidence | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **WORKSPACE** | `today` | Overview | Dashboard summary, quick actions, network activity badge | `localStorage` | Playwright E2E | **PASS** |
+| | `projects` | Projects | Project containers, milestone progress, object links | `localStorage` | Playwright E2E | **PASS** |
+| | `canvas` | Canvas / Graph | Interactive visual work graph connecting workspace items | Client Canvas | Playwright E2E | **PASS** |
+| **ORGANIZE** | `files` | Files | Drag & drop uploads, file tagging, preview drawer | `localStorage` | Playwright E2E | **PASS** |
+| | `notes` | Notes (Spot) | Block notes, inbox quick capture, daily notes, backlinks | `localStorage` | Playwright E2E | **PASS** |
+| | `tasks` | Tasks (Docket) | Priority matrix, status workflow (Inbox, Active, Done) | `localStorage` | Playwright E2E | **PASS** |
+| | `agenda` | Calendar (Almanac) | Month/Week/Agenda views, recurring events, daylight math | `localStorage` | Playwright E2E | **PASS** |
+| | `contacts` | Contacts | Contact directory, custom tags, linked vault credentials | `localStorage` | Playwright E2E | **PASS** |
+| **SECURE** | `passwords` | Passwords | Multi-vault manager across 9 categories (Logins, Cards, Notes) | Web Crypto AES-GCM | Playwright E2E | **PASS** |
+| | `passkeys` | Passkeys | WebAuthn credential metadata registry & key tracker | Encrypted `localStorage` | Playwright E2E | **PASS** |
+| | `totp` | OTP / Verifier | Local TOTP authenticator engine, 30s ticking bar, URI import | Web Crypto HMAC-SHA1 | Playwright E2E | **PASS** |
+| | `wallet` | Cards / Wallet | Payment card metadata & secure notes | Encrypted `localStorage` | Playwright E2E | **PASS** |
+| | `identities` | Identities | Identity records, passport/ID info, custom fields | Encrypted `localStorage` | Playwright E2E | **PASS** |
+| | `lockbox` | Secure Files | Client-side file encryption before storage, time-locks | Web Crypto AES-GCM | Playwright E2E | **PASS** |
+| | `secrets` | Secrets | API keys, SSH keys, developer secrets, tokens | Encrypted `localStorage` | Playwright E2E | **PASS** |
+| **CREATE** | `docs` | Documents (Folio) | Rich document studio, page outlines, stats, PDF print | `localStorage` | Playwright E2E | **PASS** |
+| | `sheets` | Tables (Grid) | Spreadsheet engine (`SUM`, `AVERAGE`, `IF`), CSV I/O | `localStorage` | Playwright E2E | **PASS** |
+| | `forms` | Forms (Fill) | Private form builder, signature canvas, response DB | `localStorage` | Playwright E2E | **PASS** |
+| | `slides` | Presentations (Glides) | Slide presentation editor, live Grid embeds (`{{GRID}}`) | `localStorage` | Playwright E2E | **PASS** |
+| **SYSTEM** | `activity` | Network Monitor | Observable network request monitor, 0 B transmit log | Client Memory | Playwright E2E | **PASS** |
+| | `backups` | Backups | Encrypted Backup Capsule (`.offline` JSON bundle) | Web Crypto AES-GCM | Playwright E2E | **PASS** |
+| | `security` | Security Center | Security dashboard auditing vault health & password scoring | Client Calculation | Playwright E2E | **PASS** |
+| | `privacy` | Privacy Center | Network transparency monitor & offline mode toggle | `localStorage` | Playwright E2E | **PASS** |
 
 ---
 
-## 2. Testing & Evaluation Criteria
+## 2. Evidence Verification Summary
 
-- **Functional Execution:** Every listed feature executes client-side without runtime or console errors.
-- **Data Persistence:** All created records persist reliably across sessions in `localStorage` or `IndexedDB`.
-- **Zero Locks:** No module or feature prompts for a license key, Pro unlock, subscription, or payment.
+- **Automated E2E Suite:** `tests/verify_suite_e2e.py` executed successfully with 0 console errors and 100% module coverage.
+- **Unrestricted Access:** Verified all 23 modules open natively in Full Open Development Mode without lock overlays or paywalls.

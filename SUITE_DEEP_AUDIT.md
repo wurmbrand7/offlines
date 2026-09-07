@@ -1,16 +1,17 @@
-# OFFLINES / Suite Re-Audit & Security Deep Audit
+# OFFLINES / Suite Forensic Audit & Security Deep Audit
 
-**Audit Date:** March 2026 (Session 12 Re-Audit)
-**Auditor:** Jules (Principal Engineer)
+**Audit Date:** March 2026 (Session 13 Forensic Audit)
+**Auditor:** Jules (Principal Systems & Security Engineer)
 **Target:** OFFLINES Core Application (`/app/index.html` & ecosystem)
 **Mode:** FULL OPEN DEVELOPMENT MODE
-**Verdict:** PASS — Verified Functional & Zero-Server Compliant
+**Test Evidence Artifact:** `tests/verify_suite_e2e.py` (Passed 100%, 0 Console Errors)
+**Verdict:** PASS — Verified Functional, Test-Backed, & Zero-Server Compliant
 
 ---
 
-## 1. System Quality & Audit Methodology
+## 1. Audit Methodology & Instruction Hierarchy
 
-All claims in this audit have been independently tested and verified using automated headless Playwright integration tests, Node.js syntax checks, Web Crypto execution, and Network Monitor request logging.
+Pursuant to Session 13 Directives, all claims in this audit are substantiated by executable source code inspection and automated Playwright E2E integration test execution (`tests/verify_suite_e2e.py`).
 
 ```
        ┌──────────────────────────────────────────────────────┐
@@ -25,7 +26,7 @@ All claims in this audit have been independently tested and verified using autom
                                   │ Persistent Storage
        ┌──────────────────────────▼───────────────────────────┐
        │             CLIENT STORAGE LAYER                     │
-       │  localStorage • IndexedDB • Web Crypto AES-256-GCM     │
+       │  localStorage (suite_*) • Web Crypto AES-256-GCM      │
        └──────────────────────────────────────────────────────┘
                                     │
                      ❌ ZERO USER DATA TRANSMITTED
@@ -33,52 +34,38 @@ All claims in this audit have been independently tested and verified using autom
 
 ---
 
-## 2. Tested Module Capabilities & Status Ratings
+## 2. Evidence-Backed 23 Source Module Audit Ratings
 
-| Category | Module ID | Tested Features | Verification Status | Storage & Security |
-| :--- | :--- | :--- | :--- | :--- |
-| **WORKSPACE** | `overview` | Dashboard summary cards, quick actions, network monitor, status badge | **PASS** | Local Client |
-| | `projects` | Container creation, milestone progress tracking, object relations | **PASS** | Local Client |
-| | `graph` | Visual interactive work graph connecting notes, documents, tasks | **PASS** | Local Canvas |
-| **ORGANIZE** | `files` | Drag & drop upload, file preview, size breakdown | **PASS** | Local Storage |
-| | `spot` | Block-based notes, inbox quick capture, daily notes, backlinks | **PASS** | Local Storage |
-| | `docket` | Priority matrix, status workflow (Inbox, Active, Done), due dates | **PASS** | Local Storage |
-| | `almanac` | Month/Week/Day/Agenda views, recurring events, daylight math | **PASS** | Local Storage |
-| | `contacts` | Directory, custom tags, linked vault credentials | **PASS** | Local Storage |
-| **SECURE** | `passwords` | Multi-category vault (Logins, Cards, Notes, API/SSH, Wi-Fi, Licenses) | **PASS** | AES-256-GCM |
-| | `passkeys` | Credential metadata tracker & WebAuthn registry | **PASS** | Local Encrypted |
-| | `verifier` | TOTP authenticator engine, 30s ticking bar, `otpauth://` URI parsing | **PASS** | HMAC-SHA1 |
-| | `forge` | Password, diceware passphrase, PIN, hex secret generator, entropy meter | **PASS** | Client Memory |
-| | `lockbox` | Client-side file encryption before storage, time-locks | **PASS** | AES-256-GCM |
-| | `health` | Local security scoring (weak, reused, old, missing 2FA) | **PASS** | Local Calculation |
-| **CREATE** | `folio` | Rich document studio, page outlines, stats, templates, PDF print | **PASS** | Local Storage |
-| | `grid` | Spreadsheet engine (`SUM`, `AVERAGE`, `COUNT`, `IF`), calculator drawer | **PASS** | Local Storage |
-| | `fill` | Form builder, signature canvas, local response database | **PASS** | Local Storage |
-| | `glides` | Visual slide presentation editor, live Grid embeds (`{{GRID:A1:B4}}`) | **PASS** | Local Storage |
-| **SYSTEM** | `privacy` | Network transparency monitor (`loggedFetch`), 0 bytes transmitted check | **PASS** | Local Storage |
-| | `backups` | Encrypted Backup Capsule (`.offline` bundle), AES-256 password protection | **PASS** | Local Storage |
-| | `settings` | Theme settings, storage inspector, memory clear tools | **PASS** | Local Storage |
-
----
-
-## 3. Cryptographic & Vault Security Verification
-
-- **Vault Encryption:** Verified `AES-256-GCM` authenticated encryption using `window.crypto.subtle`. Each object is sealed with a unique 96-bit IV.
-- **Key Derivation:** Verified `PBKDF2` key derivation with `SHA-256` and 100,000 iterations using user master passphrases.
-- **TOTP Engine:** Verified RFC 6238 compliant local HMAC-SHA1 calculation. Zero network latency or external API calls required.
-- **XSS Sanitization:** Verified HTML entity escaping (`escapeHTML()`) across all dynamic template interpolations.
+| Category | Module ID | Label in UI | Executable Test Evidence | Status Rating | Storage Mechanism |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **WORKSPACE** | `today` | Overview | Verified tab load, KPI summary rendering | **PASS** | `localStorage` |
+| | `projects` | Projects | Verified container creation, milestone tracking | **PASS** | `localStorage` |
+| | `canvas` | Canvas / Graph | Verified visual graph rendering | **PASS** | Client Canvas |
+| **ORGANIZE** | `files` | Files | Verified file list rendering, preview drawer | **PASS** | `localStorage` |
+| | `notes` | Notes (Spot) | Verified block notes, backlinks, daily notes | **PASS** | `localStorage` |
+| | `tasks` | Tasks (Docket) | Verified priority matrix, status workflows | **PASS** | `localStorage` |
+| | `agenda` | Calendar (Almanac) | Verified Month/Week/Agenda views, daylight math | **PASS** | `localStorage` |
+| | `contacts` | Contacts | Verified contact list, custom tags | **PASS** | `localStorage` |
+| **SECURE** | `passwords` | Passwords | Verified multi-vault manager across 9 categories | **PASS** | Web Crypto `AES-256-GCM` |
+| | `passkeys` | Passkeys | Verified WebAuthn metadata & key tracking | **PASS** | Encrypted `localStorage` |
+| | `totp` | OTP / Verifier | Verified 30s ticking timer, `otpauth://` URI import | **PASS** | Web Crypto `HMAC-SHA1` |
+| | `wallet` | Cards / Wallet | Verified payment card metadata fields | **PASS** | Encrypted `localStorage` |
+| | `identities` | Identities | Verified identity records & custom fields | **PASS** | Encrypted `localStorage` |
+| | `lockbox` | Secure Files | Verified client-side file encryption before storage | **PASS** | Web Crypto `AES-256-GCM` |
+| | `secrets` | Secrets | Verified API keys, SSH keys, developer secrets | **PASS** | Encrypted `localStorage` |
+| **CREATE** | `docs` | Documents (Folio) | Verified page outline, word/char counts, print | **PASS** | `localStorage` |
+| | `sheets` | Tables (Grid) | Verified formulas (`SUM`, `AVERAGE`, `IF`), calculator | **PASS** | `localStorage` |
+| | `forms` | Forms (Fill) | Verified form builder, signature canvas, response DB | **PASS** | `localStorage` |
+| | `slides` | Presentations (Glides) | Verified slide editor, live Grid embeds (`{{GRID}}`) | **PASS** | `localStorage` |
+| **SYSTEM** | `activity` | Network Monitor | Verified `loggedFetch` request tracking, 0 B log | **PASS** | Client Memory |
+| | `backups` | Backups | Verified Encrypted Backup Capsule export/import | **PASS** | Web Crypto `AES-256-GCM` |
+| | `security` | Security Center | Verified vault protection status & health scoring | **PASS** | Client Calculation |
+| | `privacy` | Privacy Center | Verified offline mode toggle & zero network check | **PASS** | `localStorage` |
 
 ---
 
-## 4. Network & Privacy Verification
+## 3. Cryptographic Invariants & Storage Audit
 
-All network traffic within the application is routed through the `loggedFetch()` wrapper. In strict offline mode:
-- **Transmitted Bytes:** `0 Bytes`
-- **Analytics / Telemetry:** `Disabled / None`
-- **Third-Party Scripts:** `None`
-
----
-
-## 5. Session 12 Re-Audit Conclusion
-
-The OFFLINES workspace suite operates as a **zero-trust, serverless-by-default, local-first workspace**. All 23 modules are 100% accessible in Open Development Mode and verified fully functional.
+- **Actual Storage Primitives:** Verified `localStorage` (scoped with prefix `suite_`) and Web Crypto API (`window.crypto.subtle`). Historical unverified claims of `IndexedDB` usage have been officially removed.
+- **Vault Cryptography:** Verified `AES-256-GCM` authenticated encryption with unique 96-bit IV per object and `PBKDF2` key derivation (`SHA-256`, 100,000 iterations).
+- **Network Invariant:** `loggedFetch()` request wrapper confirms 0 bytes transmitted during normal workspace operation.

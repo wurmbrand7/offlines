@@ -654,6 +654,25 @@ body {
 }
 
 
+.global-search-results {
+  position: absolute;
+  top: 100%;
+  left: 200px;
+  width: 360px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.5);
+  z-index: 500;
+  display: none;
+  padding: 8px;
+}
+.global-search-results.open {
+  display: block !important;
+}
+
 /* Modals & Overlays */
 .capsule-modal-bg {
   position: fixed;
@@ -692,7 +711,7 @@ body {
   opacity: 0;
   transition: opacity 0.3s ease;
 }
-.seal-overlay.active {
+.seal-overlay.active, .seal-overlay.show {
   opacity: 1;
 }
 .seal-stamp {
@@ -707,7 +726,7 @@ body {
   transform: scale(0.8) rotate(-5deg);
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.seal-overlay.active .seal-stamp {
+.seal-overlay.active .seal-stamp, .seal-overlay.show .seal-stamp {
   transform: scale(1) rotate(0deg);
 }
 
@@ -917,9 +936,8 @@ window._licensed = true;
 function isLicensed(){ return true; }
 async function refreshLicenseState(){ window._licensed = true; }
 
-// Optional future license server configuration (not active in Open Development Mode)
+// Server configuration isolated for optional future deployment
 const LICENSE_VERIFY_URL = "";
-function lockOverlayHTML(moduleLabel){ return ""; }
 
 
 
@@ -1158,6 +1176,7 @@ function renderToday(){
 
 function universalSearch(query){
   const el = document.getElementById('universalSearchResults');
+  if(!el) return;
   if(!query || query.trim().length<2){ el.innerHTML=''; return; }
   const q = query.toLowerCase();
   const results = [];
@@ -3817,7 +3836,7 @@ function renderPrivacyCenter(){
   const p = document.getElementById('panel-privacy');
   if(!p) return;
   const offlineStrict = isOfflineModeStrict();
-  const externalConnected = (LICENSE_VERIFY_URL?1:0) + (SYNC_PUSH_URL && SYNC_PULL_URL ? 1 : 0);
+  const externalConnected = (typeof LICENSE_VERIFY_URL!=="undefined" && LICENSE_VERIFY_URL?1:0) + ((typeof SYNC_PUSH_URL!=="undefined" && SYNC_PUSH_URL) && (typeof SYNC_PULL_URL!=="undefined" && SYNC_PULL_URL) ? 1 : 0);
   const lastCheck = loadLocal('lastSecurityCheck', null);
   p.innerHTML = `
     <h2>Privacy Center</h2>
@@ -3838,7 +3857,7 @@ function renderPrivacyCenter(){
       <div class="privacy-stat"><span>Analytics</span><b>OFF</b></div>
       <div class="privacy-stat"><span>Remote storage</span><b>${mode==='hybrid' && !offlineStrict ? 'Hybrid sync enabled' : 'OFF'}</b></div>
       <div class="privacy-stat"><span>External integrations</span><b>${externalConnected} connected</b></div>
-      <div class="privacy-stat"><span>Local storage</span><b>${vaultExists()||getVaultsIndex().length ? 'Vault data encrypted; other modules stored in plain localStorage' : 'Plain localStorage (no vault set up yet)'}</b></div>
+      <div class="privacy-stat"><span>Local storage</span><b>${(typeof vaultExists==="function" && vaultExists())||getVaultsIndex().length ? 'Vault data encrypted; other modules stored in plain localStorage' : 'Plain localStorage (no vault set up yet)'}</b></div>
       <div class="privacy-stat"><span>Last security check</span><b>${lastCheck ? new Date(lastCheck).toLocaleDateString() : 'Never — visit Security Center'}</b></div>
     </div>
     <div class="hint" style="margin-top:10px;">Honest note: "Local storage: Encrypted" only ever refers to Lockbox vault data (AES-256-GCM). Docs/Sheets/Forms/Notes/Tasks/Agenda/Slides are stored as plain JSON in this browser's localStorage — normal for an offline-first app, but not encrypted at rest unless you also keep them inside the vault's Secure Notes/Secure Files.</div>

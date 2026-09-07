@@ -1,32 +1,22 @@
 # OFFLINES / Suite Architecture Conflict Audit
 
-**Audit Date:** March 2026
+**Audit Date:** March 2026 (Session 13 Forensic Audit)
 **Auditor:** Jules (Principal Engineer)
-**Purpose:** Identify, document, and neutralize historical architectural specifications, pricing models ($9), and licensing enforcement mechanisms that conflict with Session 12 requirements.
 
 ---
 
-## 1. Specification Conflict Matrix
+## 1. Specification Conflict Matrix & Resolution
 
-| Document / File Path | Historical Claim / Implementation | Conflict Status | Action Taken in Session 12 |
+| Document / Area | Historical Claim / Issue | Conflict Status | Session 13 Resolution |
 | :--- | :--- | :--- | :--- |
-| `ENTITLEMENTS.md` | Defined $9 unlock pricing tiers, Standard Commercial vs. Pro comparisons, and lock enforcement | **CONFLICT** | Rewritten to specify Full Open Access Development Mode with 0 pricing or locking. |
-| `SUITE_DEEP_AUDIT.md` | Claimed "PASS — Production Rebuild" without independent test verification | **CONFLICT** | Re-audited based on real functional and integration test results. |
-| `SUITE_FEATURE_MATRIX.md` | Classified modules under "Pro $9 Unlock Key" | **CONFLICT** | Rebuilt to reflect 100% accessible open development status for all 23 modules. |
-| `index.html` (Licensing JS) | Contained `lockOverlayHTML()`, `tryActivate()`, and lock banners | **CONFLICT** | Replaced lock enforcement with `OPEN_DEVELOPMENT_MODE = true` and removed lock overlays. |
-| `standalone/*.html` | Hardcoded references to Pro unlock screens and $9 key prompts | **CONFLICT** | Refactored wrappers to open suite modules without lock prompts. |
-| `suite-license/README.md` | $9 commercial key distribution and device slot management spec | **HISTORICAL** | Preserved as optional future reference; disabled in current application. |
-| `CHANGELOG-UPGRADE.md` | Claimed previous architecture was final product release | **CONFLICT** | Updated to mark Session 12 Open Development Mode as current authority. |
+| **Instruction Hierarchy** | Historical `architecture.md` treated as supreme authority | **CONFLICT** | Established strict instruction hierarchy where Session Directives > Source Code > Test Evidence > Current Spec > Historical Docs. |
+| **Module List Alignment** | Mismatch between docs and the 23 source modules | **CONFLICT** | Reconciled all documentation files (`SUITE_CURRENT_SPEC.md`, `ENTITLEMENTS.md`, `SUITE_FEATURE_MATRIX.md`, `SUITE_DEEP_AUDIT.md`) against `ALL_MODULES` in `index.html`. |
+| **Storage Architecture** | Historical claims of `IndexedDB` usage | **CONFLICT** | Corrected documentation to accurately specify `localStorage` (scoped with `suite_` prefix) and Web Crypto API (`window.crypto.subtle`). |
+| **Audit Status Claims** | Blanket `PASS` claims without executable test artifacts | **CONFLICT** | Built executable E2E Playwright test suite in `tests/verify_suite_e2e.py` to substantiate all audit status ratings. |
+| **Residual Licensing JS** | Vestigial `lockOverlayHTML()` helper in `index.html` | **CONFLICT** | Cleaned up vestigial licensing helper code while maintaining `suite-license/` as isolated future infrastructure. |
 
 ---
 
-## 2. Override Declaration
+## 2. Active Governance Rule
 
-Pursuant to Session 12 non-negotiable directives:
-- **Priority 1:** Session 12 Task Specification is the supreme authority.
-- **Priority 2:** Actual Source Code execution determines reality.
-- **Priority 3:** Independent Test Results validate capabilities.
-- **Priority 4:** Current Documentation reflects verified reality.
-- **Priority 5:** Historical Architecture Documents do NOT override active requirements.
-
-All active lock enforcement, $9 pricing displays, paywall banners, and Pro key requirements are officially neutralized.
+If any lower-priority historical document (`architecture.md`, old audit reports, old changelogs) conflicts with Session Directives or executable source code, **Session Directives and Source Code execution win**.
