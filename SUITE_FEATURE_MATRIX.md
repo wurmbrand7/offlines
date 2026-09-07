@@ -1,7 +1,7 @@
 # SUITE FEATURE MATRIX
 
-**Version:** 2.1 (Session 16 Functional Completion)
-**Verification Method:** Automated Playwright E2E (`tests/verify_suite_e2e.py` & `tests/grid_e2e.py`)
+**Version:** 2.2 (Session 16 Post-Folio Upgrade)
+**Verification Method:** Automated Playwright E2E (`tests/verify_suite_e2e.py`, `tests/grid_e2e.py`, `tests/folio_e2e.py`)
 
 ---
 
@@ -23,8 +23,8 @@
 | `identities` | Identities | ID & Passport Store | Free / Open | **Active** | Verified E2E |
 | `lockbox` | Secure Files | Encrypted File Locker | Free / Open | **Active** | Verified E2E |
 | `secrets` | Secrets | SSH & API Key Store | Free / Open | **Active** | Verified E2E |
-| `docs` | Folio | Rich Document Studio | Free / Open | **Active** | Verified E2E |
-| **`sheets`** | **Grid Data Studio** | **Upgraded Spreadsheet Studio** | **Free / Open** | **Active v2.1** | **Verified `tests/grid_e2e.py`** |
+| **`docs`** | **Folio Studio** | **Upgraded Document Studio** | **Free / Open** | **Active v2.0** | **Verified `tests/folio_e2e.py`** |
+| `sheets` | Grid Data Studio | Spreadsheet Data Studio | Free / Open | **Active v2.1** | Verified `tests/grid_e2e.py` |
 | `forms` | Fill | Form Builder & Capture | Free / Open | **Active** | Verified E2E |
 | `slides` | Glides | Filmstrip Deck Editor | Free / Open | **Active** | Verified E2E |
 | `canvas` | Work Graph | Relationship Graph | Free / Open | **Active** | Verified E2E |
@@ -35,10 +35,12 @@
 
 ---
 
-## Grid Feature Functional Status (Session 16 Verification)
+## Folio Feature Functional Status (Session 16 Verification)
 
-- **Command System:** 8-tab Suite Command Ribbon (`Start`, `Format`, `Insert`, `Data`, `Formulas`, `Review`, `View`, `Automate`) with zero dead controls.
-- **History & Navigation:** Undo/Redo history stack (`Ctrl+Z`, `Ctrl+Shift+Z`), spreadsheet keyboard navigation (Arrow keys, Tab, Enter).
-- **Data Engine & Filtering:** Multi-sheet workbook, row filter engine, freeze panes CSS, right-click cell context menu, local cell notes/comments, Find & Replace modal, status bar selection metrics.
-- **Formula Engine:** Expanded function library (`SUM`, `AVERAGE`, `COUNTIF`, `SUMIF`, `AVERAGEIF`, `VLOOKUP`, `INDEX`, `MATCH`, `ROUNDUP`, `ROUNDDOWN`, `NOW`, `IFERROR`) with dependency tracking and error codes.
-- **Import / Export:** Versioned `.grid` JSON format v2.0 and RFC-compliant CSV parser.
+- **Document Shell & Inspector:** Split canvas layout with Inspector panel (Outline, History, Properties).
+- **Outline Engine:** Clickable heading hierarchy list (`H1`, `H2`, `H3`) scrolling directly to sections.
+- **Blocks & Slash Commands:** Insert blocks, quotes, code blocks, checklists, page breaks, and rich tables via `/` slash menu.
+- **Attachments & Comments:** Local file attachment store with download links, text selection comment review layer.
+- **History & Recovery:** Snapshot creation, version restoration, and debounced autosave.
+- **Templates & Export:** Template placeholder engine (`{{PROJECT_NAME}}`, `{{DATE}}`), PDF print layout, Markdown export, and `.folio` package import/export.
+- **Cross-Module Links:** Convert text selection to Docket tasks and Almanac events.

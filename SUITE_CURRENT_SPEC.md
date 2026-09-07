@@ -1,6 +1,6 @@
 # SUITE CURRENT SPECIFICATION
 
-**Version:** 2.1 (Session 16 Functional Completion)
+**Version:** 2.2 (Session 16 Post-Folio Upgrade)
 **Status:** Full Open Development Mode (`OPEN_DEVELOPMENT_MODE = true`)
 **Source Location:** `index.html`
 
@@ -40,8 +40,8 @@ The codebase consists of 23 workspace modules mapped in `ALL_MODULES`:
 14. **Secrets (`secrets`):** Encrypted SSH keys, API credentials, and developer secrets.
 
 ### 2.4 Create
-15. **Documents (`docs` / Folio):** Rich document editor (`.fils`) with margin notes and export.
-16. **Tables (`sheets` / Grid - Upgraded v2.1):** Professional spreadsheet studio featuring an 8-tab Suite Command Ribbon (Start, Format, Insert, Data, Formulas, Review, View, Automate), Undo/Redo history stack, row filtering engine, freeze panes CSS, spreadsheet keyboard navigation, multi-sheet workbook model, expanded function library (`SUM`, `AVERAGE`, `COUNTIF`, `SUMIF`, `AVERAGEIF`, `IF`, `VLOOKUP`, `INDEX`, `MATCH`, `ROUNDUP`, `ROUNDDOWN`, `TODAY`, `NOW`, `IFERROR`), cell formatting, cell notes/comments, Find & Replace modal, right-click context menu, status bar metrics, SVG chart generator, RFC-compliant CSV parser, and `.grid` / CSV import/export.
+15. **Documents (`docs` / Folio - Upgraded v2.0):** Professional document studio featuring split Page Canvas and Inspector Panel (Outline, History, Properties), slash command menu (`/`), clickable heading outline, rich tables, page breaks, local image/file attachments, comment review layer, version history snapshots, Find & Replace modal, template placeholder engine (`{{PROJECT_NAME}}`, `{{DATE}}`), Focus Mode (`Ctrl+Shift+P`), and cross-module task/event creation (`.folio` v1 format).
+16. **Tables (`sheets` / Grid - Upgraded v2.1):** Professional spreadsheet studio featuring an 8-tab Suite Command Ribbon, Undo/Redo history stack, row filtering engine, freeze panes CSS, spreadsheet keyboard navigation, multi-sheet workbook model, expanded function library, SVG chart generator, and `.grid` / CSV import/export.
 17. **Forms (`forms` / Fill):** Form builder and local submission response capture (`.fill`).
 18. **Presentations (`slides` / Glides):** Filmstrip slide editor with live `{{GRID:A1:B4}}` spreadsheet range embeds.
 19. **Canvas / Graph (`canvas`):** Interactive Work Graph relationship visualizer (`.graph`).
@@ -58,7 +58,7 @@ The codebase consists of 23 workspace modules mapped in `ALL_MODULES`:
 
 - **Primary Local Storage:** `localStorage` with `KEY_PREFIX = "suite_v1_"`.
 - **Key Mappings:**
-  - `suite_v1_sheets`: Multi-sheet `SuiteGridWorkbook` object.
-  - `suite_v1_docs`: Folio HTML document payload.
+  - `suite_v1_docs`: Canonical `SuiteFolioPayload` object (`"format": "folio", "version": 1`).
+  - `suite_v1_sheets`: Multi-sheet `SuiteGridWorkbook` object (`"version": "2.0"`).
   - `suite_v1_notes_library`: Spot Markdown library notes.
   - `suite_v1_vaults_index` & `suite_v1_vault_<id>`: Encrypted Vault data blobs.

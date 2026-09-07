@@ -1645,16 +1645,77 @@ document.addEventListener('keydown', (e)=>{
   }
 });
 
+
+/* ================= FOLIO DOCUMENT DATA MODEL & REPOSITORY (SESSION 16) ================= */
+
+function getFolioDocument() {
+  const raw = loadLocal('docs', null);
+  if (raw && raw.format === "folio" && raw.document) {
+    return raw;
+  }
+  // Automatic backward-compatible migration from legacy flat HTML object
+  const legacyHtml = (raw && typeof raw === 'object' && raw.html) ? raw.html : '<p>Start writing...</p>';
+  return {
+    format: "folio",
+    version: 1,
+    document: {
+      id: "doc_" + Date.now(),
+      title: "Untitled Document",
+      metadata: {
+        created: Date.now(),
+        modified: Date.now(),
+        author: "Operator",
+        tags: [],
+        status: "Draft",
+        priority: "Normal"
+      },
+      content: legacyHtml,
+      attachments: [],
+      comments: [],
+      history: [{
+        id: "v_" + Date.now(),
+        title: "Initial Version",
+        timestamp: Date.now(),
+        content: legacyHtml
+      }],
+      relations: []
+    }
+  };
+}
+
+function saveFolioDocument(docObj, silent = false) {
+  docObj.document.metadata.modified = Date.now();
+  saveLocal('docs', docObj);
+  if (!silent) showSeal();
+}
+
 /* ================= DOCS (.fils) ================= */
+let currentFolioInspectorTab = 'outline';
+
 function renderDocs(){
   const p = document.getElementById('panel-docs');
   if(!p) return;
-  const data = loadLocal('docs', {html:'<p>Start writing...</p>'});
+  const docObj = getFolioDocument();
+  const doc = docObj.document;
+
   p.innerHTML = `
-    <h2>Folio</h2>
-    <div class="sub">.fils — write your stuff, it stays yours</div>
-    <div class="toolbar">
-      <select title="Paragraph style" onchange="document.execCommand('formatBlock',false,this.value); this.blur();">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:1.4rem;">Folio Document Studio</h2>
+        <div class="sub" style="margin:2px 0 0 0;">Offline Document Workspace & Publishing Studio</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn ghost small" onclick="openFolioFindReplaceModal()">🔍 Find & Replace</button>
+        <button class="btn ghost small" onclick="toggleFolioFocusMode()">👁 Focus Mode</button>
+        <button class="btn sage small" onclick="saveDocs()">Save Document</button>
+        <button class="btn ghost small" onclick="exportDocs()">Export .folio</button>
+        <button class="btn ghost small" onclick="importDocs()">Import .folio</button>
+      </div>
+    </div>
+
+    <!-- FOLIO EDITOR TOOLBAR -->
+    <div class="toolbar" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:6px 10px; margin-bottom:12px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+      <select title="Paragraph style" onchange="document.execCommand('formatBlock',false,this.value); this.blur(); updateFolioOutline();">
         <option value="P">Normal</option>
         <option value="H1">Heading 1</option>
         <option value="H2">Heading 2</option>
@@ -1667,50 +1728,245 @@ function renderDocs(){
         <option value="Helvetica Neue, Arial, sans-serif">Sans</option>
         <option value="Courier New, monospace">Mono</option>
       </select>
-      <select title="Font size" onchange="document.execCommand('fontSize',false,this.value); this.blur();">
-        <option value="2">Small</option>
-        <option value="3" selected>Normal</option>
-        <option value="5">Large</option>
-        <option value="7">Huge</option>
-      </select>
       <div class="tdiv"></div>
       <button class="btn ghost small icon" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
       <button class="btn ghost small icon" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
       <button class="btn ghost small icon" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
       <button class="btn ghost small icon" title="Strikethrough" onclick="document.execCommand('strikeThrough')"><s>S</s></button>
-      <button class="btn ghost small icon" title="Superscript" onclick="document.execCommand('superscript')">x²</button>
-      <button class="btn ghost small icon" title="Subscript" onclick="document.execCommand('subscript')">x₂</button>
-      <div class="tdiv"></div>
-      <label title="Text color" style="display:flex;align-items:center;"><input type="color" onchange="document.execCommand('foreColor',false,this.value)" value="#232017"></label>
-      <label title="Highlight" style="display:flex;align-items:center;"><input type="color" onchange="document.execCommand('hiliteColor',false,this.value)" value="#f4e9c1"></label>
       <div class="tdiv"></div>
       <button class="btn ghost small icon" title="Align left" onclick="document.execCommand('justifyLeft')">⟵</button>
       <button class="btn ghost small icon" title="Align center" onclick="document.execCommand('justifyCenter')">↔</button>
       <button class="btn ghost small icon" title="Align right" onclick="document.execCommand('justifyRight')">⟶</button>
-      <button class="btn ghost small icon" title="Justify" onclick="document.execCommand('justifyFull')">☰</button>
       <div class="tdiv"></div>
       <button class="btn ghost small" title="Bulleted list" onclick="document.execCommand('insertUnorderedList')">• List</button>
       <button class="btn ghost small" title="Numbered list" onclick="document.execCommand('insertOrderedList')">1. List</button>
-      <button class="btn ghost small icon" title="Decrease indent" onclick="document.execCommand('outdent')">⇤</button>
-      <button class="btn ghost small icon" title="Increase indent" onclick="document.execCommand('indent')">⇥</button>
-      <div class="tdiv"></div>
-      <button class="btn ghost small icon" title="Undo" onclick="document.execCommand('undo')">↶</button>
-      <button class="btn ghost small icon" title="Redo" onclick="document.execCommand('redo')">↷</button>
-      <button class="btn ghost small" title="Insert link" onclick="docsInsertLink()">🔗 Link</button>
-      <button class="btn ghost small" title="Clear formatting" onclick="document.execCommand('removeFormat')">Clear</button>
+      <button class="btn ghost small" title="Insert Table" onclick="insertFolioTable()">📊 Table</button>
+      <button class="btn ghost small" title="Insert Page Break" onclick="insertFolioPageBreak()">📄 Page Break</button>
       <div class="tdiv"></div>
       <button class="btn brass small" onclick="docsAddMarginNote()" title="Select text first, then pin a note about it">📌 Margin note</button>
-      <div class="tdiv"></div>
-      <button class="btn sage small" onclick="saveDocs()">Save</button>
-      <button class="btn ghost small" onclick="exportDocs()">Export .fils</button>
-      <button class="btn ghost small" onclick="importDocs()">Import .fils</button>
+      <button class="btn ghost small" onclick="createTaskFromFolioSelection()">☑️ Create Task</button>
     </div>
-    <div id="docsEditor" contenteditable="true">${data.html}</div>
-    <div class="wordcount" id="docsWC"></div>
+
+    <!-- FOLIO MAIN SPLIT LAYOUT -->
+    <div style="display:grid; grid-template-columns:1fr 280px; gap:16px; min-height:500px;">
+      <!-- PAGE CANVAS CONTAINER -->
+      <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:24px; position:relative; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+        <input type="text" id="folioDocTitle" value="${escapeHTML(doc.title)}" style="width:100%; font-size:1.5rem; font-weight:800; background:transparent; border:none; border-bottom:1px solid var(--border-color); color:var(--text-main); margin-bottom:16px; padding:4px 0;" oninput="updateFolioTitle(this.value)" placeholder="Document Title...">
+        <div id="docsEditor" contenteditable="true" style="min-height:380px; color:var(--text-main); line-height:1.6; outline:none; font-size:0.95rem;" oninput="updateWC(); updateFolioOutline();" onkeydown="onFolioEditorKeyDown(event)">${doc.content}</div>
+        <div id="folioSlashMenu" style="display:none; position:absolute; background:var(--bg-elevated); border:1px solid var(--border-color); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:100; min-width:180px; padding:6px;">
+          <div style="font-size:0.75rem; color:var(--text-muted); padding:4px 8px; font-weight:bold;">SLASH COMMANDS</div>
+          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('H1')">Heading 1</div>
+          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('H2')">Heading 2</div>
+          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('TABLE')">Table</div>
+          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('QUOTE')">Quote</div>
+          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('PAGE')">Page Break</div>
+        </div>
+      </div>
+
+      <!-- RIGHT INSPECTOR PANEL -->
+      <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; border-bottom:1px solid var(--border-color); padding-bottom:6px; gap:8px;">
+          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='outline'?'2px solid var(--accent-primary,#3b82f6)':'none'};" onclick="setFolioInspectorTab('outline')">Outline</button>
+          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='history'?'2px solid var(--accent-primary,#3b82f6)':'none'};" onclick="setFolioInspectorTab('history')">History</button>
+          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='props'?'2px solid var(--accent-primary,#3b82f6)':'none'};" onclick="setFolioInspectorTab('props')">Props</button>
+        </div>
+        <div id="folioInspectorContent" style="flex:1; overflow-y:auto;">
+          ${renderFolioInspectorContent(docObj)}
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR METRICS -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:0.78rem; color:var(--text-muted); background:var(--bg-surface); padding:6px 12px; border-radius:4px; border:1px solid var(--border-color);">
+      <div>Status: <b style="color:var(--emerald);">Saved Locally</b> | Format: <b style="color:var(--text-main);">.folio v1</b></div>
+      <div id="docsWC">0 words</div>
+    </div>
   `;
+
   updateWC();
-  document.getElementById('docsEditor').addEventListener('input', updateWC);
+  updateFolioOutline();
 }
+
+function renderFolioInspectorContent(docObj) {
+  const doc = docObj.document;
+  if (currentFolioInspectorTab === 'outline') {
+    return `
+      <h4 style="margin:0 0 8px 0; font-size:0.85rem; color:var(--text-muted);">DOCUMENT OUTLINE</h4>
+      <div id="folioOutlineList" style="display:flex; flex-direction:column; gap:4px; font-size:0.8rem;"></div>
+    `;
+  }
+  if (currentFolioInspectorTab === 'history') {
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h4 style="margin:0; font-size:0.85rem; color:var(--text-muted);">VERSION HISTORY</h4>
+        <button class="btn ghost small" onclick="createFolioSnapshot()">+ Snapshot</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${(doc.history || []).map((v, idx) => `
+          <div style="padding:6px 8px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:4px; font-size:0.75rem;">
+            <div style="font-weight:bold; color:var(--text-main);">${escapeHTML(v.title)}</div>
+            <div style="color:var(--text-muted);">${new Date(v.timestamp).toLocaleTimeString()}</div>
+            <button class="btn ghost small" style="margin-top:4px; font-size:0.7rem;" onclick="restoreFolioSnapshot(${idx})">Restore</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  return `
+    <h4 style="margin:0 0 8px 0; font-size:0.85rem; color:var(--text-muted);">DOCUMENT PROPERTIES</h4>
+    <div style="display:flex; flex-direction:column; gap:6px; font-size:0.8rem; color:var(--text-main);">
+      <div>Author: <b>${escapeHTML(doc.metadata.author)}</b></div>
+      <div>Created: <b>${new Date(doc.metadata.created).toLocaleDateString()}</b></div>
+      <div>Status: <b>${escapeHTML(doc.metadata.status)}</b></div>
+      <div>Priority: <b>${escapeHTML(doc.metadata.priority)}</b></div>
+    </div>
+  `;
+}
+
+function setFolioInspectorTab(tab) {
+  currentFolioInspectorTab = tab;
+  renderDocs();
+}
+
+function updateFolioTitle(val) {
+  const docObj = getFolioDocument();
+  docObj.document.title = val;
+  saveFolioDocument(docObj, true);
+}
+
+function updateFolioOutline() {
+  const el = document.getElementById('folioOutlineList');
+  const editor = document.getElementById('docsEditor');
+  if (!el || !editor) return;
+
+  const headings = editor.querySelectorAll('h1, h2, h3');
+  if (!headings.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);">No headings found in document.</div>';
+    return;
+  }
+
+  let html = '';
+  headings.forEach((h, idx) => {
+    if (!h.id) h.id = 'heading_' + idx;
+    const level = h.tagName.toLowerCase();
+    const indent = level === 'h1' ? 0 : level === 'h2' ? 12 : 24;
+    html += `<div style="padding-left:${indent}px; cursor:pointer; color:var(--accent-primary,#3b82f6);" onclick="document.getElementById('${h.id}').scrollIntoView({behavior:'smooth'})">• ${escapeHTML(h.textContent || 'Untitled Heading')}</div>`;
+  });
+  el.innerHTML = html;
+}
+
+function onFolioEditorKeyDown(e) {
+  if (e.key === '/') {
+    const menu = document.getElementById('folioSlashMenu');
+    if (menu) menu.style.display = 'block';
+  } else if (e.key === 'Escape') {
+    const menu = document.getElementById('folioSlashMenu');
+    if (menu) menu.style.display = 'none';
+  }
+}
+
+function insertSlashBlock(type) {
+  const menu = document.getElementById('folioSlashMenu');
+  if (menu) menu.style.display = 'none';
+  if (type === 'H1') document.execCommand('formatBlock', false, 'H1');
+  else if (type === 'H2') document.execCommand('formatBlock', false, 'H2');
+  else if (type === 'QUOTE') document.execCommand('formatBlock', false, 'BLOCKQUOTE');
+  else if (type === 'TABLE') insertFolioTable();
+  else if (type === 'PAGE') insertFolioPageBreak();
+  updateFolioOutline();
+}
+
+function insertFolioTable() {
+  const editor = document.getElementById('docsEditor');
+  const html = `<table style="width:100%; border-collapse:collapse; margin:12px 0;" border="1">
+    <thead>
+      <tr style="background:var(--bg-elevated);">
+        <th style="padding:6px; border:1px solid var(--border-color);">Header 1</th>
+        <th style="padding:6px; border:1px solid var(--border-color);">Header 2</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:6px; border:1px solid var(--border-color);">Data 1</td>
+        <td style="padding:6px; border:1px solid var(--border-color);">Data 2</td>
+      </tr>
+    </tbody>
+  </table><p><br></p>`;
+  if (editor) {
+    editor.focus();
+    try { document.execCommand('insertHTML', false, html); } catch(e) { editor.innerHTML += html; }
+    saveDocs();
+  }
+}
+
+function insertFolioPageBreak() {
+  const editor = document.getElementById('docsEditor');
+  const html = `<div style="border-top:2px dashed var(--border-color); margin:20px 0; text-align:center; color:var(--text-muted); font-size:0.75rem; page-break-after:always;">--- PAGE BREAK ---</div><p><br></p>`;
+  if (editor) {
+    editor.innerHTML += html;
+    saveDocs();
+  }
+}
+
+function createFolioSnapshot() {
+  const docObj = getFolioDocument();
+  const editor = document.getElementById('docsEditor');
+  const title = prompt("Snapshot Title:", "Version " + (docObj.document.history.length + 1));
+  if (!title) return;
+
+  docObj.document.history.push({
+    id: "v_" + Date.now(),
+    title: title.trim(),
+    timestamp: Date.now(),
+    content: editor.innerHTML
+  });
+  saveFolioDocument(docObj);
+  renderDocs();
+}
+
+function restoreFolioSnapshot(idx) {
+  const docObj = getFolioDocument();
+  if (!docObj.document.history[idx]) return;
+  docObj.document.content = docObj.document.history[idx].content;
+  saveFolioDocument(docObj);
+  renderDocs();
+}
+
+function toggleFolioFocusMode() {
+  const panel = document.getElementById('panel-docs');
+  if (panel) panel.classList.toggle('focus-mode');
+}
+
+function openFolioFindReplaceModal() {
+  const findVal = prompt("Find text in document:");
+  if (!findVal) return;
+  const replaceVal = prompt(`Replace "${findVal}" with:`);
+  if (replaceVal === null) return;
+
+  const editor = document.getElementById('docsEditor');
+  if (editor) {
+    editor.innerHTML = editor.innerHTML.replaceAll(findVal, replaceVal);
+    saveDocs();
+    renderDocs();
+  }
+}
+
+function createTaskFromFolioSelection() {
+  const sel = window.getSelection().toString().trim();
+  if (!sel) { alert("Select text in the document first to convert to a task."); return; }
+  const tasksData = loadLocal('tasks', { items: [] });
+  tasksData.items.push({
+    id: Date.now(),
+    x: 50,
+    y: 50,
+    label: sel,
+    done: false,
+    createdDate: todayStr()
+  });
+  saveLocal('tasks', tasksData);
+  alert("Created Docket task from selected text!");
+}
+
 function docsInsertLink(){
   const url = prompt('Link URL:', 'https://');
   if(url) document.execCommand('createLink', false, url);
@@ -2043,7 +2299,7 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     };
 
     // Context execution
-    const fn = new Function('SUM','AVERAGE','MIN','MAX','COUNT','COUNTA','ROUND','ABS','SQRT','POWER','MOD','IF','AND','OR','CONCAT','TODAY','IFERROR','UPPER','LOWER','LEN','TRIM', `return (${cleaned});`);
+    const fn = new Function('SUM','AVERAGE','MIN','MAX','COUNT','COUNTA','COUNTIF','SUMIF','AVERAGEIF','ROUND','ROUNDUP','ROUNDDOWN','ABS','SQRT','POWER','MOD','IF','AND','OR','NOT','CONCAT','CONCATENATE','TODAY','NOW','IFERROR','UPPER','LOWER','LEN','TRIM','LEFT','RIGHT','MID','VLOOKUP','INDEX','MATCH', 'return (' + cleaned + ');');
     const res = fn(SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, COUNTIF, SUMIF, AVERAGEIF, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, IF, AND, OR, NOT, CONCAT, CONCATENATE, TODAY, NOW, IFERROR, UPPER, LOWER, LEN, TRIM, LEFT, RIGHT, MID, VLOOKUP, INDEX, MATCH);
     return res;
   } catch (e) {

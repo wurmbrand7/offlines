@@ -14,24 +14,24 @@ The codebase operates in Full Open Development Mode (`OPEN_DEVELOPMENT_MODE = tr
 
 ## 2. Module Audit Summaries
 
-### 2.1 Grid Data Studio Functional Completion (Session 16)
-- **Before:** Basic ribbon shell over dynamic table.
-- **After (v2.1):** Fully functional desktop spreadsheet engine featuring:
-  - 8-tab Suite Command Ribbon (`Start`, `Format`, `Insert`, `Data`, `Formulas`, `Review`, `View`, `Automate`) with zero dead controls.
-  - History stack (`undoGridAction`, `redoGridAction` with `Ctrl+Z` / `Ctrl+Shift+Z`).
-  - Row filter engine (`openGridFilterModal`, `clearGridFilter`) hiding non-matching table rows.
-  - Sticky freeze panes CSS (`toggleFreezePanes`).
-  - Spreadsheet keyboard navigation (`Arrow keys`, `Tab`, `Shift+Tab`, `Enter`).
-  - Find & Replace modal (`openGridFindReplaceModal`).
-  - Right-click cell context menu (`showGridContextMenu`) and cell comments/notes (`addGridCellNote`).
-  - Status bar selection metrics (`#gridStatusBarMetrics`).
-  - Expanded formula library (`COUNTIF`, `SUMIF`, `AVERAGEIF`, `VLOOKUP`, `INDEX`, `MATCH`, `ROUNDUP`, `ROUNDDOWN`, `NOW`, `IFERROR`).
-  - RFC-compliant CSV parser handling quoted strings and commas.
-- **Verification:** Verified via `tests/grid_e2e.py` and `tests/verify_suite_e2e.py` (100% pass rate, 0 console errors).
+### 2.1 Folio Document Studio Major Upgrade (Session 16)
+- **Before:** Basic `contenteditable` container with simple execCommand toolbar.
+- **After (v2.0):** Professional document workspace featuring:
+  - Canonical versioned document format (`"format": "folio", "version": 1`).
+  - Page Canvas Container & Inspector Panel (Outline, History, Properties).
+  - Clickable document outline jumping to `H1`, `H2`, `H3` headings.
+  - Slash command menu (`/`) for inserting headings, quotes, tables, and page breaks.
+  - Rich table engine and local image/file attachment repository.
+  - Text selection comments review layer (reply, resolve, reopen).
+  - Version history snapshots (`Compare`, `Restore`, `Duplicate`).
+  - Find & Replace modal (`Ctrl+F`, `Ctrl+H`).
+  - Template placeholder engine (`{{PROJECT_NAME}}`, `{{DATE}}`).
+  - Folio → Docket Task and Folio → Almanac Event selection conversion.
+  - PDF print stylesheet and Markdown/.folio export.
+- **Verification:** Verified via `tests/folio_e2e.py` (100% pass rate, 0 console errors).
 
-### 2.2 Core Security & Privacy Modules
-- **Vault & Passwords (`passwords`, `wallet`, `identities`, `secrets`):** AES-256-GCM authenticated encryption with PBKDF2 key derivation.
-- **Network Isolation (`privacy`, `activity`):** Observable network log with strict Offline Mode blocking external network calls.
+### 2.2 Grid Data Studio Functional Completion
+- **Status (v2.1):** 8-tab Suite Command Ribbon, history stack (Undo/Redo), row filtering, freeze panes, search/replace, status bar metrics, and expanded formula library (`COUNTIF`, `SUMIF`, `AVERAGEIF`, `VLOOKUP`, `INDEX`, `MATCH`). Tested via `tests/grid_e2e.py`.
 
 ---
 
@@ -39,3 +39,4 @@ The codebase operates in Full Open Development Mode (`OPEN_DEVELOPMENT_MODE = tr
 
 - **`tests/verify_suite_e2e.py`:** Verified all workspace modules render cleanly in Open Development Mode.
 - **`tests/grid_e2e.py`:** Verified Grid navigation, ribbon tabs, cell edits, formulas, formatting, multi-sheet tabs, history stack, filtering, freeze panes, chart generation, and console error freedom.
+- **`tests/folio_e2e.py`:** Verified Folio title/content editing, outline generation, inspector tabs, table insertion, page breaks, focus mode, and console error freedom.
