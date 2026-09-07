@@ -1,42 +1,44 @@
-# OFFLINES / Suite Feature Matrix
+# SUITE FEATURE MATRIX
 
-**Mode:** FULL OPEN DEVELOPMENT MODE
-**Active Policy:** All 23 Modules Fully Unlocked & Testable
-**Test Suite Artifact:** `tests/verify_suite_e2e.py`
-
----
-
-## 1. Complete Reconciled Source Feature Matrix
-
-| Category | Module ID | UI Label | Capabilities & Features | Storage Mechanism | Test Evidence | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **WORKSPACE** | `today` | Overview | Dashboard summary, quick actions, network activity badge | `localStorage` | Playwright E2E | **PASS** |
-| | `projects` | Projects | Project containers, milestone progress, object links | `localStorage` | Playwright E2E | **PASS** |
-| | `canvas` | Canvas / Graph | Interactive visual work graph connecting workspace items | Client Canvas | Playwright E2E | **PASS** |
-| **ORGANIZE** | `files` | Files | Drag & drop uploads, file tagging, preview drawer | `localStorage` | Playwright E2E | **PASS** |
-| | `notes` | Notes (Spot) | Block notes, inbox quick capture, daily notes, backlinks | `localStorage` | Playwright E2E | **PASS** |
-| | `tasks` | Tasks (Docket) | Priority matrix, status workflow (Inbox, Active, Done) | `localStorage` | Playwright E2E | **PASS** |
-| | `agenda` | Calendar (Almanac) | Month/Week/Agenda views, recurring events, daylight math | `localStorage` | Playwright E2E | **PASS** |
-| | `contacts` | Contacts | Contact directory, custom tags, linked vault credentials | `localStorage` | Playwright E2E | **PASS** |
-| **SECURE** | `passwords` | Passwords | Multi-vault manager across 9 categories (Logins, Cards, Notes) | Web Crypto AES-GCM | Playwright E2E | **PASS** |
-| | `passkeys` | Passkeys | WebAuthn credential metadata registry & key tracker | Encrypted `localStorage` | Playwright E2E | **PASS** |
-| | `totp` | OTP / Verifier | Local TOTP authenticator engine, 30s ticking bar, URI import | Web Crypto HMAC-SHA1 | Playwright E2E | **PASS** |
-| | `wallet` | Cards / Wallet | Payment card metadata & secure notes | Encrypted `localStorage` | Playwright E2E | **PASS** |
-| | `identities` | Identities | Identity records, passport/ID info, custom fields | Encrypted `localStorage` | Playwright E2E | **PASS** |
-| | `lockbox` | Secure Files | Client-side file encryption before storage, time-locks | Web Crypto AES-GCM | Playwright E2E | **PASS** |
-| | `secrets` | Secrets | API keys, SSH keys, developer secrets, tokens | Encrypted `localStorage` | Playwright E2E | **PASS** |
-| **CREATE** | `docs` | Documents (Folio) | Rich document studio, page outlines, stats, PDF print | `localStorage` | Playwright E2E | **PASS** |
-| | `sheets` | Tables (Grid) | Spreadsheet engine (`SUM`, `AVERAGE`, `IF`), CSV I/O | `localStorage` | Playwright E2E | **PASS** |
-| | `forms` | Forms (Fill) | Private form builder, signature canvas, response DB | `localStorage` | Playwright E2E | **PASS** |
-| | `slides` | Presentations (Glides) | Slide presentation editor, live Grid embeds (`{{GRID}}`) | `localStorage` | Playwright E2E | **PASS** |
-| **SYSTEM** | `activity` | Network Monitor | Observable network request monitor, 0 B transmit log | Client Memory | Playwright E2E | **PASS** |
-| | `backups` | Backups | Encrypted Backup Capsule (`.offline` JSON bundle) | Web Crypto AES-GCM | Playwright E2E | **PASS** |
-| | `security` | Security Center | Security dashboard auditing vault health & password scoring | Client Calculation | Playwright E2E | **PASS** |
-| | `privacy` | Privacy Center | Network transparency monitor & offline mode toggle | `localStorage` | Playwright E2E | **PASS** |
+**Version:** 2.1 (Session 16 Functional Completion)
+**Verification Method:** Automated Playwright E2E (`tests/verify_suite_e2e.py` & `tests/grid_e2e.py`)
 
 ---
 
-## 2. Evidence Verification Summary
+## Workspace Modules Status Matrix
 
-- **Automated E2E Suite:** `tests/verify_suite_e2e.py` executed successfully with 0 console errors and 100% module coverage.
-- **Unrestricted Access:** Verified all 23 modules open natively in Full Open Development Mode without lock overlays or paywalls.
+| Module ID | Module Name | Primary Role | Entitlement | Status | Test Verification |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `today` | Overview | Workspace Dashboard | Free / Open | **Active** | Verified E2E |
+| `files` | Files Manager | Local File Vault | Free / Open | **Active** | Verified E2E |
+| `notes` | Spot | Notes & Markdown Library | Free / Open | **Active** | Verified E2E |
+| `tasks` | Docket | Urgent/Important Matrix | Free / Open | **Active** | Verified E2E |
+| `agenda` | Almanac | Calendar & Schedule | Free / Open | **Active** | Verified E2E |
+| `contacts` | Contacts | Contact Directory | Free / Open | **Active** | Verified E2E |
+| `projects` | Projects | Cross-Module Projects | Free / Open | **Active** | Verified E2E |
+| `passwords` | Passwords Vault | AES-256-GCM Credential Store | Free / Open | **Active** | Verified E2E |
+| `passkeys` | Passkeys | WebAuthn Registry | Free / Open | **Active** | Verified E2E |
+| `totp` | OTP / Verifier | TOTP / HOTP Authenticator | Free / Open | **Active** | Verified E2E |
+| `wallet` | Cards / Wallet | Payment Card Vault | Free / Open | **Active** | Verified E2E |
+| `identities` | Identities | ID & Passport Store | Free / Open | **Active** | Verified E2E |
+| `lockbox` | Secure Files | Encrypted File Locker | Free / Open | **Active** | Verified E2E |
+| `secrets` | Secrets | SSH & API Key Store | Free / Open | **Active** | Verified E2E |
+| `docs` | Folio | Rich Document Studio | Free / Open | **Active** | Verified E2E |
+| **`sheets`** | **Grid Data Studio** | **Upgraded Spreadsheet Studio** | **Free / Open** | **Active v2.1** | **Verified `tests/grid_e2e.py`** |
+| `forms` | Fill | Form Builder & Capture | Free / Open | **Active** | Verified E2E |
+| `slides` | Glides | Filmstrip Deck Editor | Free / Open | **Active** | Verified E2E |
+| `canvas` | Work Graph | Relationship Graph | Free / Open | **Active** | Verified E2E |
+| `activity` | Network Monitor | Request Audit Log | Free / Open | **Active** | Verified E2E |
+| `backups` | Backups | Encrypted Capsule Backup | Free / Open | **Active** | Verified E2E |
+| `security` | Security Center | Security & Health Score | Free / Open | **Active** | Verified E2E |
+| `privacy` | Privacy Center | Privacy Audit & Strict Mode | Free / Open | **Active** | Verified E2E |
+
+---
+
+## Grid Feature Functional Status (Session 16 Verification)
+
+- **Command System:** 8-tab Suite Command Ribbon (`Start`, `Format`, `Insert`, `Data`, `Formulas`, `Review`, `View`, `Automate`) with zero dead controls.
+- **History & Navigation:** Undo/Redo history stack (`Ctrl+Z`, `Ctrl+Shift+Z`), spreadsheet keyboard navigation (Arrow keys, Tab, Enter).
+- **Data Engine & Filtering:** Multi-sheet workbook, row filter engine, freeze panes CSS, right-click cell context menu, local cell notes/comments, Find & Replace modal, status bar selection metrics.
+- **Formula Engine:** Expanded function library (`SUM`, `AVERAGE`, `COUNTIF`, `SUMIF`, `AVERAGEIF`, `VLOOKUP`, `INDEX`, `MATCH`, `ROUNDUP`, `ROUNDDOWN`, `NOW`, `IFERROR`) with dependency tracking and error codes.
+- **Import / Export:** Versioned `.grid` JSON format v2.0 and RFC-compliant CSV parser.

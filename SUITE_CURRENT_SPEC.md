@@ -1,77 +1,64 @@
-# OFFLINES / Suite Current Product Specification
+# SUITE CURRENT SPECIFICATION
 
-**Specification Version:** 2026.13 (Session 13 Forensic Correction)
-**Status:** FULL OPEN DEVELOPMENT MODE
-**Instruction Hierarchy & Authority:**
-1. Session 13 Task Specification Directives
-2. Actual Executable Source Code (`index.html` & ecosystem)
-3. Executable E2E Test Suite Results (`tests/verify_suite_e2e.py`)
-4. This Document (`SUITE_CURRENT_SPEC.md`)
-5. Historical Architecture & Audit Documentation
+**Version:** 2.1 (Session 16 Functional Completion)
+**Status:** Full Open Development Mode (`OPEN_DEVELOPMENT_MODE = true`)
+**Source Location:** `index.html`
 
 ---
 
-## 1. Product Status & Philosophy
+## 1. System Architecture & Product Philosophy
 
-### Commercial Policy
-- **NO PRICING**
-- **NO BILLING**
-- **NO LICENSING ENFORCEMENT**
-- **NO PRO UNLOCK LOCKS**
-- **NO SUBSCRIPTIONS**
-
-Every module implemented in the source code is 100% open and testable before any commercial model is introduced.
-
-### Storage Architecture & Invariants
-- **Actual Storage Primitives:** `localStorage` (scoped by prefix `suite_`) and Web Crypto API (`window.crypto.subtle`).
-- **Storage Correction:** Historical claims of `IndexedDB` usage have been removed to reflect actual source implementation.
-- **Serverless Data Isolation:** 100% of user data remains localized on the user device. The server only serves static application assets (HTML, CSS, JS, Manifest, Service Worker).
+Suite / OFFLINES is a professional, offline-first private operating suite.
+- **Core Principle:** The server delivers the application assets (HTML/CSS/JS). The server never receives user private data.
+- **Data Engine:** All user data (documents, spreadsheets, passwords, notes, calendar events, files) is stored locally in `localStorage` under key prefix `suite_v1_`.
+- **Encryption:** High-security modules (Vault, Lockbox) use client-side AES-256-GCM authenticated encryption with PBKDF2 key derivation via `window.crypto.subtle`.
 
 ---
 
-## 2. Reconciled 23 Source Workspace Modules
+## 2. Source Module Architecture (23 Modules)
 
-Catalog of the 23 modules defined in `ALL_MODULES` in `index.html`:
+The codebase consists of 23 workspace modules mapped in `ALL_MODULES`:
 
-| Category | Module ID | Label in UI | File Extension | Development Access |
-| :--- | :--- | :--- | :--- | :--- |
-| **WORKSPACE** | `today` | Overview | (Dashboard) | Open / Unlocked |
-| | `projects` | Projects | `.proj` | Open / Unlocked |
-| | `canvas` | Canvas / Graph | `.graph` | Open / Unlocked |
-| **ORGANIZE** | `files` | Files | `.fils` | Open / Unlocked |
-| | `notes` | Notes (Spot) | `.spot` | Open / Unlocked |
-| | `tasks` | Tasks (Docket) | `.plot` | Open / Unlocked |
-| | `agenda` | Calendar (Almanac) | `.agnd` | Open / Unlocked |
-| | `contacts` | Contacts | `.ctac` | Open / Unlocked |
-| **SECURE** | `passwords` | Passwords | `.vault` | Open / Unlocked |
-| | `passkeys` | Passkeys | `.pkey` | Open / Unlocked |
-| | `totp` | OTP / Verifier | `.totp` | Open / Unlocked |
-| | `wallet` | Cards / Wallet | `.card` | Open / Unlocked |
-| | `identities` | Identities | `.id` | Open / Unlocked |
-| | `lockbox` | Secure Files | `.lbox` | Open / Unlocked |
-| | `secrets` | Secrets | `.key` | Open / Unlocked |
-| **CREATE** | `docs` | Documents (Folio) | `.folio` | Open / Unlocked |
-| | `sheets` | Tables (Grid) | `.grid` | Open / Unlocked |
-| | `forms` | Forms (Fill) | `.fill` | Open / Unlocked |
-| | `slides` | Presentations (Glides) | `.glides` | Open / Unlocked |
-| **SYSTEM** | `activity` | Network Monitor | (Monitor) | Open / Unlocked |
-| | `backups` | Backups | (Capsule) | Open / Unlocked |
-| | `security` | Security Center | (Security) | Open / Unlocked |
-| | `privacy` | Privacy Center | (Privacy) | Open / Unlocked |
+### 2.1 Workspace
+1. **Overview (`today`):** Dashboard with KPI cards, quick actions, schedule summary, and security health indicator.
+
+### 2.2 Organize
+2. **Files (`files`):** Local `.fils` document and file repository manager.
+3. **Notes (`notes` / Spot):** Canvas spatial note board + Markdown Library system with backlinks (`[[Link]]`).
+4. **Tasks (`tasks` / Docket):** Urgent/Important Eisenhower matrix with dot position aging.
+5. **Calendar (`agenda` / Almanac):** Day/Week/Month calendar, countdowns, and daylight estimation.
+6. **Contacts (`contacts`):** Local `.ctac` contact directory manager.
+7. **Projects (`projects`):** Local `.proj` project manager connecting cross-module assets.
+
+### 2.3 Secure
+8. **Passwords (`passwords`):** AES-256-GCM encrypted credential vault.
+9. **Passkeys (`passkeys`):** Local WebAuthn passkey reference registry.
+10. **OTP / Verifier (`totp`):** Local RFC 6238 TOTP / RFC 4226 HOTP authenticator code engine.
+11. **Cards / Wallet (`wallet`):** Encrypted payment card information locker.
+12. **Identities (`identities`):** Encrypted passport, national ID, and address store.
+13. **Secure Files (`lockbox`):** Encrypted file locker (`.lbox`) with time-locked notes.
+14. **Secrets (`secrets`):** Encrypted SSH keys, API credentials, and developer secrets.
+
+### 2.4 Create
+15. **Documents (`docs` / Folio):** Rich document editor (`.fils`) with margin notes and export.
+16. **Tables (`sheets` / Grid - Upgraded v2.1):** Professional spreadsheet studio featuring an 8-tab Suite Command Ribbon (Start, Format, Insert, Data, Formulas, Review, View, Automate), Undo/Redo history stack, row filtering engine, freeze panes CSS, spreadsheet keyboard navigation, multi-sheet workbook model, expanded function library (`SUM`, `AVERAGE`, `COUNTIF`, `SUMIF`, `AVERAGEIF`, `IF`, `VLOOKUP`, `INDEX`, `MATCH`, `ROUNDUP`, `ROUNDDOWN`, `TODAY`, `NOW`, `IFERROR`), cell formatting, cell notes/comments, Find & Replace modal, right-click context menu, status bar metrics, SVG chart generator, RFC-compliant CSV parser, and `.grid` / CSV import/export.
+17. **Forms (`forms` / Fill):** Form builder and local submission response capture (`.fill`).
+18. **Presentations (`slides` / Glides):** Filmstrip slide editor with live `{{GRID:A1:B4}}` spreadsheet range embeds.
+19. **Canvas / Graph (`canvas`):** Interactive Work Graph relationship visualizer (`.graph`).
+
+### 2.5 System
+20. **Network Monitor (`activity`):** Observable real-time network request audit log.
+21. **Backups (`backups`):** Encrypted `.capsule` backup package generator and restore engine.
+22. **Security Center (`security`):** Local security dashboard and password health scoring.
+23. **Privacy Center (`privacy`):** Local privacy audit with strict Offline Mode toggle.
 
 ---
 
-## 3. Configuration & Open Access Boundary
+## 3. Storage Layer Specification
 
-```javascript
-// Active Application Configuration in index.html
-const OPEN_DEVELOPMENT_MODE = true;
-window._licensed = true;
-function isLicensed(){ return true; }
-async function refreshLicenseState(){ window._licensed = true; }
-```
-
-When `OPEN_DEVELOPMENT_MODE` is active:
-1. Every one of the 23 modules renders natively without lock prompts or paywall barriers.
-2. Encrypted Backup Capsule export and import operates freely without requiring license key entry.
-3. Network traffic passes through `loggedFetch()`, presenting an observable 0-byte transmit log.
+- **Primary Local Storage:** `localStorage` with `KEY_PREFIX = "suite_v1_"`.
+- **Key Mappings:**
+  - `suite_v1_sheets`: Multi-sheet `SuiteGridWorkbook` object.
+  - `suite_v1_docs`: Folio HTML document payload.
+  - `suite_v1_notes_library`: Spot Markdown library notes.
+  - `suite_v1_vaults_index` & `suite_v1_vault_<id>`: Encrypted Vault data blobs.

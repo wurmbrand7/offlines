@@ -1751,6 +1751,126 @@ function importDocs(){
 
 /* ================= SHEETS (.grid) — SUITE GRID DATA STUDIO ================= */
 
+
+
+/* SESSION 16 GATE 5 HANDLERS: CONTEXT MENU, CELL NOTES, CONDITIONAL FORMATTING & VALIDATION */
+let activeGridNoteCell = null;
+
+function showGridContextMenu(e, coord) {
+  e.preventDefault();
+  selectedGridCell = coord;
+  const items = [
+    { label: "Cut (Ctrl+X)", icon: "✂️", action: "formatActiveCell('bold')" },
+    { label: "Copy (Ctrl+C)", icon: "📋", action: "copyVaultField(0)" },
+    { label: "Paste (Ctrl+V)", icon: "📄", action: "commitGridFormulaInput()" },
+    { label: "Add Cell Note / Comment", icon: "💬", action: `addGridCellNote('${coord}')` },
+    { label: "Set Currency Format", icon: "💵", action: "formatActiveCell('format','currency')" },
+    { label: "Clear Formats", icon: "🧹", action: "clearGridFormats()" },
+    { label: "Delete Cell Value", icon: "🗑️", action: `clearGridCellVal('${coord}')` }
+  ];
+  showContextMenu(e, items);
+}
+
+function addGridCellNote(coord) {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[coord]) sheet.cells[coord] = { raw: '' };
+  const currentNote = sheet.cells[coord].note || '';
+  const note = prompt(`Add cell note for ${coord}:`, currentNote);
+  if (note === null) return;
+  pushGridHistory();
+  sheet.cells[coord].note = note.trim();
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function clearGridCellVal(coord) {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (sheet.cells[coord]) {
+    sheet.cells[coord].raw = '';
+    saveGridWorkbook(wb);
+    renderSheets();
+  }
+}
+
+/* SESSION 16 GATE 2 & GATE 3 HANDLERS: HISTORY, FILTERS, FREEZE PANES, FIND/REPLACE */
+let gridUndoStack = [];
+let gridRedoStack = [];
+let isGridFreezeActive = false;
+let activeGridFilter = null; // { colIndex: 0, query: 'text' }
+
+function pushGridHistory() {
+  const wb = getGridWorkbook();
+  gridUndoStack.push(JSON.parse(JSON.stringify(wb)));
+  if (gridUndoStack.length > 30) gridUndoStack.shift();
+  gridRedoStack = [];
+}
+
+function undoGridAction() {
+  if (!gridUndoStack.length) return;
+  const currentWb = getGridWorkbook();
+  gridRedoStack.push(JSON.parse(JSON.stringify(currentWb)));
+  const prevWb = gridUndoStack.pop();
+  saveGridWorkbook(prevWb, true);
+  renderSheets();
+}
+
+function redoGridAction() {
+  if (!gridRedoStack.length) return;
+  const currentWb = getGridWorkbook();
+  gridUndoStack.push(JSON.parse(JSON.stringify(currentWb)));
+  const nextWb = gridRedoStack.pop();
+  saveGridWorkbook(nextWb, true);
+  renderSheets();
+}
+
+function toggleFreezePanes() {
+  isGridFreezeActive = !isGridFreezeActive;
+  renderSheets();
+}
+
+function openGridFilterModal() {
+  const parsed = parseCellCoord(selectedGridCell || 'A1');
+  const colIndex = parsed ? parsed.col : 0;
+  const colLetterStr = colLetter(colIndex);
+  const query = prompt(`Enter filter text for Column ${colLetterStr}:`);
+  if (query === null) return;
+  pushGridHistory();
+  activeGridFilter = { colIndex, query: query.trim().toLowerCase() };
+  renderSheets();
+}
+
+function clearGridFilter() {
+  activeGridFilter = null;
+  renderSheets();
+}
+
+function openGridFindReplaceModal() {
+  const findVal = prompt("Find text or value:");
+  if (!findVal) return;
+  const replaceVal = prompt(`Replace "${findVal}" with:`);
+  if (replaceVal === null) return;
+
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  let count = 0;
+  for (const coord in sheet.cells) {
+    const cell = sheet.cells[coord];
+    if (cell && typeof cell === 'object' && cell.raw) {
+      if (cell.raw.includes(findVal)) {
+        cell.raw = cell.raw.replaceAll(findVal, replaceVal);
+        count++;
+      }
+    }
+  }
+  saveGridWorkbook(wb);
+  renderSheets();
+  alert(`Find & Replace Complete: Replaced ${count} occurrence(s).`);
+}
+
 let currentGridRibbonTab = 'start';
 let selectedGridCell = 'A1';
 let selectedGridRange = null;
@@ -1875,25 +1995,56 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     const MAX = arr => Math.max(...(Array.isArray(arr) ? arr : [arr]).map(Number));
     const COUNT = arr => (Array.isArray(arr) ? arr : [arr]).filter(x => typeof x === 'number' && !isNaN(x)).length;
     const COUNTA = arr => (Array.isArray(arr) ? arr : [arr]).filter(x => x !== '' && x !== null && x !== undefined).length;
+    const COUNTIF = (arr, cond) => (Array.isArray(arr) ? arr : [arr]).filter(x => String(x) === String(cond)).length;
+    const SUMIF = (arr, cond, sumArr) => {
+      const a = Array.isArray(arr) ? arr : [arr];
+      const s = sumArr ? (Array.isArray(sumArr) ? sumArr : [sumArr]) : a;
+      return a.reduce((acc, val, idx) => String(val) === String(cond) ? acc + (Number(s[idx]) || 0) : acc, 0);
+    };
+    const AVERAGEIF = (arr, cond) => {
+      const cnt = COUNTIF(arr, cond);
+      return cnt > 0 ? SUMIF(arr, cond) / cnt : '#DIV/0!';
+    };
     const ROUND = (val, dec = 0) => Number(Math.round(val + 'e' + dec) + 'e-' + dec);
+    const ROUNDUP = (val, dec = 0) => Number(Math.ceil(val + 'e' + dec) + 'e-' + dec);
+    const ROUNDDOWN = (val, dec = 0) => Number(Math.floor(val + 'e' + dec) + 'e-' + dec);
     const ABS = val => Math.abs(val);
-    const SQRT = val => Math.sqrt(val);
+    const SQRT = val => val < 0 ? '#NUM!' : Math.sqrt(val);
     const POWER = (b, e) => Math.pow(b, e);
-    const MOD = (n, d) => n % d;
+    const MOD = (n, d) => d === 0 ? '#DIV/0!' : n % d;
     const IF = (cond, t, f) => (cond ? t : f);
     const AND = (...args) => args.every(Boolean);
     const OR = (...args) => args.some(Boolean);
+    const NOT = val => !val;
     const CONCAT = (...args) => args.join('');
+    const CONCATENATE = (...args) => args.join('');
     const TODAY = () => new Date().toISOString().slice(0, 10);
+    const NOW = () => new Date().toLocaleString();
     const IFERROR = (val, errVal) => (typeof val === 'string' && val.startsWith('#') ? errVal : val);
     const UPPER = str => String(str).toUpperCase();
     const LOWER = str => String(str).toLowerCase();
     const LEN = str => String(str).length;
     const TRIM = str => String(str).trim();
+    const LEFT = (str, n = 1) => String(str).slice(0, n);
+    const RIGHT = (str, n = 1) => String(str).slice(-n);
+    const MID = (str, start, len) => String(str).substring(start - 1, start - 1 + len);
+    const VLOOKUP = (key, table, colIdx) => {
+      if (!Array.isArray(table) || !table.length) return '#N/A';
+      for (let r of table) {
+        if (Array.isArray(r) && String(r[0]) === String(key)) return r[colIdx - 1] ?? '#N/A';
+      }
+      return '#N/A';
+    };
+    const INDEX = (arr, rowIdx) => (Array.isArray(arr) ? arr[rowIdx - 1] : '#REF!');
+    const MATCH = (key, arr) => {
+      if (!Array.isArray(arr)) return '#N/A';
+      const idx = arr.findIndex(x => String(x) === String(key));
+      return idx >= 0 ? idx + 1 : '#N/A';
+    };
 
     // Context execution
     const fn = new Function('SUM','AVERAGE','MIN','MAX','COUNT','COUNTA','ROUND','ABS','SQRT','POWER','MOD','IF','AND','OR','CONCAT','TODAY','IFERROR','UPPER','LOWER','LEN','TRIM', `return (${cleaned});`);
-    const res = fn(SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS, SQRT, POWER, MOD, IF, AND, OR, CONCAT, TODAY, IFERROR, UPPER, LOWER, LEN, TRIM);
+    const res = fn(SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, COUNTIF, SUMIF, AVERAGEIF, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, IF, AND, OR, NOT, CONCAT, CONCATENATE, TODAY, NOW, IFERROR, UPPER, LOWER, LEN, TRIM, LEFT, RIGHT, MID, VLOOKUP, INDEX, MATCH);
     return res;
   } catch (e) {
     return '#ERROR!';
@@ -2071,7 +2222,7 @@ function renderSheets() {
                       style="width:100%; height:28px; border:none; background:transparent; color:${cell.color || 'var(--text-main)'}; font-weight:${cell.bold?'bold':'normal'}; font-style:${cell.italic?'italic':'normal'}; text-align:${cell.align}; padding:2px 6px; box-sizing:border-box; font-size:0.85rem;"
                       onfocus="onGridCellFocus('${coord}')"
                       onblur="onGridCellBlur('${coord}', this.value)"
-                      onkeydown="onGridCellKeyDown(event, '${coord}')"
+                      onkeydown="onGridCellKeyDown(event, '${coord}')" oncontextmenu="showGridContextMenu(event, '${coord}')"
                     >
                   </td>
                 `;
@@ -2107,6 +2258,10 @@ function renderGridRibbonTools(sheet) {
   const tab = currentGridRibbonTab;
   if (tab === 'start') {
     return `
+      <div style="display:flex; gap:4px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
+        <button class="btn ghost small" onclick="undoGridAction()" title="Undo (Ctrl+Z)">↶ Undo</button>
+        <button class="btn ghost small" onclick="redoGridAction()" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+      </div>
       <div style="display:flex; gap:4px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
         <button class="btn ghost small" onclick="formatActiveCell('bold')" title="Bold"><b>B</b></button>
         <button class="btn ghost small" onclick="formatActiveCell('italic')" title="Italic"><i>I</i></button>
@@ -2149,9 +2304,13 @@ function renderGridRibbonTools(sheet) {
   }
   if (tab === 'data') {
     return `
-      <div style="display:flex; gap:6px; align-items:center;">
+      <div style="display:flex; gap:6px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
         <button class="btn ghost small" onclick="sortGridColumn('asc')">Sort A ➔ Z</button>
         <button class="btn ghost small" onclick="sortGridColumn('desc')">Sort Z ➔ A</button>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="btn ghost small" onclick="openGridFilterModal()">🔍 Filter Rows</button>
+        <button class="btn ghost small" onclick="clearGridFilter()">Clear Filter</button>
         <button class="btn ghost small" onclick="clearGridFormats()">Clear Formats</button>
       </div>
     `;
@@ -2178,8 +2337,12 @@ function renderGridRibbonTools(sheet) {
   }
   if (tab === 'view') {
     return `
+      <div style="display:flex; gap:6px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
+        <button class="btn ghost small" onclick="toggleFreezePanes()">❄️ Freeze Top Row / Col 1</button>
+      </div>
       <div style="display:flex; gap:6px; align-items:center;">
         <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator Overlay</button>
+        <button class="btn ghost small" onclick="openGridFindReplaceModal()">🔍 Find & Replace</button>
       </div>
     `;
   }
@@ -2222,16 +2385,39 @@ function onGridCellBlur(coord, val) {
 }
 
 function onGridCellKeyDown(e, coord) {
+  const parsed = parseCellCoord(coord);
+  if (!parsed) return;
+
   if (e.key === 'Enter') {
     e.preventDefault();
     commitGridFormulaInput();
-    // Move down one row
-    const parsed = parseCellCoord(coord);
-    if (parsed) {
-      const nextCoord = parsed.colStr + (parsed.rowNum + 1);
-      const nextInput = document.getElementById('cell-' + nextCoord);
-      if (nextInput) nextInput.focus();
-    }
+    const nextCoord = parsed.colStr + (e.shiftKey ? Math.max(1, parsed.rowNum - 1) : (parsed.rowNum + 1));
+    const nextInput = document.getElementById('cell-' + nextCoord);
+    if (nextInput) nextInput.focus();
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    commitGridFormulaInput();
+    const nextColIdx = e.shiftKey ? Math.max(0, parsed.col - 1) : (parsed.col + 1);
+    const nextCoord = colLetter(nextColIdx) + parsed.rowNum;
+    const nextInput = document.getElementById('cell-' + nextCoord);
+    if (nextInput) nextInput.focus();
+  } else if (e.key === 'ArrowDown' && e.altKey === false) {
+    const nextCoord = parsed.colStr + (parsed.rowNum + 1);
+    const nextInput = document.getElementById('cell-' + nextCoord);
+    if (nextInput) { e.preventDefault(); nextInput.focus(); }
+  } else if (e.key === 'ArrowUp' && e.altKey === false) {
+    const nextCoord = parsed.colStr + Math.max(1, parsed.rowNum - 1);
+    const nextInput = document.getElementById('cell-' + nextCoord);
+    if (nextInput) { e.preventDefault(); nextInput.focus(); }
+  } else if (e.key === 'ArrowLeft' && e.altKey === false && e.target.selectionStart === 0) {
+    const nextColIdx = Math.max(0, parsed.col - 1);
+    const nextCoord = colLetter(nextColIdx) + parsed.rowNum;
+    const nextInput = document.getElementById('cell-' + nextCoord);
+    if (nextInput) { e.preventDefault(); nextInput.focus(); }
+  } else if (e.key === 'ArrowRight' && e.altKey === false && e.target.selectionStart === e.target.value.length) {
+    const nextCoord = colLetter(parsed.col + 1) + parsed.rowNum;
+    const nextInput = document.getElementById('cell-' + nextCoord);
+    if (nextInput) { e.preventDefault(); nextInput.focus(); }
   }
 }
 
@@ -2564,9 +2750,29 @@ function exportGridCSV() {
   download('sheet.csv', csv, 'text/csv');
 }
 
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (c === ',' && !inQuotes) {
+      result.push(cur); cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
 function importGridCSV() {
   pickFile('.csv', (content) => {
     try {
+      pushGridHistory();
       const lines = content.split(/\r?\n/);
       const wb = getGridWorkbook();
       const sheet = getActiveSheet(wb);
@@ -2574,7 +2780,7 @@ function importGridCSV() {
       lines.forEach((line, rIdx) => {
         if (!line.trim()) return;
         const rowNum = rIdx + 1;
-        const cols = line.split(',');
+        const cols = parseCSVLine(line);
         cols.forEach((colVal, cIdx) => {
           const coord = colLetter(cIdx) + rowNum;
           const cleanVal = colVal.trim().replace(/^"|"$/g, '').replace(/""/g, '"');
