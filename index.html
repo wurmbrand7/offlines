@@ -653,6 +653,94 @@ body {
   color: var(--text-main);
 }
 
+
+/* Modals & Overlays */
+.capsule-modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 15, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.capsule-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+.seal-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.seal-overlay.active {
+  opacity: 1;
+}
+.seal-stamp {
+  background: var(--emerald);
+  color: #000;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+  transform: scale(0.8) rotate(-5deg);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.seal-overlay.active .seal-stamp {
+  transform: scale(1) rotate(0deg);
+}
+
+/* Module Sub-components */
+.filmstrip {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 12px 0;
+  scroll-snap-type: x mandatory;
+}
+.plot-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-base);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.plot-dot:hover {
+  transform: translate(-50%, -50%) scale(1.4);
+  z-index: 10;
+}
+.plot-dot.done {
+  background: var(--emerald);
+}
+.sync-panel, .sync-card, .slide-editor, .slide-preview, .lockbox-row, .timelock-row, .privacy-toggle-row, .md-preview {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-elevated);
+  padding: 12px;
+}
+
 </style>
 </head>
 <body>
