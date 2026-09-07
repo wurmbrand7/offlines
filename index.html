@@ -662,10 +662,13 @@ body {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   z-index: 1000;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 20px;
+}
+.capsule-modal-bg.show {
+  display: flex !important;
 }
 .capsule-modal {
   background: var(--bg-surface);
@@ -908,127 +911,16 @@ function pickFile(accept, cb){
   document.body.appendChild(inp); inp.click(); inp.remove();
 }
 
-/* ---------- License (server-verified, one-time $9 unlock, no account) ---------- */
-// Set this to your verify.php URL once it's live on your host, e.g.:
-// const LICENSE_VERIFY_URL = 'https://codersagent.com/suite-license/verify.php';
-const LICENSE_VERIFY_URL = ''; // <-- fill this in before shipping
-
-// Public key only — safe to expose. Used to verify signatures locally after the
-// first successful server check, so the app stays offline day-to-day.
-const LICENSE_PUBLIC_JWK = {
-  kty: "RSA", alg: "RS256", ext: true, key_ops: ["verify"], e: "AQAB",
-  n: "kAidYl1Daul6rCzJg--OXpKv3AZt5Sy3cBQw0-bqEGvc2qn49ad804MN684eZYmgIZqNahkssWGbp9fo042obm_RnZ7QmFal67pb7GTcM-0Xc-V5Ifg0BpeKSI1vQJz47g4bxZq9zJlMsWQhR3VSGW2JTYNL3vX5XFQgA4ISAUB32dE5fDkMPVrMutcGCKuize4iHQgJpdg3HJcAbGEQPnUW6XnwdlfDGiSX_VMq0lgvt1yELgbCiNFtJr_c3iwZDtByhdqbVRiHmkuDmkpHdCIIkeO9MxORgMoSqESfYpnBBy_7gPT9lXOlklGccoGQTs33xNvk1vSrwB0nwdBdpw"
-};
-
-let _licenseCryptoKey = null; // cached imported CryptoKey
-async function getLicensePublicKey(){
-  if(_licenseCryptoKey) return _licenseCryptoKey;
-  _licenseCryptoKey = await crypto.subtle.importKey(
-    'jwk', LICENSE_PUBLIC_JWK,
-    { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' },
-    false, ['verify']
-  );
-  return _licenseCryptoKey;
-}
-function b64ToBytes(b64){ const s=atob(b64); const arr=new Uint8Array(s.length); for(let i=0;i<s.length;i++) arr[i]=s.charCodeAt(i); return arr; }
-
-async function verifyStoredToken(){
-  const token = loadLocal('licenseToken', null);
-  if(!token || !token.payload || !token.signature) return false;
-  try{
-    const key = await getLicensePublicKey();
-    const enc = new TextEncoder();
-    const ok = await crypto.subtle.verify(
-      { name:'RSASSA-PKCS1-v1_5' },
-      key,
-      b64ToBytes(token.signature),
-      enc.encode(token.payload)
-    );
-    return ok;
-  }catch(e){ return false; }
-}
-
-// Cached result so render functions can check synchronously; refreshed on load and on activation.
+/* ---------- Open Development Mode & Configuration ---------- */
+const OPEN_DEVELOPMENT_MODE = true;
 window._licensed = true;
 function isLicensed(){ return true; }
+async function refreshLicenseState(){ window._licensed = true; }
 
-async function refreshLicenseState(){
-  window._licensed = await verifyStoredToken();
-}
+// Optional future license server configuration (not active in Open Development Mode)
+const LICENSE_VERIFY_URL = "";
+function lockOverlayHTML(moduleLabel){ return ""; }
 
-/* Device fingerprint: a hash of a few weak, non-invasive signals (not identity —
-   just enough to tell devices apart for the 3-device license cap). Persisted once
-   generated so it stays stable across sessions on the same device. */
-async function getDeviceFingerprint(){
-  let stored = loadLocal('deviceFingerprintSeed', null);
-  if(!stored){
-    stored = [
-      navigator.userAgent, navigator.language, navigator.hardwareConcurrency || '',
-      screen.width + 'x' + screen.height, new Date().getTimezoneOffset(),
-      Math.random().toString(36).slice(2) // random component so two identical browsers on different machines still differ
-    ].join('|');
-    saveLocal('deviceFingerprintSeed', stored);
-  }
-  return sha256Hex(stored);
-}
-
-async function tryActivate(moduleLabel){
-  const input = document.getElementById('licenseInput_'+moduleLabel);
-  const key = input ? input.value.trim() : '';
-  if(!key){ alert('Enter your license key first.'); return; }
-  if(!LICENSE_VERIFY_URL){
-    alert('The license server URL hasn\'t been configured yet in index.html (LICENSE_VERIFY_URL) — this is a setup step, not a key problem.');
-    return;
-  }
-  const btn = document.querySelector(`[onclick="tryActivate('${moduleLabel}')"]`);
-  if(btn){ btn.disabled = true; btn.textContent = 'Checking…'; }
-  try{
-    const deviceFingerprint = await getDeviceFingerprint();
-    const res = await loggedFetch(LICENSE_VERIFY_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({key, device_fingerprint: deviceFingerprint})
-    }, 'license-verify');
-    const data = await res.json();
-    if(!data.ok){
-      alert('That key didn\'t verify: ' + (data.error || 'unknown error'));
-      return;
-    }
-    // Confirm the signature ourselves before trusting it — belt and suspenders.
-    const key2 = await getLicensePublicKey();
-    const enc = new TextEncoder();
-    const sigValid = await crypto.subtle.verify(
-      { name:'RSASSA-PKCS1-v1_5' }, key2,
-      b64ToBytes(data.signature), enc.encode(data.payload)
-    );
-    if(!sigValid){ alert('Server response failed local verification — please try again.'); return; }
-
-    saveLocal('licenseToken', { payload: data.payload, signature: data.signature });
-    window._licensed = true;
-    showSeal();
-    renderDocs(); renderSheets(); renderForms(); renderNotes();
-    renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
-    renderToday();
-  }catch(e){
-    alert('Couldn\'t reach the license server — check your internet connection and try again. (Activation needs to happen online once; after that the app works offline as usual.)');
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Unlock'; }
-  }
-}
-function lockOverlayHTML(moduleLabel){
-  return `
-    <div class="lock-overlay">
-      <div class="lock-icon">&#128274;</div>
-      <h3>${moduleLabel} is part of the Pro unlock</h3>
-      <p>Folio, Spot, and Almanac are free forever. ${moduleLabel} and four other modules unlock with a single one-time purchase — no subscription, no account. Unlocking needs internet once; after that it works offline like everything else.</p>
-      <input type="text" id="licenseInput_${moduleLabel}" placeholder="SUITE-XXXXX-XX">
-      <div class="toolbar" style="justify-content:center;margin-top:12px;">
-        <button class="btn brass small" onclick="tryActivate('${moduleLabel}')">Unlock</button>
-      </div>
-      <div class="lock-price">$9 once — unlocks Grid, Fill, Docket, Glides, Lockbox, and Capsule encryption for good.</div>
-    </div>
-  `;
-}
 
 
 
@@ -4096,15 +3988,7 @@ async function runBreachCheckAll(){
 
 function openCapsuleModal(kind){
   const modal = document.getElementById('capsuleModal');
-  if(!isLicensed()){
-    modal.innerHTML = `
-      <h3>Capsule is part of the Pro unlock</h3>
-      <p>Encrypted backup/export of everything is one of the five Pro features. Unlock any locked module tab (Grid, Fill, Docket, Glides, or Lockbox) to enable Capsule too — it's the same one-time $9 key.</p>
-      <div class="row"><button class="btn ghost small" onclick="closeCapsuleModal()">Close</button></div>
-    `;
-    document.getElementById('capsuleModalBg').classList.add('show');
-    return;
-  }
+
   if(kind==='export'){
     modal.innerHTML = `
       <h3>Export Capsule</h3>
