@@ -921,6 +921,14 @@ body.hybrid .sync-badge{display:inline-block;}
 .capsule-bar{
   display:flex;align-items:center;gap:8px;
 }
+.topstrip .btn.ghost{
+  color:var(--paper);
+  border-color:var(--line);
+}
+.topstrip .btn.ghost:hover{
+  background:rgba(216,205,176,0.15);
+  color:var(--paper-light);
+}
 .sync-panel{
   max-width:1100px;margin:0 auto;padding:0 24px 20px;
 }
@@ -951,23 +959,6 @@ body.hybrid .sync-card{display:block;}
 .capsule-modal p{font-size:0.85em;line-height:1.6;color:var(--ink);margin:0 0 14px;}
 .capsule-modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
 
-/* LICENSE / PAYWALL */
-.lock-overlay{
-  border:1px dashed var(--brass);border-radius:8px;padding:32px;text-align:center;
-  background:repeating-linear-gradient(45deg,#fffdf8,#fffdf8 10px,#f6efd f 10px,#f6efd f 20px);
-  background:#fffdf8;
-}
-.lock-overlay .lock-icon{font-size:2em;margin-bottom:8px;}
-.lock-overlay h3{margin:0 0 6px;color:var(--navy);font-family:'Iowan Old Style',Georgia,serif;}
-.lock-overlay p{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85em;color:#6b6250;max-width:420px;margin:0 auto 16px;line-height:1.5;}
-.lock-overlay input{width:220px;text-align:center;letter-spacing:0.05em;}
-.lock-price{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:var(--brass-dark,#8a6a3d);margin-top:10px;}
-.free-pill{
-  font-size:0.62em;background:var(--sage);color:#fff;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;
-}
-.pro-pill{
-  font-size:0.62em;background:var(--brass);color:#2b1d0c;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;
-}
 </style>
 </head>
 <body>
@@ -1113,127 +1104,6 @@ function pickFile(accept, cb){
   document.body.appendChild(inp); inp.click(); inp.remove();
 }
 
-/* ---------- License (server-verified, one-time $9 unlock, no account) ---------- */
-// Set this to your verify.php URL once it's live on your host, e.g.:
-// const LICENSE_VERIFY_URL = 'https://codersagent.com/suite-license/verify.php';
-const LICENSE_VERIFY_URL = ''; // <-- fill this in before shipping
-
-// Public key only — safe to expose. Used to verify signatures locally after the
-// first successful server check, so the app stays offline day-to-day.
-const LICENSE_PUBLIC_JWK = {
-  kty: "RSA", alg: "RS256", ext: true, key_ops: ["verify"], e: "AQAB",
-  n: "kAidYl1Daul6rCzJg--OXpKv3AZt5Sy3cBQw0-bqEGvc2qn49ad804MN684eZYmgIZqNahkssWGbp9fo042obm_RnZ7QmFal67pb7GTcM-0Xc-V5Ifg0BpeKSI1vQJz47g4bxZq9zJlMsWQhR3VSGW2JTYNL3vX5XFQgA4ISAUB32dE5fDkMPVrMutcGCKuize4iHQgJpdg3HJcAbGEQPnUW6XnwdlfDGiSX_VMq0lgvt1yELgbCiNFtJr_c3iwZDtByhdqbVRiHmkuDmkpHdCIIkeO9MxORgMoSqESfYpnBBy_7gPT9lXOlklGccoGQTs33xNvk1vSrwB0nwdBdpw"
-};
-
-let _licenseCryptoKey = null; // cached imported CryptoKey
-async function getLicensePublicKey(){
-  if(_licenseCryptoKey) return _licenseCryptoKey;
-  _licenseCryptoKey = await crypto.subtle.importKey(
-    'jwk', LICENSE_PUBLIC_JWK,
-    { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' },
-    false, ['verify']
-  );
-  return _licenseCryptoKey;
-}
-function b64ToBytes(b64){ const s=atob(b64); const arr=new Uint8Array(s.length); for(let i=0;i<s.length;i++) arr[i]=s.charCodeAt(i); return arr; }
-
-async function verifyStoredToken(){
-  const token = loadLocal('licenseToken', null);
-  if(!token || !token.payload || !token.signature) return false;
-  try{
-    const key = await getLicensePublicKey();
-    const enc = new TextEncoder();
-    const ok = await crypto.subtle.verify(
-      { name:'RSASSA-PKCS1-v1_5' },
-      key,
-      b64ToBytes(token.signature),
-      enc.encode(token.payload)
-    );
-    return ok;
-  }catch(e){ return false; }
-}
-
-// Cached result so render functions can check synchronously; refreshed on load and on activation.
-window._licensed = false;
-function isLicensed(){ return !!window._licensed; }
-
-async function refreshLicenseState(){
-  window._licensed = await verifyStoredToken();
-}
-
-/* Device fingerprint: a hash of a few weak, non-invasive signals (not identity —
-   just enough to tell devices apart for the 3-device license cap). Persisted once
-   generated so it stays stable across sessions on the same device. */
-async function getDeviceFingerprint(){
-  let stored = loadLocal('deviceFingerprintSeed', null);
-  if(!stored){
-    stored = [
-      navigator.userAgent, navigator.language, navigator.hardwareConcurrency || '',
-      screen.width + 'x' + screen.height, new Date().getTimezoneOffset(),
-      Math.random().toString(36).slice(2) // random component so two identical browsers on different machines still differ
-    ].join('|');
-    saveLocal('deviceFingerprintSeed', stored);
-  }
-  return sha256Hex(stored);
-}
-
-async function tryActivate(moduleLabel){
-  const input = document.getElementById('licenseInput_'+moduleLabel);
-  const key = input ? input.value.trim() : '';
-  if(!key){ alert('Enter your license key first.'); return; }
-  if(!LICENSE_VERIFY_URL){
-    alert('The license server URL hasn\'t been configured yet in suite.html (LICENSE_VERIFY_URL) — this is a setup step, not a key problem.');
-    return;
-  }
-  const btn = document.querySelector(`[onclick="tryActivate('${moduleLabel}')"]`);
-  if(btn){ btn.disabled = true; btn.textContent = 'Checking…'; }
-  try{
-    const deviceFingerprint = await getDeviceFingerprint();
-    const res = await loggedFetch(LICENSE_VERIFY_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({key, device_fingerprint: deviceFingerprint})
-    }, 'license-verify');
-    const data = await res.json();
-    if(!data.ok){
-      alert('That key didn\'t verify: ' + (data.error || 'unknown error'));
-      return;
-    }
-    // Confirm the signature ourselves before trusting it — belt and suspenders.
-    const key2 = await getLicensePublicKey();
-    const enc = new TextEncoder();
-    const sigValid = await crypto.subtle.verify(
-      { name:'RSASSA-PKCS1-v1_5' }, key2,
-      b64ToBytes(data.signature), enc.encode(data.payload)
-    );
-    if(!sigValid){ alert('Server response failed local verification — please try again.'); return; }
-
-    saveLocal('licenseToken', { payload: data.payload, signature: data.signature });
-    window._licensed = true;
-    showSeal();
-    renderDocs(); renderSheets(); renderForms(); renderNotes();
-    renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
-    renderToday();
-  }catch(e){
-    alert('Couldn\'t reach the license server — check your internet connection and try again. (Activation needs to happen online once; after that the app works offline as usual.)');
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Unlock'; }
-  }
-}
-function lockOverlayHTML(moduleLabel){
-  return `
-    <div class="lock-overlay">
-      <div class="lock-icon">&#128274;</div>
-      <h3>${moduleLabel} is part of the Pro unlock</h3>
-      <p>Folio, Spot, and Almanac are free forever. ${moduleLabel} and four other modules unlock with a single one-time purchase — no subscription, no account. Unlocking needs internet once; after that it works offline like everything else.</p>
-      <input type="text" id="licenseInput_${moduleLabel}" placeholder="SUITE-XXXXX-XX">
-      <div class="toolbar" style="justify-content:center;margin-top:12px;">
-        <button class="btn brass small" onclick="tryActivate('${moduleLabel}')">Unlock</button>
-      </div>
-      <div class="lock-price">$9 once — unlocks Grid, Fill, Docket, Glides, Lockbox, and Capsule encryption for good.</div>
-    </div>
-  `;
-}
 
 
 
@@ -1425,7 +1295,7 @@ if(!SUITE_ONLY){
 modules.forEach(m=>{
   const tab = document.createElement('div');
   tab.className='tab'; tab.dataset.id=m.id;
-  tab.innerHTML = `${m.label} <span class="ext">${m.ext}</span><span class="${m.free?'free-pill':'pro-pill'}">${m.free?'Free':'Pro'}</span><span class="sync-badge">synced</span>`;
+  tab.innerHTML = `${m.label} <span class="ext">${m.ext}</span><span class="sync-badge">synced</span>`;
   tab.onclick = ()=>activateTab(m.id);
   tabsEl.appendChild(tab);
 
@@ -1474,12 +1344,10 @@ function buildSidebar(){
       const m = ALL_MODULES.find(x=>x.id===id);
       const label = id==='today' ? 'Dashboard' : (EXTRA_TAB_LABELS[id] || (m ? m.label : id));
       const ext = m ? m.ext : '';
-      const isFree = m ? m.free : true;
       const item = document.createElement('div');
       item.className = 'sidebar-item';
       item.dataset.id = id;
-      item.innerHTML = `<span class="si-left"><span class="si-dot"></span>${label}${ext ? ` <span class="si-ext">${ext}</span>` : ''}</span>` +
-        (m ? `<span class="${isFree?'free-pill':'pro-pill'}">${isFree?'Free':'Pro'}</span>` : '');
+      item.innerHTML = `<span class="si-left"><span class="si-dot"></span>${label}${ext ? ` <span class="si-ext">${ext}</span>` : ''}</span>`;
       item.onclick = ()=>activateTab(id);
       wrap.appendChild(item);
     });
@@ -3057,7 +2925,6 @@ function importGridCSV() {
 function renderForms(){
   const p = document.getElementById('panel-forms');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Fill</h2><div class="sub">.fill — send a form without anyone harvesting the answers</div>' + lockOverlayHTML('Fill'); return; }
   const data = loadLocal('forms', {fields:[{label:'Your name', type:'text'}], submissions:[]});
   p.innerHTML = `
     <h2>Fill</h2>
@@ -3456,7 +3323,6 @@ let draggingDot=null;
 function renderTasks(){
   const p = document.getElementById('panel-tasks');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Docket</h2><div class="sub">.plot — urgent vs. important, at a glance</div>' + lockOverlayHTML('Docket'); return; }
   p.innerHTML = `
     <h2>Docket</h2>
     <div class="sub">.plot — urgent vs. important. Dots you keep avoiding visibly age and pick up a carried-day count.</div>
@@ -3748,7 +3614,6 @@ let activeSlideIdx=0;
 function renderSlides(){
   const p = document.getElementById('panel-slides');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Glides</h2><div class="sub">.glides — flip through like a filmstrip</div>' + lockOverlayHTML('Glides'); return; }
   p.innerHTML = `
     <h2>Glides</h2>
     <div class="sub">.glides — flip through like a filmstrip, not a boring list</div>
@@ -3845,7 +3710,6 @@ function importSlides(){
 function renderLockbox(){
   const p = document.getElementById('panel-lockbox');
   if(!p) return;
-  if(!isLicensed()){ p.innerHTML = '<h2>Lockbox</h2><div class="sub">.lbox — your private vault</div>' + lockOverlayHTML('Lockbox'); return; }
   p.innerHTML = `
     <h2>Lockbox</h2>
     <div class="sub">.lbox — a real encrypted vault: logins, cards, identities, notes, keys — plus file references and time-locks</div>
@@ -4641,7 +4505,7 @@ function renderPrivacyCenter(){
   const p = document.getElementById('panel-privacy');
   if(!p) return;
   const offlineStrict = isOfflineModeStrict();
-  const externalConnected = (LICENSE_VERIFY_URL?1:0) + (SYNC_PUSH_URL && SYNC_PULL_URL ? 1 : 0);
+  const externalConnected = SYNC_PUSH_URL && SYNC_PULL_URL ? 1 : 0;
   const lastCheck = loadLocal('lastSecurityCheck', null);
   p.innerHTML = `
     <h2>Privacy Center</h2>
@@ -4649,7 +4513,7 @@ function renderPrivacyCenter(){
     <div class="privacy-toggle-row">
       <div>
         <b>OFFLINE MODE</b>
-        <div class="hint">When on, license verification and hybrid sync are actively blocked — not just "not used," genuinely refused at the network call.</div>
+        <div class="hint">When on, all network communication and optional sync calls are actively blocked.</div>
       </div>
       <label class="switch">
         <input type="checkbox" id="offlineModeToggle" ${offlineStrict?'checked':''} onchange="setOfflineModeStrict(this.checked); renderPrivacyCenter();">
@@ -4740,7 +4604,7 @@ function renderSecurityCenter(){
     <div class="privacy-grid">
       <div class="privacy-stat"><span>Requests today</span><b>${todayEvents.length}</b></div>
       <div class="privacy-stat"><span>External domains</span><b>${externalDomains.length}</b></div>
-      <div class="privacy-stat"><span>Uploads</span><b>${netLog.filter(e=>e.kind==='sync-push'||e.kind==='license-verify').length}</b></div>
+      <div class="privacy-stat"><span>Uploads</span><b>${netLog.filter(e=>e.kind==='sync-push').length}</b></div>
       <div class="privacy-stat"><span>Downloads</span><b>${netLog.filter(e=>e.kind==='sync-pull').length}</b></div>
       <div class="privacy-stat"><span>Telemetry</span><b>0</b></div>
     </div>
@@ -4812,15 +4676,6 @@ async function runBreachCheckAll(){
 
 function openCapsuleModal(kind){
   const modal = document.getElementById('capsuleModal');
-  if(!isLicensed()){
-    modal.innerHTML = `
-      <h3>Capsule is part of the Pro unlock</h3>
-      <p>Encrypted backup/export of everything is one of the five Pro features. Unlock any locked module tab (Grid, Fill, Docket, Glides, or Lockbox) to enable Capsule too — it's the same one-time $9 key.</p>
-      <div class="row"><button class="btn ghost small" onclick="closeCapsuleModal()">Close</button></div>
-    `;
-    document.getElementById('capsuleModalBg').classList.add('show');
-    return;
-  }
   if(kind==='export'){
     modal.innerHTML = `
       <h3>Export Capsule</h3>
@@ -5087,7 +4942,6 @@ function renderSyncList(){
 
 /* ---------- init ---------- */
 (async function initApp(){
-  await refreshLicenseState(); // verify any stored token before first render, so Pro tabs don't flash locked→unlocked
   renderDocs(); renderSheets(); renderForms(); renderNotes();
   renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
   if(!SUITE_ONLY){ renderToday(); activateTab('today'); }
