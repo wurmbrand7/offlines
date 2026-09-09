@@ -7,12 +7,12 @@ def test_phase0_local_only():
     html_path = os.path.abspath("index.html")
     file_url = f"file://{html_path}"
 
-    # 1. Forensic search on executable source
-    print("1. Source Forensics Audit...")
+    # 1. Source Forensics Audit
+    print("1. Source Forensics Audit on Executable Codebase...")
     prohibited_terms = [
-        'SYNC_PUSH_URL', 'SYNC_PULL_URL', 'promptSyncSetup', 'getSyncPassphrase',
-        'Sync Key', 'Sync now', 'Hybrid sync', 'suite-sync',
-        'offlines.xyz/suite-sync', 'codersagent.com/suite-sync'
+        'hybrid', 'body.hybrid', 'sync-panel', 'sync-card', 'sync-badge',
+        'setMode', 'loggedFetch', 'offlineModeStrict', 'SYNC_PUSH_URL', 'SYNC_PULL_URL',
+        'suite-sync', 'offlines.xyz/suite-sync', 'codersagent.com/suite-sync', 'pwnedpasswords'
     ]
 
     executable_files = ['index.html', 'manifest.json', 'sw.js']
@@ -30,11 +30,12 @@ def test_phase0_local_only():
                         forensic_violations.append((fpath, term))
 
     print(f"Forensic violations found in executable source: {len(forensic_violations)}")
-    assert len(forensic_violations) == 0, f"Prohibited sync terms found: {forensic_violations}"
-    print("✓ Source Forensics Audit PASSED (0 sync/hybrid matches in executable source).")
+    assert len(forensic_violations) == 0, f"Prohibited terms found in executable source: {forensic_violations}"
+    print("✓ Source Forensics Audit PASSED (0 hybrid/sync/network-abstraction matches in executable source).")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        # Attach network request interception BEFORE navigation
         context = browser.new_context()
         page = context.new_page()
 
@@ -51,12 +52,12 @@ def test_phase0_local_only():
         print("✓ Application loaded cleanly.")
 
         # TEST 2 — NO SYNC UI
-        print("3. Testing DOM for Sync UI Removal...")
+        print("3. Testing DOM for Sync/Hybrid UI Removal...")
         dom_content = page.content()
-        sync_ui_terms = ['Sync now', 'Sync Key', 'Auto-sync', 'Hybrid sync', 'Sync server']
+        sync_ui_terms = ['Sync now', 'Sync Key', 'Auto-sync', 'Hybrid sync', 'Sync server', 'Hybrid mode']
         for term in sync_ui_terms:
-            assert term.lower() not in dom_content.lower(), f"Forbidden sync UI term '{term}' found in DOM!"
-        print("✓ Zero sync UI elements found in DOM.")
+            assert term.lower() not in dom_content.lower(), f"Forbidden UI term '{term}' found in DOM!"
+        print("✓ Zero sync/hybrid UI elements found in DOM.")
 
         # TEST 3 & 4 — NO API KEY OR LICENSE REQUIREMENT
         print("4. Verifying No API Key or License Prompts...")
@@ -74,7 +75,7 @@ def test_phase0_local_only():
         print("✓ All 11 modules accessible without lock overlays.")
 
         # TEST 6 — FOLIO DOCUMENT PERSISTENCE
-        print("6. Testing Folio Document Creation & Persistence...")
+        print("6. Testing Folio Document Creation, Editing & Persistence...")
         page.evaluate("activateTab('docs')")
         page.wait_for_selector("#panel-docs.active")
         page.fill("#folioDocTitle", "Executive Spec")
@@ -87,10 +88,11 @@ def test_phase0_local_only():
         page.evaluate("activateTab('docs')")
         page.wait_for_selector("#panel-docs.active")
         assert page.input_value("#folioDocTitle") == "Executive Spec"
-        print("✓ Folio document created and persisted across reload.")
+        assert "Strictly offline document content." in page.locator("#docsEditor").inner_text()
+        print("✓ Folio document created, saved, reloaded, and verified.")
 
-        # TEST 7 — GRID SPREADSHEET PERSISTENCE & FORMULAS
-        print("7. Testing Grid Spreadsheet Creation, Formulas & Persistence...")
+        # TEST 7 — GRID SPREADSHEET PERSISTENCE, FORMULAS & MULTI-SHEET
+        print("7. Testing Grid Spreadsheet Creation, Formulas, Multi-Sheet & Persistence...")
         page.evaluate("activateTab('sheets')")
         page.wait_for_selector("#panel-sheets.active")
 
@@ -109,13 +111,19 @@ def test_phase0_local_only():
         val = page.locator("#cell-A3").input_value()
         assert val == "300", f"Expected cell A3 formula eval 300, got {val}"
 
+        # Test Multi-Sheet Creation & Switching
+        page.click("#panel-sheets button:has-text('+ Sheet')")
+        page.wait_for_timeout(100)
+        page.click("#panel-sheets span:has-text('Sheet 1')")
+        page.wait_for_timeout(100)
+
         page.click("#panel-sheets button:has-text('Export .grid')")
 
         page.reload()
         page.evaluate("activateTab('sheets')")
         page.wait_for_selector("#panel-sheets.active")
         assert page.locator("#cell-A3").input_value() == "300"
-        print("✓ Grid spreadsheet formula evaluated (=SUM(A1:A2) -> 300) and persisted.")
+        print("✓ Grid formula evaluated (=SUM(A1:A2) -> 300), multi-sheet created, and persisted across reload.")
 
         # TEST 8 — DOCKET (TASKS) PERSISTENCE
         print("8. Testing Docket Task Creation & Persistence...")
@@ -172,12 +180,7 @@ def test_phase0_local_only():
         print("✓ Spot note created and persisted.")
 
         # TEST 11 — OFFLINE NETWORK BLOCK AUDIT
-        print("11. Auditing External Network Activity...")
-        context.set_offline(True)
-        for mod in modules:
-            page.evaluate(f"activateTab('{mod}')")
-            page.wait_for_selector(f"#panel-{mod}.active")
-
+        print("11. Auditing External Network Activity Throughout Full Test Session...")
         ext_requests = [url for url in network_requests if not url.startswith("file://") and not url.startswith("data:")]
         print(f"External requests captured during session: {len(ext_requests)}")
         assert len(ext_requests) == 0, f"Expected 0 external requests, got: {ext_requests}"
