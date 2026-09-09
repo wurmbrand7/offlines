@@ -54,14 +54,15 @@ async def run_folio_tests():
 
         # FOLIO-005 Table Insertion
         print("[FOLIO-005] Testing Table Insertion...")
-        await page.click("#panel-docs button[title='Insert Table']")
+        await page.evaluate("setFolioRibbonTab('INSERT')")
+        await page.click("#panel-docs button:has-text('Insert Table')")
         table_count = await page.locator("#docsEditor table").count()
         assert table_count > 0, "Table element should exist in editor"
         print("✓ Table inserted into document editor.")
 
         # FOLIO-006 Page Break Insertion
         print("[FOLIO-006] Testing Page Break Insertion...")
-        await page.click("#panel-docs button:has-text('Page Break')")
+        await page.click("#panel-docs button:has-text('Insert Page Break')")
         page_break_count = await page.locator("#docsEditor div").count()
         assert page_break_count > 0, "Page break element should exist in editor"
         print("✓ Page break inserted into document editor.")

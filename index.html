@@ -879,7 +879,7 @@ table.grid th{
 
 /* Seal animation */
 .seal-overlay{
-  position:fixed;inset:0;
+  position:fixed;bottom:24px;right:24px;top:auto;left:auto;
   display:flex;align-items:center;justify-content:center;
   pointer-events:none;z-index:999;
   opacity:0;
@@ -1559,6 +1559,248 @@ function saveFolioDocument(docObj, silent = false) {
 
 /* ================= DOCS (.fils) ================= */
 let currentFolioInspectorTab = 'outline';
+let currentFolioRibbonTab = 'HOME';
+
+function captureFolioCurrentContent() {
+  const editor = document.getElementById('docsEditor');
+  if (editor) {
+    const docObj = getFolioDocument();
+    docObj.document.content = editor.innerHTML;
+    saveLocalSilent('docs', docObj);
+  }
+}
+
+function setFolioRibbonTab(tab) {
+  captureFolioCurrentContent();
+  currentFolioRibbonTab = tab;
+  renderDocs();
+}
+
+function setFolioInspectorTab(tab) {
+  captureFolioCurrentContent();
+  currentFolioInspectorTab = tab;
+  renderDocs();
+}
+
+function renderFolioRibbonBar() {
+  const tabs = ['HOME', 'INSERT', 'LAYOUT', 'REFERENCES', 'REVIEW', 'VIEW', 'PUBLISH'];
+  return `
+    <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; overflow:hidden; margin-bottom:12px;">
+      <div style="display:flex; background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border-color); padding:0 8px;">
+        ${tabs.map(t => `
+          <button style="padding:8px 14px; background:none; border:none; border-bottom:2px solid ${currentFolioRibbonTab===t?'var(--accent-primary,#3b82f6)':'transparent'}; color:${currentFolioRibbonTab===t?'var(--text-main)':'var(--text-muted)'}; font-weight:600; font-size:0.8rem; cursor:pointer;" onclick="setFolioRibbonTab('${t}')">
+            ${t}
+          </button>
+        `).join('')}
+      </div>
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--bg-surface-elevated, #1e293b); min-height:44px;">
+        ${renderFolioRibbonTools()}
+      </div>
+    </div>
+  `;
+}
+
+function renderFolioRibbonTools() {
+  const tab = currentFolioRibbonTab;
+  const btnStyle = 'color:var(--text-main,#f1f5f9); border-color:var(--border-color);';
+  if (tab === 'HOME') {
+    return `
+      <select title="Paragraph style" style="background:var(--bg-main); color:var(--text-main); border:1px solid var(--border-color); padding:4px 8px; border-radius:4px;" onchange="document.execCommand('formatBlock',false,this.value); this.blur(); updateFolioOutline();">
+        <option value="P">Normal</option>
+        <option value="H1">Heading 1</option>
+        <option value="H2">Heading 2</option>
+        <option value="H3">Heading 3</option>
+        <option value="BLOCKQUOTE">Quote</option>
+        <option value="PRE">Code block</option>
+      </select>
+      <select title="Font" style="background:var(--bg-main); color:var(--text-main); border:1px solid var(--border-color); padding:4px 8px; border-radius:4px;" onchange="document.execCommand('fontName',false,this.value); this.blur();">
+        <option value="Iowan Old Style, Georgia, serif">Serif</option>
+        <option value="Helvetica Neue, Arial, sans-serif">Sans</option>
+        <option value="Courier New, monospace">Mono</option>
+      </select>
+      <div style="height:16px; width:1px; background:var(--border-color);"></div>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Strikethrough" onclick="document.execCommand('strikeThrough')"><s>S</s></button>
+      <div style="height:16px; width:1px; background:var(--border-color);"></div>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Align left" onclick="document.execCommand('justifyLeft')">⟵</button>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Align center" onclick="document.execCommand('justifyCenter')">↔</button>
+      <button class="btn ghost small icon" style="${btnStyle}" title="Align right" onclick="document.execCommand('justifyRight')">⟶</button>
+    `;
+  }
+  if (tab === 'INSERT') {
+    return `
+      <button class="btn ghost small" style="${btnStyle}" onclick="insertFolioTable()">📊 Insert Table</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="insertFolioPageBreak()">📄 Insert Page Break</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="insertSlashBlock('QUOTE')">💬 Insert Quote</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="insertSlashBlock('H1')">H1 Heading</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="insertSlashBlock('H2')">H2 Heading</button>
+    `;
+  }
+  if (tab === 'LAYOUT') {
+    return `
+      <button class="btn ghost small" style="${btnStyle}" onclick="addFolioTableRow()">+ Add Table Row</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="deleteFolioTableRow()">- Delete Table Row</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="addFolioTableCol()">+ Add Table Col</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="deleteFolioTableCol()">- Delete Table Col</button>
+    `;
+  }
+  if (tab === 'REFERENCES') {
+    return `
+      <button class="btn brass small" onclick="docsAddMarginNote()" title="Pin margin note">📌 Margin Note</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="createTaskFromFolioSelection()">☑️ Link Docket Task</button>
+    `;
+  }
+  if (tab === 'REVIEW') {
+    return `
+      <button class="btn ghost small" style="${btnStyle}" onclick="addFolioComment()">💬 Add Comment</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="openFolioFindReplaceModal()">🔍 Find & Replace</button>
+    `;
+  }
+  if (tab === 'VIEW') {
+    return `
+      <button class="btn ghost small" style="${btnStyle}" onclick="toggleFolioFocusMode()">👁 Focus Mode</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="updateFolioOutline()">📑 Refresh Outline</button>
+    `;
+  }
+  if (tab === 'PUBLISH') {
+    return `
+      <button class="btn ghost small" style="${btnStyle}" onclick="exportFolioFormat('fils')">Export .fils</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="exportFolioFormat('md')">Export Markdown</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="exportFolioFormat('html')">Export HTML</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="exportFolioFormat('txt')">Export Plain Text</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="exportFolioFormat('pdf')">Print / Export PDF</button>
+    `;
+  }
+  return '';
+}
+
+function addFolioTableRow() {
+  const sel = window.getSelection();
+  let table = null;
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== document.body) {
+      if (node.tagName === 'TABLE') { table = node; break; }
+      node = node.parentNode;
+    }
+  }
+  if (!table) table = document.querySelector('#docsEditor table');
+  if (!table) { alert('Please click inside a table first.'); return; }
+
+  const cols = table.rows[0] ? table.rows[0].cells.length : 3;
+  const tr = table.insertRow(-1);
+  for (let i = 0; i < cols; i++) {
+    const td = tr.insertCell(-1);
+    td.style.border = '1px solid var(--border-color)';
+    td.style.padding = '6px';
+    td.innerHTML = 'Cell';
+  }
+  captureFolioCurrentContent();
+}
+
+function deleteFolioTableRow() {
+  const sel = window.getSelection();
+  let table = null;
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== document.body) {
+      if (node.tagName === 'TABLE') { table = node; break; }
+      node = node.parentNode;
+    }
+  }
+  if (!table) table = document.querySelector('#docsEditor table');
+  if (!table || table.rows.length <= 1) return;
+  table.deleteRow(-1);
+  captureFolioCurrentContent();
+}
+
+function addFolioTableCol() {
+  const sel = window.getSelection();
+  let table = null;
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== document.body) {
+      if (node.tagName === 'TABLE') { table = node; break; }
+      node = node.parentNode;
+    }
+  }
+  if (!table) table = document.querySelector('#docsEditor table');
+  if (!table) { alert('Please click inside a table first.'); return; }
+
+  for (let i = 0; i < table.rows.length; i++) {
+    const cell = table.rows[i].insertCell(-1);
+    cell.style.border = '1px solid var(--border-color)';
+    cell.style.padding = '6px';
+    cell.innerHTML = 'Cell';
+  }
+  captureFolioCurrentContent();
+}
+
+function deleteFolioTableCol() {
+  const sel = window.getSelection();
+  let table = null;
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== document.body) {
+      if (node.tagName === 'TABLE') { table = node; break; }
+      node = node.parentNode;
+    }
+  }
+  if (!table) table = document.querySelector('#docsEditor table');
+  if (!table || !table.rows[0] || table.rows[0].cells.length <= 1) return;
+
+  for (let i = 0; i < table.rows.length; i++) {
+    table.rows[i].deleteCell(-1);
+  }
+  captureFolioCurrentContent();
+}
+
+function addFolioComment() {
+  const sel = window.getSelection();
+  const text = sel ? sel.toString().trim() : '';
+  const commentText = prompt(`Add comment${text ? ' on "' + text + '"' : ''}:`);
+  if (!commentText) return;
+
+  const docObj = getFolioDocument();
+  if (!docObj.document.comments) docObj.document.comments = [];
+  docObj.document.comments.push({
+    id: "c_" + Date.now(),
+    quote: text || "General",
+    text: commentText.trim(),
+    created: Date.now(),
+    resolved: false
+  });
+  saveFolioDocument(docObj, true);
+  currentFolioInspectorTab = 'comments';
+  renderDocs();
+}
+
+function exportFolioFormat(fmt) {
+  const docObj = getFolioDocument();
+  const title = docObj.document.title || 'Untitled Document';
+  const content = document.getElementById('docsEditor') ? document.getElementById('docsEditor').innerHTML : docObj.document.content;
+
+  if (fmt === 'fils' || fmt === 'folio') {
+    download(`${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.fils`, JSON.stringify(docObj, null, 2));
+  } else if (fmt === 'html') {
+    const htmlContent = `<!DOCTYPE html><html><head><title>${escapeHTML(title)}</title></head><body><h1>${escapeHTML(title)}</h1>${content}</body></html>`;
+    download(`${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.html`, htmlContent);
+  } else if (fmt === 'txt') {
+    const temp = document.createElement('div');
+    temp.innerHTML = content;
+    const txt = `${title}\n${'='.repeat(title.length)}\n\n${temp.textContent || temp.innerText}`;
+    download(`${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.txt`, txt);
+  } else if (fmt === 'md') {
+    const temp = document.createElement('div');
+    temp.innerHTML = content;
+    const md = `# ${title}\n\n${temp.textContent || temp.innerText}`;
+    download(`${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.md`, md);
+  } else if (fmt === 'pdf') {
+    window.print();
+  }
+}
 
 function renderDocs(){
   const p = document.getElementById('panel-docs');
@@ -1581,39 +1823,8 @@ function renderDocs(){
       </div>
     </div>
 
-    <!-- FOLIO EDITOR TOOLBAR -->
-    <div class="toolbar" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:6px 10px; margin-bottom:12px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-      <select title="Paragraph style" onchange="document.execCommand('formatBlock',false,this.value); this.blur(); updateFolioOutline();">
-        <option value="P">Normal</option>
-        <option value="H1">Heading 1</option>
-        <option value="H2">Heading 2</option>
-        <option value="H3">Heading 3</option>
-        <option value="BLOCKQUOTE">Quote</option>
-        <option value="PRE">Code block</option>
-      </select>
-      <select title="Font" onchange="document.execCommand('fontName',false,this.value); this.blur();">
-        <option value="Iowan Old Style, Georgia, serif">Serif</option>
-        <option value="Helvetica Neue, Arial, sans-serif">Sans</option>
-        <option value="Courier New, monospace">Mono</option>
-      </select>
-      <div class="tdiv"></div>
-      <button class="btn ghost small icon" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
-      <button class="btn ghost small icon" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
-      <button class="btn ghost small icon" title="Underline" onclick="document.execCommand('underline')"><u>U</u></button>
-      <button class="btn ghost small icon" title="Strikethrough" onclick="document.execCommand('strikeThrough')"><s>S</s></button>
-      <div class="tdiv"></div>
-      <button class="btn ghost small icon" title="Align left" onclick="document.execCommand('justifyLeft')">⟵</button>
-      <button class="btn ghost small icon" title="Align center" onclick="document.execCommand('justifyCenter')">↔</button>
-      <button class="btn ghost small icon" title="Align right" onclick="document.execCommand('justifyRight')">⟶</button>
-      <div class="tdiv"></div>
-      <button class="btn ghost small" title="Bulleted list" onclick="document.execCommand('insertUnorderedList')">• List</button>
-      <button class="btn ghost small" title="Numbered list" onclick="document.execCommand('insertOrderedList')">1. List</button>
-      <button class="btn ghost small" title="Insert Table" onclick="insertFolioTable()">📊 Table</button>
-      <button class="btn ghost small" title="Insert Page Break" onclick="insertFolioPageBreak()">📄 Page Break</button>
-      <div class="tdiv"></div>
-      <button class="btn brass small" onclick="docsAddMarginNote()" title="Select text first, then pin a note about it">📌 Margin note</button>
-      <button class="btn ghost small" onclick="createTaskFromFolioSelection()">☑️ Create Task</button>
-    </div>
+    <!-- FOLIO CONTEXTUAL RIBBON -->
+    ${renderFolioRibbonBar()}
 
     <!-- FOLIO MAIN SPLIT LAYOUT -->
     <div style="display:grid; grid-template-columns:1fr 280px; gap:16px; min-height:500px;">
@@ -1971,6 +2182,68 @@ function clearGridFilter() {
   renderSheets();
 }
 
+function shiftFormulaReferences(formulaStr, colDelta, rowDelta) {
+  if (!formulaStr || !formulaStr.startsWith('=')) return formulaStr;
+  return '=' + formulaStr.slice(1).replace(/(\$)?([A-Z]+)(\$)?(\d+)/g, (match, absCol, colStr, absRow, rowStr) => {
+    let newColStr = colStr;
+    let newRowStr = rowStr;
+    if (!absCol) {
+      const colIdx = letterToColIndex(colStr);
+      const newColIdx = Math.max(0, colIdx + colDelta);
+      newColStr = colLetter(newColIdx);
+    }
+    if (!absRow) {
+      const rowNum = parseInt(rowStr, 10);
+      const newRowNum = Math.max(1, rowNum + rowDelta);
+      newRowStr = String(newRowNum);
+    }
+    return (absCol || '') + newColStr + (absRow || '') + newRowStr;
+  });
+}
+
+function fillGridSelection(startCoord, endCoord) {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const pStart = parseCellCoord(startCoord);
+  const pEnd = parseCellCoord(endCoord);
+  if (!pStart || !pEnd) return;
+
+  const srcCell = sheet.cells[startCoord] || {};
+  const srcRaw = typeof srcCell === 'object' ? (srcCell.raw || '') : String(srcCell);
+
+  const minCol = Math.min(pStart.col, pEnd.col), maxCol = Math.max(pStart.col, pEnd.col);
+  const minRow = Math.min(pStart.row, pEnd.row), maxRow = Math.max(pStart.row, pEnd.row);
+
+  for (let r = minRow; r <= maxRow; r++) {
+    for (let c = minCol; c <= maxCol; c++) {
+      const targetCoord = colLetter(c) + (r + 1);
+      if (targetCoord === startCoord) continue;
+
+      const cDelta = c - pStart.col;
+      const rDelta = r - pStart.row;
+      let targetRaw = srcRaw;
+
+      if (srcRaw.startsWith('=')) {
+        targetRaw = shiftFormulaReferences(srcRaw, cDelta, rDelta);
+      } else if (!isNaN(Number(srcRaw)) && srcRaw !== '') {
+        const numVal = Number(srcRaw) + (rDelta || cDelta);
+        targetRaw = String(numVal);
+      }
+
+      if (!sheet.cells[targetCoord]) sheet.cells[targetCoord] = {};
+      if (typeof sheet.cells[targetCoord] === 'string') {
+        sheet.cells[targetCoord] = { raw: targetRaw };
+      } else {
+        sheet.cells[targetCoord].raw = targetRaw;
+      }
+    }
+  }
+
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
 function openGridFindReplaceModal() {
   const findVal = prompt("Find text or value:");
   if (!findVal) return;
@@ -2318,28 +2591,42 @@ function renderSheets() {
       <div id="gridChartCanvas" style="min-height:180px; display:flex; align-items:center; justify-content:center;"></div>
     </div>
 
+    ${activeGridFilter ? `
+      <div style="background:var(--accent-primary,#3b82f6); color:#fff; padding:6px 12px; border-radius:4px; margin-bottom:8px; font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+        <span>🔍 Filter Active: Column <b>${colLetter(activeGridFilter.colIndex)}</b> contains "<b>${escapeHTML(activeGridFilter.query)}</b>"</span>
+        <button class="btn ghost small" style="color:#fff; border-color:#fff;" onclick="clearGridFilter()">Clear Filter</button>
+      </div>
+    ` : ''}
+
     <!-- GRID SPREADSHEET CANVAS -->
-    <div class="grid-canvas-wrap" style="overflow-x:auto; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-main);">
+    <div class="grid-canvas-wrap" style="overflow-x:auto; max-height:500px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-main);">
       <table class="grid" style="border-collapse:collapse; width:100%; min-width:600px;">
-        <thead>
+        <thead style="${isGridFreezeActive ? 'position:sticky; top:0; z-index:10; background:var(--bg-surface);' : ''}">
           <tr>
-            <th style="width:40px; background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-muted); text-align:center;">#</th>
-            ${Array.from({length: sheet.cols}, (_, c) => colLetter(c)).map(col => `
-              <th style="background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-main); padding:6px; font-weight:600; text-align:center;">${col}</th>
+            <th style="width:40px; background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-muted); text-align:center; ${isGridFreezeActive ? 'position:sticky; left:0; z-index:11;' : ''}">#</th>
+            ${Array.from({length: sheet.cols}, (_, c) => colLetter(c)).map((col, idx) => `
+              <th style="background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-main); padding:6px; font-weight:600; text-align:center; ${isGridFreezeActive && idx===0 ? 'position:sticky; left:40px; z-index:11;' : ''}">${col}</th>
             `).join('')}
           </tr>
         </thead>
         <tbody>
-          ${Array.from({length: sheet.rows}, (_, r) => r + 1).map(rowNum => `
+          ${Array.from({length: sheet.rows}, (_, r) => r + 1).map(rowNum => {
+            if (activeGridFilter && activeGridFilter.query) {
+              const cellCoord = colLetter(activeGridFilter.colIndex) + rowNum;
+              const cellVal = String(evaluatedCells[cellCoord]?.val || '').toLowerCase();
+              if (!cellVal.includes(activeGridFilter.query)) return '';
+            }
+            return `
             <tr>
-              <td style="background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-muted); text-align:center; font-weight:bold; font-size:0.75rem;">${rowNum}</td>
+              <td style="background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-muted); text-align:center; font-weight:bold; font-size:0.75rem; ${isGridFreezeActive ? 'position:sticky; left:0; z-index:5;' : ''}">${rowNum}</td>
               ${Array.from({length: sheet.cols}, (_, c) => {
                 const coord = colLetter(c) + rowNum;
                 const cell = evaluatedCells[coord] || { raw: '', val: '', format: 'general', bold: false, italic: false, align: 'left', bg: '', color: '' };
                 const isSelected = selectedGridCell === coord;
                 const displayVal = formatCellValue(cell.val, cell.format);
+                const isFreezeCol = isGridFreezeActive && c === 0;
                 return `
-                  <td style="border:1px solid var(--border-color); padding:0; position:relative; background:${cell.bg || (isSelected ? 'rgba(59,130,246,0.15)' : 'transparent')}; outline:${isSelected ? '2px solid var(--accent-primary,#3b82f6)' : 'none'}; z-index:${isSelected ? 2 : 1};">
+                  <td style="border:1px solid var(--border-color); padding:0; position:${isFreezeCol ? 'sticky' : 'relative'}; ${isFreezeCol ? 'left:40px; z-index:4;' : ''} background:${cell.bg || (isSelected ? 'rgba(59,130,246,0.15)' : 'transparent')}; outline:${isSelected ? '2px solid var(--accent-primary,#3b82f6)' : 'none'}; z-index:${isSelected ? 6 : (isFreezeCol ? 4 : 1)};">
                     <input id="cell-${coord}" data-cell="${coord}" type="text"
                       value="${escapeHTML(displayVal)}"
                       data-raw="${escapeHTML(cell.raw)}"
@@ -2352,7 +2639,8 @@ function renderSheets() {
                 `;
               }).join('')}
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </tbody>
       </table>
     </div>
