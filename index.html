@@ -986,27 +986,15 @@ body.hybrid .sync-card{display:block;}
         <button class="btn ghost small" onclick="openCapsuleModal('import')">Import Capsule</button>
       </div>
       <div class="mode-toggle">
-        <button id="btnOffline" class="active">Offline</button>
-        <button id="btnHybrid">Hybrid</button>
+        <button id="btnOffline" class="active" style="cursor:default;">Local</button>
       </div>
       <div class="security-pill" id="securityPill"><span class="dot"></span><span id="securityPillText">Local only · nothing leaves this device</span></div>
       <div class="global-search-results" id="globalSearchResults"></div>
     </div>
 
-    <div class="sync-panel">
-      <div class="sync-card" id="syncCard">
-        <h3>Hybrid sync</h3>
-        <div class="disclaimer">Honest note: sync uploads a client-side encrypted blob to your own server (via suite-sync/), identified by a passphrase-derived Sync Key — the server can't read it. See suite-sync/README.md for setup; until that's deployed, this stays local-only.</div>
-        <div id="syncList"></div>
-        <div class="toolbar" style="margin-top:12px;">
-          <button class="btn sage small" onclick="syncAll()">Sync now</button>
-        </div>
-      </div>
-    </div>
-
     <div class="workspace" id="workspace"></div>
 
-    <div class="footer-note">No account. No server unless you choose sync. Every save is yours to keep — export a Capsule anytime.<br>
+    <div class="footer-note">No account. No server required. Every save is yours to keep — export a Capsule anytime.<br>
     <span style="opacity:0.85;">A note: because nothing is stored anywhere but this device, there's no "forgot my passphrase" recovery and no cloud backup unless you make one. That's the trade — getting to "no one else can touch your data" means no one else can rescue it for you either. Export a Capsule regularly and keep it somewhere safe.</span>
     </div>
   </div>
@@ -1051,10 +1039,13 @@ function saveLocal(key, value){
   }
   showSeal();
 }
+function saveLocalSilent(key, value){
+  localStorage.setItem(KEY_PREFIX+key, JSON.stringify(value));
+}
 
 /* ================= NETWORK MONITOR + OFFLINE MODE (Phase 8 / Phase 9) =================
    Every real network call this app ever makes (there are exactly two kinds:
-   license verification and hybrid sync) goes through here. This makes the
+   optional external requests) goes through here. This makes the
    privacy promise observable instead of just a claim: the Network Monitor
    panel reads straight from this same log, not a separate marketing number. */
 function isOfflineModeStrict(){ return !!loadLocal('offlineModeStrict', false); }
@@ -1110,20 +1101,19 @@ function pickFile(accept, cb){
 /* ---------- Mode toggle ---------- */
 let mode = loadLocal('mode','offline');
 function setMode(m){
-  mode = m;
-  saveLocal('mode', m);
-  document.body.classList.toggle('hybrid', m==='hybrid');
-  document.getElementById('btnOffline').classList.toggle('active', m==='offline');
-  document.getElementById('btnHybrid').classList.toggle('active', m==='hybrid');
+  mode = 'offline';
+  saveLocal('mode', 'offline');
+  document.body.classList.remove('hybrid');
+  const btnOff = document.getElementById('btnOffline');
+  if(btnOff) btnOff.classList.add('active');
   const pill = document.getElementById('securityPill');
   const pillText = document.getElementById('securityPillText');
   if(pill && pillText){
-    pill.classList.toggle('hybrid', m==='hybrid');
-    pillText.textContent = m==='hybrid' ? 'Hybrid · encrypted before it ever leaves this device' : 'Local only · nothing leaves this device';
+    pill.classList.remove('hybrid');
+    pillText.textContent = 'Local only · nothing leaves this device';
   }
 }
-document.getElementById('btnOffline').onclick = ()=>setMode('offline');
-document.getElementById('btnHybrid').onclick = ()=>setMode('hybrid');
+const bOff = document.getElementById('btnOffline'); if(bOff) bOff.onclick = ()=>setMode('offline');
 
 /* ---------- Standalone-tool mode ----------
    When SUITE_ONLY is set to a module id (e.g. 'sheets'), this file behaves as a
@@ -1295,7 +1285,7 @@ if(!SUITE_ONLY){
 modules.forEach(m=>{
   const tab = document.createElement('div');
   tab.className='tab'; tab.dataset.id=m.id;
-  tab.innerHTML = `${m.label} <span class="ext">${m.ext}</span><span class="sync-badge">synced</span>`;
+  tab.innerHTML = `${m.label} <span class="ext">${m.ext}</span>`;
   tab.onclick = ()=>activateTab(m.id);
   tabsEl.appendChild(tab);
 
@@ -2069,8 +2059,14 @@ function updateWC(){
   document.getElementById('docsWC').textContent = words + ' words';
 }
 function saveDocs(){
-  const html = document.getElementById('docsEditor').innerHTML;
-  saveLocal('docs', {html});
+  const titleEl = document.getElementById('folioDocTitle');
+  const title = titleEl ? titleEl.value : 'Untitled Document';
+  const editor = document.getElementById('docsEditor');
+  const html = editor ? editor.innerHTML : '<p>Start writing...</p>';
+  const docObj = getFolioDocument();
+  docObj.document.title = title || 'Untitled Document';
+  docObj.document.content = html;
+  saveFolioDocument(docObj);
 }
 function exportDocs(){
   saveDocs();
@@ -4124,8 +4120,7 @@ function applyCapsule(bundle){
   renderToday();
   mode = loadLocal('mode','offline');
   setMode(mode);
-  renderSyncList();
-}
+  }
 
 /* --- Real client-side crypto: PBKDF2 -> AES-GCM key, using the browser's native Web Crypto API --- */
 function b64FromBytes(bytes){ let s=''; bytes.forEach(b=>s+=String.fromCharCode(b)); return btoa(s); }
@@ -4793,7 +4788,7 @@ function renderPrivacyCenter(){
   const p = document.getElementById('panel-privacy');
   if(!p) return;
   const offlineStrict = isOfflineModeStrict();
-  const externalConnected = SYNC_PUSH_URL && SYNC_PULL_URL ? 1 : 0;
+  const externalConnected = 0;
   const lastCheck = loadLocal('lastSecurityCheck', null);
   p.innerHTML = `
     <h2>Privacy Center</h2>
@@ -4801,7 +4796,7 @@ function renderPrivacyCenter(){
     <div class="privacy-toggle-row">
       <div>
         <b>OFFLINE MODE</b>
-        <div class="hint">When on, all network communication and optional sync calls are actively blocked.</div>
+        <div class="hint">When on, all network communication is actively blocked.</div>
       </div>
       <label class="switch">
         <input type="checkbox" id="offlineModeToggle" ${offlineStrict?'checked':''} onchange="setOfflineModeStrict(this.checked); renderPrivacyCenter();">
@@ -4809,11 +4804,11 @@ function renderPrivacyCenter(){
       </label>
     </div>
     <div class="privacy-grid">
-      <div class="privacy-stat"><span>Network</span><b>${offlineStrict? '● No network access required' : (mode==='hybrid' ? '● Hybrid mode — sync calls allowed':'● No network access required')}</b></div>
+      <div class="privacy-stat"><span>Network</span><b>● No network access required</b></div>
       <div class="privacy-stat"><span>Telemetry</span><b>OFF</b></div>
       <div class="privacy-stat"><span>Analytics</span><b>OFF</b></div>
-      <div class="privacy-stat"><span>Remote storage</span><b>${mode==='hybrid' && !offlineStrict ? 'Hybrid sync enabled' : 'OFF'}</b></div>
-      <div class="privacy-stat"><span>External integrations</span><b>${externalConnected} connected</b></div>
+      <div class="privacy-stat"><span>Remote storage</span><b>OFF</b></div>
+      <div class="privacy-stat"><span>External integrations</span><b>0 connected</b></div>
       <div class="privacy-stat"><span>Local storage</span><b>${(typeof vaultExists === "function" && vaultExists())||getVaultsIndex().length ? 'Vault data encrypted; other modules stored in plain localStorage' : 'Plain localStorage (no vault set up yet)'}</b></div>
       <div class="privacy-stat"><span>Last security check</span><b>${lastCheck ? new Date(lastCheck).toLocaleDateString() : 'Never — visit Security Center'}</b></div>
     </div>
@@ -4866,7 +4861,7 @@ function renderSecurityCenter(){
       <div class="privacy-stat"><span>Vault</span><b>${getVaultsIndex().length ? '● Protected ('+getVaultsIndex().length+' vault'+(getVaultsIndex().length===1?'':'s')+')' : '○ No vault created yet'}</b></div>
       <div class="privacy-stat"><span>Encryption</span><b>${getVaultsIndex().length ? '● Active (AES-256-GCM)' : '○ Inactive'}</b></div>
       <div class="privacy-stat"><span>Master Key</span><b>● Hardware-independent (passphrase-derived, PBKDF2)</b></div>
-      <div class="privacy-stat"><span>Network</span><b>${isOfflineModeStrict() ? '● No private data transmission (Offline Mode on)' : (mode==='hybrid' ? '⚠ Hybrid sync active — encrypted blob only' : '● No private data transmission')}</b></div>
+      <div class="privacy-stat"><span>Network</span><b>● No private data transmission</b></div>
       <div class="privacy-stat"><span>Backups</span><b>${daysSinceBackup===null ? '⚠ No Capsule export yet' : (daysSinceBackup===0 ? '● Backed up today' : `⚠ Last backup: ${daysSinceBackup} day${daysSinceBackup===1?'':'s'} ago`)}</b></div>
       <div class="privacy-stat"><span>Password Health</span><b>${health ? health.score+' / 100' : 'Unlock a vault to compute'}</b></div>
     </div>
@@ -4892,8 +4887,8 @@ function renderSecurityCenter(){
     <div class="privacy-grid">
       <div class="privacy-stat"><span>Requests today</span><b>${todayEvents.length}</b></div>
       <div class="privacy-stat"><span>External domains</span><b>${externalDomains.length}</b></div>
-      <div class="privacy-stat"><span>Uploads</span><b>${netLog.filter(e=>e.kind==='sync-push').length}</b></div>
-      <div class="privacy-stat"><span>Downloads</span><b>${netLog.filter(e=>e.kind==='sync-pull').length}</b></div>
+      <div class="privacy-stat"><span>Uploads</span><b>0</b></div>
+      <div class="privacy-stat"><span>Downloads</span><b>0</b></div>
       <div class="privacy-stat"><span>Telemetry</span><b>0</b></div>
     </div>
     <div class="toolbar" style="margin-top:8px;"><button class="btn ghost small" onclick="toggleNetworkLog()">View Network Log</button></div>
@@ -4904,7 +4899,7 @@ function renderSecurityCenter(){
       <div class="privacy-stat"><span>Application files</span><b>✓ (this page + its assets)</b></div>
       <div class="privacy-stat"><span>Passwords</span><b>0 bytes</b></div>
       <div class="privacy-stat"><span>Notes</span><b>0 bytes</b></div>
-      <div class="privacy-stat"><span>Files</span><b>${mode==='hybrid' && !isOfflineModeStrict() ? 'Only if hybrid sync was used — see network log' : '0 bytes'}</b></div>
+      <div class="privacy-stat"><span>Files</span><b>0 bytes</b></div>
       <div class="privacy-stat"><span>Analytics</span><b>0 bytes</b></div>
     </div>
     <div class="hint">This section is deliberately conservative: it reports what the client can actually verify (whether a sync call happened and its logged byte size), not a claim about what a server does with what it receives — we don't run the server, so we don't put a number on something we can't observe from here.</div>
@@ -4927,39 +4922,18 @@ function toggleNetworkLog(){
    "advanced phase" per the roadmap's own caution: shipped opt-in, per-item,
    never automatic, and the live network call is clearly flagged untested
    from this sandbox (domain not in this build's allowed egress list). */
-const BREACH_API = 'https://api.pwnedpasswords.com/range/';
 async function sha1Hex(str){
   const enc = new TextEncoder().encode(str);
   const buf = await crypto.subtle.digest('SHA-1', enc);
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
 }
 async function checkPasswordBreach(password){
-  const hash = await sha1Hex(password);
-  const prefix = hash.substring(0,5);
-  const suffix = hash.substring(5);
-  try{
-    const res = await loggedFetch(BREACH_API + prefix, undefined, 'breach-check');
-    const text = await res.text();
-    const line = text.split('\n').find(l=>l.startsWith(suffix));
-    return line ? parseInt(line.split(':')[1],10) : 0;
-  }catch(e){
-    return null; // network unavailable / blocked by Offline Mode / not reachable from this sandbox
-  }
+  return null;
 }
 async function runBreachCheckAll(){
   const el = document.getElementById('breachResults');
   if(!el) return;
-  el.innerHTML = '<div class="hint">Checking… (first 5 hash characters only, per password)</div>';
-  const pwItems = _vaultItems.filter(i=>['logins','wifi'].includes(i.category) && i.fields.password);
-  const rows = [];
-  for(const item of pwItems){
-    const count = await checkPasswordBreach(item.fields.password);
-    const label = item.fields.website || item.fields.network || '(unnamed)';
-    if(count===null) rows.push(`<div class="hint">${label}: could not reach breach-check service from here.</div>`);
-    else if(count>0) rows.push(`<div class="hint">⚠ ${label}: found in ${count.toLocaleString()} known breaches — change this password.</div>`);
-    else rows.push(`<div class="hint">✓ ${label}: not found in known breaches.</div>`);
-  }
-  el.innerHTML = rows.join('');
+  el.innerHTML = '<div class="hint">Online breach check unavailable in Local Mode — no external network requests allowed. Your passwords remain 100% private on this device.</div>';
 }
 
 function openCapsuleModal(kind){
@@ -5079,164 +5053,19 @@ function mergeBundles(localBundle, remoteBundle, localModTimes, remoteModTimes){
 }
 
 
-// Set these once your php-sync/ folder is live on your host, e.g.:
-// const SYNC_PUSH_URL = 'https://codersagent.com/suite-sync/push.php';
-// const SYNC_PULL_URL = 'https://codersagent.com/suite-sync/pull.php';
-const SYNC_PUSH_URL = 'https://offlines.xyz/suite-sync/push.php'; // <-- fill in before shipping
-const SYNC_PULL_URL = 'https://offlines.xyz/suite-sync/pull.php'; // <-- fill in before shipping
-
-function getSyncLog(){ return loadLocal('syncLog', []); }
-function logSyncEvent(kind){
-  const log = getSyncLog();
-  log.unshift({ at: new Date().toISOString(), kind });
-  localStorage.setItem(KEY_PREFIX+'syncLog', JSON.stringify(log.slice(0,10)));
-}
-function getSyncPassphrase(){ return loadLocal('syncPassphrase', null); }
-
 async function sha256Hex(str){
   const enc = new TextEncoder().encode(str);
   const hash = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-function promptSyncSetup(){
-  const pass = prompt(
-    'Set a Sync Key — a passphrase only you know, used on every device you want to link.\n\n' +
-    'There is no account and no recovery: if you lose this passphrase, you lose access to whatever was synced under it. Write it down somewhere safe.'
-  );
-  if(pass && pass.trim().length >= 6){
-    saveLocal('syncPassphrase', pass.trim());
-    return pass.trim();
-  }
-  if(pass !== null) alert('Use at least 6 characters for a Sync Key.');
-  return null;
-}
-
-async function syncAll(){
-  if(!SYNC_PUSH_URL || !SYNC_PULL_URL){
-    alert('The sync server URLs haven\'t been configured yet in suite.html (SYNC_PUSH_URL / SYNC_PULL_URL) — that\'s a setup step, not a problem with your data.');
-    return;
-  }
-  let pass = getSyncPassphrase();
-  if(!pass){
-    pass = promptSyncSetup();
-    if(!pass) return;
-  }
-
-  const syncId = await sha256Hex(pass);
-  const btn = document.querySelector('#syncCard .sage');
-  if(btn){ btn.disabled = true; btn.textContent = 'Syncing…'; }
-
-  try{
-    // 1. Pull whatever's currently stored for this Sync Key
-    const pullRes = await loggedFetch(`${SYNC_PULL_URL}?sync_id=${syncId}`, undefined, 'sync-pull');
-    const pullData = await pullRes.json();
-
-    const localBundle = buildCapsule();
-    const localUpdatedAt = Date.now();
-
-    if(pullData.ok){
-      // Something exists remotely — decrypt it so we can merge
-      let remoteBundle;
-      try{
-        remoteBundle = await decryptCapsule(JSON.parse(pullData.blob), pass);
-      }catch(e){
-        alert('Could not decrypt the data stored under this Sync Key — wrong passphrase, or it was synced with a different one.');
-        return;
-      }
-      const remoteAt = pullData.client_updated_at;
-      const lastKnown = loadLocal('syncLastKnownRemote', 0);
-
-      if(remoteAt > lastKnown || true){
-        // Always merge rather than blindly picking a side — new items from either
-        // device combine cleanly; only whole single-document modules (Docs/Sheets/
-        // Forms) fall back to last-write-wins, since merging inside a document isn't
-        // something this app can do safely. See php-sync/README.md for the honest
-        // limitations (no true CRDT, deletions can resurrect in rare cases).
-        const localModTimes = loadLocal('modTimes', {});
-        const remoteModTimes = remoteBundle.modules.modTimes || {};
-        const { merged, overwrittenWhole } = mergeBundles(localBundle, remoteBundle, localModTimes, remoteModTimes);
-
-        applyCapsule(merged);
-        saveLocal('modTimes', merged.modules.modTimes);
-        saveLocal('syncLastKnownRemote', remoteAt);
-
-        if(overwrittenWhole.length){
-          alert(`Merged. Note: ${overwrittenWhole.join(', ')} had a newer version on another device, so that module's content came from there instead of this device's version (whole-document modules can't be merged field-by-field).`);
-        }
-        logSyncEvent('merged');
-      }
-    }
-
-    // Push the merged (or, if nothing was remote yet, local) state back up
-    const finalBundle = buildCapsule();
-    const encrypted = await encryptCapsule(finalBundle, pass);
-    const pushRes = await loggedFetch(SYNC_PUSH_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ sync_id: syncId, blob: JSON.stringify(encrypted), client_updated_at: Date.now() })
-    }, 'sync-push');
-    const pushData = await pushRes.json();
-
-    if(pushData.ok){
-      saveLocal('syncLastKnownRemote', pushData.stored_at);
-      logSyncEvent('pushed');
-      renderSyncList();
-      renderDocs(); renderSheets(); renderForms(); renderNotes();
-      renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
-      renderToday();
-      showSeal();
-    } else if(pushData.error === 'conflict'){
-      alert('Someone else synced a newer version in the last moment — click Sync now again to merge it in.');
-    } else {
-      alert('Sync failed: ' + (pushData.error || 'unknown error'));
-    }
-  }catch(e){
-    alert('Couldn\'t reach the sync server — check your internet connection. Your local data is untouched.');
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Sync now'; }
-  }
-}
-
-function toggleAutoSync(on){
-  saveLocalSilent('autoSync', !!on);
-  if(on){
-    if(window._autoSyncTimer) clearInterval(window._autoSyncTimer);
-    window._autoSyncTimer = setInterval(syncAll, 30000);
-  } else if(window._autoSyncTimer){
-    clearInterval(window._autoSyncTimer);
-    window._autoSyncTimer = null;
-  }
-}
-function saveLocalSilent(key,value){ localStorage.setItem(KEY_PREFIX+key, JSON.stringify(value)); }
-function renderSyncList(){
-  const el = document.getElementById('syncList');
-  if(!el) return;
-  const log = getSyncLog();
-  const autoOn = loadLocal('autoSync', false);
-  const hasKey = !!getSyncPassphrase();
-  el.innerHTML = `
-    <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap;">
-      <span class="hint">${hasKey ? 'Sync Key is set on this device.' : 'No Sync Key set yet — click Sync now to create one.'}</span>
-      <label style="font-size:0.8em;display:flex;align-items:center;gap:6px;">
-        <input type="checkbox" id="autoSyncBox" ${autoOn?'checked':''} onchange="toggleAutoSync(this.checked)">
-        Auto-sync every 30 seconds
-      </label>
-    </div>
-    <div class="hint">Recent activity: ${log.length ? log.map(l=>`${l.kind} @ ${new Date(l.at).toLocaleTimeString()}`).join(', ') : 'none yet'}</div>
-  `;
-  if(autoOn && !window._autoSyncTimer){ toggleAutoSync(true); }
-}
-
-
-/* ---------- init ---------- */
 (async function initApp(){
   renderDocs(); renderSheets(); renderForms(); renderNotes();
   renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
   if(!SUITE_ONLY){ renderToday(); activateTab('today'); }
   else { activateTab(modules[0].id); }
   setMode(mode);
-  renderSyncList();
-})();
+  })();
 
 /* ---------- PWA: register service worker so this installs like a real app ---------- */
 if ('serviceWorker' in navigator) {
