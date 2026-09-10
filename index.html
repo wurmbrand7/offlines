@@ -51,34 +51,7 @@ body{
   font-weight:600;
 }
 .brand span{color:var(--brass-light);}
-.mode-toggle{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.78em;
-  background:var(--navy-2);
-  padding:6px 10px;
-  border-radius:20px;
-  border:1px solid rgba(212,171,120,0.3);
-}
-.mode-toggle button{
-  border:none;
-  background:transparent;
-  color:var(--paper);
-  opacity:0.5;
-  cursor:pointer;
-  padding:4px 10px;
-  border-radius:14px;
-  font-family:inherit;
-  font-size:1em;
-}
-.mode-toggle button.active{
-  background:var(--brass);
-  color:var(--navy);
-  opacity:1;
-  font-weight:600;
-}
+
 .tabs{ display:none; }
 .app-shell{
   display:flex;
@@ -962,7 +935,7 @@ table.grid th{
         <button class="btn brass small" onclick="openCapsuleModal('export')">Export Capsule</button>
         <button class="btn ghost small" onclick="openCapsuleModal('import')">Import Capsule</button>
       </div>
-      <div class="mode-toggle" style="font-size:0.8rem; font-weight:700; color:var(--accent-primary,#3b82f6); letter-spacing:0.05em; text-transform:uppercase; padding:4px 10px; background:rgba(59,130,246,0.1); border-radius:4px; border:1px solid rgba(59,130,246,0.3);">
+      <div style="font-size:0.8rem; font-weight:700; color:var(--accent-primary,#3b82f6); letter-spacing:0.05em; text-transform:uppercase; padding:4px 10px; background:rgba(59,130,246,0.1); border-radius:4px; border:1px solid rgba(59,130,246,0.3);">
         Local Workspace
       </div>
       <div class="security-pill" id="securityPill"><span class="dot"></span><span id="securityPillText">Local only · nothing leaves this device</span></div>
@@ -986,8 +959,62 @@ table.grid th{
 </div>
 
 <script>
-/* ---------- Storage helpers ---------- */
+/* ---------- Storage helpers & SuiteStorage Engine ---------- */
 const KEY_PREFIX = "suite_v1_";
+
+const IDB_NAME = 'offlines_suite_db';
+const IDB_VERSION = 2;
+let _suiteIDB = null;
+
+function initIndexedDB() {
+  return new Promise((resolve) => {
+    if (!window.indexedDB) { resolve(null); return; }
+    try {
+      const req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        const stores = MODULE_KEYS_TRACKED.concat(['vaults_index', 'vault_personal', 'notes_library', 'objects', 'comments', 'revisions', 'references']);
+        stores.forEach((storeName) => {
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+          }
+        });
+      };
+      req.onsuccess = (e) => {
+        _suiteIDB = e.target.result;
+        autoMigrateLocalStorageToIDB();
+        resolve(_suiteIDB);
+      };
+      req.onerror = () => { resolve(null); };
+    } catch(err) {
+      resolve(null);
+    }
+  });
+}
+
+function autoMigrateLocalStorageToIDB() {
+  if (!_suiteIDB) return;
+  MODULE_KEYS_TRACKED.concat(['vaults_index', 'vault_personal', 'notes_library']).forEach((key) => {
+    try {
+      const raw = localStorage.getItem(KEY_PREFIX + key);
+      if (raw) {
+        const val = JSON.parse(raw);
+        saveIDBItem(key, val);
+      }
+    } catch(e) {}
+  });
+}
+
+function saveIDBItem(storeName, value) {
+  if (!_suiteIDB || !_suiteIDB.objectStoreNames.contains(storeName)) return;
+  try {
+    const tx = _suiteIDB.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    store.put({ id: 'main', payload: value, updatedAt: Date.now() });
+  } catch(e) {}
+}
+
+initIndexedDB();
 
 function escapeHTML(str){
   if(str === null || str === undefined) return '';
@@ -1064,7 +1091,8 @@ let mode = loadLocal('mode','offline');
    single standalone tool: only that module loads, the tab bar and Today/search
    are hidden, and the header shows that tool's own name instead of "Suite".
    Leave null for the full combined Suite. */
-const SUITE_ONLY = null;
+const urlParams = new URLSearchParams(window.location.search);
+const SUITE_ONLY = window.SUITE_ONLY || urlParams.get('suite_only');
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function moonPhaseEmoji(date){
@@ -1185,14 +1213,14 @@ function universalSearch(query){
 
 /* ---------- Modules config ---------- */
 const ALL_MODULES = [
-  {id:'docs', label:'Folio', ext:'.fils', free:true},
-  {id:'sheets', label:'Grid', ext:'.grid', free:false},
-  {id:'forms', label:'Fill', ext:'.fill', free:false},
-  {id:'notes', label:'Spot', ext:'.spot', free:true},
-  {id:'tasks', label:'Docket', ext:'.plot', free:false},
-  {id:'agenda', label:'Almanac', ext:'.agnd', free:true},
-  {id:'slides', label:'Glides', ext:'.glides', free:false},
-  {id:'lockbox', label:'Lockbox', ext:'.lbox', free:false},
+  {id:'docs', label:'Folio', ext:'.fils'},
+  {id:'sheets', label:'Grid', ext:'.grid'},
+  {id:'forms', label:'Fill', ext:'.fill'},
+  {id:'notes', label:'Spot', ext:'.spot'},
+  {id:'tasks', label:'Docket', ext:'.plot'},
+  {id:'agenda', label:'Almanac', ext:'.agnd'},
+  {id:'slides', label:'Glides', ext:'.glides'},
+  {id:'lockbox', label:'Lockbox', ext:'.lbox'},
 ];
 const modules = SUITE_ONLY ? ALL_MODULES.filter(m=>m.id===SUITE_ONLY) : ALL_MODULES;
 
@@ -1237,12 +1265,23 @@ modules.forEach(m=>{
   panel.className='panel'; panel.id='panel-'+m.id;
   workspaceEl.appendChild(panel);
 });
+if(SUITE_ONLY && modules.length > 0){
+  setTimeout(() => activateTab(modules[0].id), 10);
+}
 
 function activateTab(id){
   if(id!=='lockbox') stopTotpTicker();
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.id===id));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+id));
   document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.toggle('active', s.dataset.id===id));
+  if(id==='docs') renderDocs();
+  if(id==='sheets') renderSheets();
+  if(id==='forms') renderForms();
+  if(id==='notes') renderNotes();
+  if(id==='tasks') renderTasks();
+  if(id==='agenda') renderAgenda();
+  if(id==='slides') renderSlides();
+  if(id==='lockbox') renderLockbox();
   if(id==='privacy') renderPrivacyCenter();
   if(id==='security') renderSecurityCenter();
   const gsr = document.getElementById('globalSearchResults');
@@ -1948,6 +1987,30 @@ function restoreFolioSnapshot(idx) {
 function toggleFolioFocusMode() {
   const panel = document.getElementById('panel-docs');
   if (panel) panel.classList.toggle('focus-mode');
+}
+
+function insertFolioFootnote() {
+  const editor = document.getElementById('docsEditor');
+  const fnNum = (editor.querySelectorAll('.folio-footnote').length || 0) + 1;
+  const html = `<sup class="folio-footnote" style="color:var(--accent-primary,#3b82f6); font-weight:bold; cursor:pointer;">[${fnNum}]</sup>`;
+  if (editor) {
+    editor.focus();
+    try { document.execCommand('insertHTML', false, html); } catch(e) { editor.innerHTML += html; }
+    saveDocs();
+  }
+}
+
+function generateFolioTOC() {
+  const editor = document.getElementById('docsEditor');
+  if (!editor) return;
+  const headings = editor.querySelectorAll('h1, h2, h3');
+  let tocHtml = '<div class="folio-toc" style="background:var(--bg-main); border:1px solid var(--border-color); padding:12px; border-radius:6px; margin:12px 0;"><b>Table of Contents</b><ul style="margin:6px 0 0 0; padding-left:20px;">';
+  headings.forEach(h => {
+    tocHtml += `<li>${escapeHTML(h.textContent)}</li>`;
+  });
+  tocHtml += '</ul></div>';
+  editor.innerHTML = tocHtml + editor.innerHTML;
+  saveDocs();
 }
 
 function openFolioFindReplaceModal() {
@@ -2984,6 +3047,16 @@ function sortGridColumn(dir) {
 
   sheet.cells = newCells;
   saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function setGridFilter(colIndex, query) {
+  activeGridFilter = { colIndex, query: String(query).toLowerCase() };
+  renderSheets();
+}
+
+function clearGridFilter() {
+  activeGridFilter = null;
   renderSheets();
 }
 
@@ -4920,64 +4993,6 @@ document.getElementById('capsuleModalBg').addEventListener('click', (e)=>{
 
 /* ---------- Merge engine: per-module, per-item — not a full CRDT, see limitations in README ---------- */
 const ITEM_LIST_MODULES = {
-  notes: 'items', tasks: 'items', agenda: 'events', slides: 'slides', lockbox: 'files'
-};
-function mergeItemArrays(localArr, remoteArr, localTime, remoteTime){
-  localArr = localArr || []; remoteArr = remoteArr || [];
-  const byId = new Map();
-  localArr.forEach(item => byId.set(item.id, {item, from:'local'}));
-  remoteArr.forEach(item => {
-    const existing = byId.get(item.id);
-    if(!existing){
-      byId.set(item.id, {item, from:'remote'}); // new on remote only — merges in cleanly
-    } else {
-      // Present on both sides — pick whichever device's module was saved more recently.
-      // Approximate (module-level, not this-exact-item-level) but simple and honest.
-      if(remoteTime > localTime) byId.set(item.id, {item, from:'remote'});
-      // else keep local's existing entry (already in the map)
-    }
-  });
-  return Array.from(byId.values()).map(v=>v.item);
-}
-function mergeBundles(localBundle, remoteBundle, localModTimes, remoteModTimes){
-  const merged = { type:'capsule', version:1, createdAt:new Date().toISOString(), modules:{} };
-  const overwrittenWhole = [];
-
-  // Single-object modules: whole-module last-write-wins, but per-module (not per-bundle) granularity.
-  ['docs','sheets','forms'].forEach(k=>{
-    const lt = localModTimes[k] || 0, rt = remoteModTimes[k] || 0;
-    if(remoteBundle.modules[k] !== undefined && rt > lt){
-      merged.modules[k] = remoteBundle.modules[k];
-      if(localBundle.modules[k] !== undefined && lt > 0) overwrittenWhole.push(k);
-    } else if(localBundle.modules[k] !== undefined){
-      merged.modules[k] = localBundle.modules[k];
-    } else if(remoteBundle.modules[k] !== undefined){
-      merged.modules[k] = remoteBundle.modules[k];
-    }
-  });
-
-  // Item-list modules: real per-item union merge — additions from either side survive.
-  Object.entries(ITEM_LIST_MODULES).forEach(([k, arrKey])=>{
-    const lt = localModTimes[k] || 0, rt = remoteModTimes[k] || 0;
-    const localData = localBundle.modules[k] || {};
-    const remoteData = remoteBundle.modules[k] || {};
-    const mergedArr = mergeItemArrays(localData[arrKey], remoteData[arrKey], lt, rt);
-    merged.modules[k] = { ...localData, ...remoteData, [arrKey]: mergedArr };
-  });
-
-  merged.modules.mode = localBundle.modules.mode;
-  const mergedTimes = {};
-  MODULE_KEYS_TRACKED.forEach(k=>{ mergedTimes[k] = Math.max(localModTimes[k]||0, remoteModTimes[k]||0); });
-  merged.modules.modTimes = mergedTimes;
-
-  return { merged, overwrittenWhole };
-}
-
-
-async function sha256Hex(str){
-  const enc = new TextEncoder().encode(str);
-  const hash = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 (async function initApp(){
