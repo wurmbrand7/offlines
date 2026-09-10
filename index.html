@@ -13,25 +13,38 @@
 <link rel="icon" href="icons/icon-192.png">
 <style>
 :root{
-  --ink:#232017;
-  --paper:#f6f1e4;
-  --paper-dark:#ece4d0;
-  --navy:#1c2333;
-  --navy-2:#262f45;
-  --sage:#6f8c6a;
-  --sage-dark:#567052;
-  --brass:#b8925a;
-  --brass-light:#d4ab78;
-  --rust:#a8563f;
-  --line:#d8cdb0;
-  --shadow:rgba(28,35,51,0.25);
+  --bg-workspace:#0c1017;
+  --bg-surface:#141b26;
+  --surface-panel:#1a2332;
+  --bg-surface-elevated:#222d3e;
+  --border-crisp:rgba(255,255,255,0.12);
+  --border-color:rgba(255,255,255,0.12);
+  --accent-primary:#3b82f6;
+  --accent-subtle:rgba(59,130,246,0.15);
+  --text-workspace:#f1f5f9;
+  --text-main:#f1f5f9;
+  --text-muted:#94a3b8;
+  --font-mono:'JetBrains Mono','Courier New',monospace;
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --ink:#f1f5f9;
+  --paper:#141b26;
+  --paper-dark:#1a2332;
+  --navy:#0c1017;
+  --navy-2:#1a2332;
+  --sage:#10b981;
+  --sage-dark:#059669;
+  --brass:#3b82f6;
+  --brass-light:#60a5fa;
+  --rust:#ef4444;
+  --line:rgba(255,255,255,0.12);
+  --shadow:rgba(0,0,0,0.5);
 }
 *{box-sizing:border-box;}
 body{
   margin:0;
-  font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;
-  background:var(--navy);
-  color:var(--ink);
+  font-family:var(--font-sans);
+  background:var(--bg-workspace);
+  color:var(--text-workspace);
   min-height:100vh;
 }
 .topbar{
@@ -421,17 +434,21 @@ body{
   font-family:'Courier New',monospace;
 }
 .workspace{
-  max-width:1100px;
-  margin:0 auto;
-  padding:24px;
+  max-width:100%;
+  width:100%;
+  margin:0;
+  padding:16px;
+  flex:1;
 }
 .panel{
-  background:var(--paper);
-  border-radius:6px;
-  box-shadow:0 8px 24px var(--shadow);
-  padding:24px;
-  min-height:400px;
+  background:var(--bg-surface);
+  border-radius:8px;
+  box-shadow:0 8px 32px var(--shadow);
+  padding:20px;
+  min-height:calc(100vh - 120px);
   display:none;
+  border:1px solid var(--border-crisp);
+  color:var(--text-workspace);
 }
 .today-grid{
   display:grid;
@@ -976,7 +993,7 @@ table.grid th{
 </div>
 
 <script>
-window.SUITE_BUILD_ID = "LOCAL-ONLY-2026-09-10-V4";
+window.SUITE_BUILD_ID = "LOCAL-ONLY-2026-09-10-V6";
 window.SUITE_MODE = "LOCAL-ONLY";
 /* ---------- Storage helpers & SuiteStorage Engine ---------- */
 const KEY_PREFIX = "suite_v1_";
@@ -1874,28 +1891,30 @@ function renderDocs(){
     <!-- FOLIO CONTEXTUAL RIBBON -->
     ${renderFolioRibbonBar()}
 
-    <!-- FOLIO MAIN SPLIT LAYOUT -->
-    <div style="display:grid; grid-template-columns:1fr 280px; gap:16px; min-height:500px;">
-      <!-- PAGE CANVAS CONTAINER -->
-      <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:24px; position:relative; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-        <input type="text" id="folioDocTitle" value="${escapeHTML(doc.title)}" style="width:100%; font-size:1.5rem; font-weight:800; background:transparent; border:none; border-bottom:1px solid var(--border-color); color:var(--text-main); margin-bottom:16px; padding:4px 0;" oninput="updateFolioTitle(this.value)" placeholder="Document Title...">
-        <div id="docsEditor" contenteditable="true" style="min-height:380px; color:var(--text-main); line-height:1.6; outline:none; font-size:0.95rem;" oninput="updateWC(); updateFolioOutline();" onkeydown="onFolioEditorKeyDown(event)">${doc.content}</div>
-        <div id="folioSlashMenu" style="display:none; position:absolute; background:var(--bg-elevated); border:1px solid var(--border-color); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:100; min-width:180px; padding:6px;">
-          <div style="font-size:0.75rem; color:var(--text-muted); padding:4px 8px; font-weight:bold;">SLASH COMMANDS</div>
-          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('H1')">Heading 1</div>
-          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('H2')">Heading 2</div>
-          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('TABLE')">Table</div>
-          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('QUOTE')">Quote</div>
-          <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('PAGE')">Page Break</div>
+    <!-- FOLIO DOCUMENT STUDIO PAGE WORKSPACE -->
+    <div style="display:grid; grid-template-columns:1fr 280px; gap:16px; min-height:calc(100vh - 280px);">
+      <!-- PAGE CANVAS CONTAINER WITH PAPER MARGINS & SHADOW -->
+      <div style="background:var(--bg-workspace); border:1px solid var(--border-crisp); border-radius:8px; padding:32px; position:relative; display:flex; justify-content:center; overflow-y:auto;">
+        <div style="width:100%; max-width:816px; background:#ffffff; color:#0f172a; border-radius:4px; padding:48px 56px; box-shadow:0 12px 40px rgba(0,0,0,0.6); min-height:842px; position:relative; font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;">
+          <input type="text" id="folioDocTitle" value="${escapeHTML(doc.title)}" style="width:100%; font-size:2rem; font-weight:800; background:transparent; border:none; border-bottom:2px solid #e2e8f0; color:#0f172a; margin-bottom:24px; padding:4px 0; font-family:var(--font-sans);" oninput="updateFolioTitle(this.value)" placeholder="Document Title...">
+          <div id="docsEditor" contenteditable="true" style="min-height:650px; color:#0f172a; line-height:1.75; outline:none; font-size:1.05rem;" oninput="updateWC(); updateFolioOutline();" onkeydown="onFolioEditorKeyDown(event)">${doc.content}</div>
+          <div id="folioSlashMenu" style="display:none; position:absolute; background:var(--bg-surface-elevated); border:1px solid var(--border-crisp); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:100; min-width:180px; padding:6px; color:var(--text-main);">
+            <div style="font-size:0.75rem; color:var(--text-muted); padding:4px 8px; font-weight:bold;">SLASH COMMANDS</div>
+            <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('H1')">Heading 1</div>
+            <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('H2')">Heading 2</div>
+            <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('TABLE')">Table</div>
+            <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('QUOTE')">Quote</div>
+            <div style="padding:6px 8px; cursor:pointer; font-size:0.85rem;" onclick="insertSlashBlock('PAGE')">Page Break</div>
+          </div>
         </div>
       </div>
 
       <!-- RIGHT INSPECTOR PANEL -->
-      <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:12px;">
-        <div style="display:flex; border-bottom:1px solid var(--border-color); padding-bottom:6px; gap:8px;">
-          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='outline'?'2px solid var(--accent-primary,#3b82f6)':'none'};" onclick="setFolioInspectorTab('outline')">Outline</button>
-          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='history'?'2px solid var(--accent-primary,#3b82f6)':'none'};" onclick="setFolioInspectorTab('history')">History</button>
-          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='props'?'2px solid var(--accent-primary,#3b82f6)':'none'};" onclick="setFolioInspectorTab('props')">Props</button>
+      <div style="background:var(--bg-surface-elevated); border:1px solid var(--border-crisp); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; border-bottom:1px solid var(--border-crisp); padding-bottom:8px; gap:8px;">
+          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='outline'?'2px solid var(--accent-primary,#3b82f6)':'none'}; color:var(--text-main);" onclick="setFolioInspectorTab('outline')">Outline</button>
+          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='history'?'2px solid var(--accent-primary,#3b82f6)':'none'}; color:var(--text-main);" onclick="setFolioInspectorTab('history')">History</button>
+          <button class="btn ghost small" style="flex:1; border-bottom:${currentFolioInspectorTab==='props'?'2px solid var(--accent-primary,#3b82f6)':'none'}; color:var(--text-main);" onclick="setFolioInspectorTab('props')">Props</button>
         </div>
         <div id="folioInspectorContent" style="flex:1; overflow-y:auto;">
           ${renderFolioInspectorContent(docObj)}
@@ -2166,23 +2185,325 @@ function importDocs(){
 
 
 
-/* SESSION 16 GATE 5 HANDLERS: CONTEXT MENU, CELL NOTES, CONDITIONAL FORMATTING & VALIDATION */
+/* CONTEXT MENU & CLIPBOARD / SELECTION ENGINE */
 let activeGridNoteCell = null;
+let gridClipboard = null; // { mode: 'copy'|'cut', width, height, cells: {} }
+let gridSelectionRange = null; // { startCol, startRow, endCol, endRow }
+let isGridDraggingSelection = false;
+
+function showContextMenu(e, items) {
+  closeContextMenu();
+  const menu = document.createElement('div');
+  menu.id = 'suiteContextMenu';
+  menu.style.position = 'fixed';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 220) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 280) + 'px';
+  menu.style.background = 'var(--bg-surface-elevated, #1e293b)';
+  menu.style.border = '1px solid var(--border-color, rgba(255,255,255,0.15))';
+  menu.style.borderRadius = '8px';
+  menu.style.boxShadow = '0 12px 32px rgba(0,0,0,0.4)';
+  menu.style.zIndex = '1000';
+  menu.style.minWidth = '200px';
+  menu.style.padding = '6px 0';
+  menu.style.fontFamily = 'Helvetica Neue, Arial, sans-serif';
+
+  menu.innerHTML = items.map(item => `
+    <div style="padding:8px 14px; font-size:0.85rem; color:var(--text-main, #f1f5f9); display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:background 0.15s;"
+         onmouseover="this.style.background='rgba(59,130,246,0.2)'"
+         onmouseout="this.style.background='transparent'"
+         onclick="closeContextMenu(); ${item.action};">
+      <span>${item.icon ? item.icon + ' ' : ''}${item.label}</span>
+    </div>
+  `).join('');
+
+  document.body.appendChild(menu);
+
+  const dismissHandler = (evt) => {
+    if (!menu.contains(evt.target)) {
+      closeContextMenu();
+      document.removeEventListener('click', dismissHandler);
+      document.removeEventListener('contextmenu', dismissHandler);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener('click', dismissHandler);
+    document.addEventListener('contextmenu', dismissHandler);
+  }, 10);
+}
+
+function closeContextMenu() {
+  const existing = document.getElementById('suiteContextMenu');
+  if (existing) existing.remove();
+}
 
 function showGridContextMenu(e, coord) {
   e.preventDefault();
   selectedGridCell = coord;
+  if (!gridSelectionRange) {
+    const p = parseCellCoord(coord);
+    if (p) gridSelectionRange = { startCol: p.col, startRow: p.row, endCol: p.col, endRow: p.row };
+  }
   const items = [
-    { label: "Cut (Ctrl+X)", icon: "✂️", action: "formatActiveCell('bold')" },
-    { label: "Copy (Ctrl+C)", icon: "📋", action: "copyVaultField(0)" },
-    { label: "Paste (Ctrl+V)", icon: "📄", action: "commitGridFormulaInput()" },
+    { label: "Cut (Ctrl+X)", icon: "✂️", action: "gridCutSelection()" },
+    { label: "Copy (Ctrl+C)", icon: "📋", action: "gridCopySelection()" },
+    { label: "Paste (Ctrl+V)", icon: "📄", action: "gridPasteSelection('all')" },
+    { label: "Paste Values Only", icon: "📝", action: "gridPasteSelection('values')" },
+    { label: "Paste Formulas Only", icon: "🧮", action: "gridPasteSelection('formulas')" },
+    { label: "Insert Row Above", icon: "⬆️", action: "insertGridRowAtSelection()" },
+    { label: "Delete Selected Row(s)", icon: "🗑️", action: "deleteGridRowAtSelection()" },
+    { label: "Insert Column Left", icon: "⬅️", action: "insertGridColAtSelection()" },
+    { label: "Delete Selected Column(s)", icon: "🗑️", action: "deleteGridColAtSelection()" },
     { label: "Add Cell Note / Comment", icon: "💬", action: `addGridCellNote('${coord}')` },
-    { label: "Set Currency Format", icon: "💵", action: "formatActiveCell('format','currency')" },
+    { label: "Set Currency Format", icon: "💵", action: "formatSelectedRange('format','currency')" },
     { label: "Clear Formats", icon: "🧹", action: "clearGridFormats()" },
     { label: "Delete Cell Value", icon: "🗑️", action: `clearGridCellVal('${coord}')` }
   ];
   showContextMenu(e, items);
 }
+
+function getActiveSelectionBounds() {
+  if (gridSelectionRange) {
+    return {
+      minCol: Math.min(gridSelectionRange.startCol, gridSelectionRange.endCol),
+      maxCol: Math.max(gridSelectionRange.startCol, gridSelectionRange.endCol),
+      minRow: Math.min(gridSelectionRange.startRow, gridSelectionRange.endRow),
+      maxRow: Math.max(gridSelectionRange.startRow, gridSelectionRange.endRow)
+    };
+  }
+  const p = parseCellCoord(selectedGridCell || 'A1');
+  const c = p ? p.col : 0, r = p ? p.row : 0;
+  return { minCol: c, maxCol: c, minRow: r, maxRow: r };
+}
+
+function gridCopySelection() {
+  const bounds = getActiveSelectionBounds();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const copyMap = {};
+  let textRows = [];
+
+  for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+    let rowVals = [];
+    for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+      const coord = colLetter(c) + (r + 1);
+      const relC = c - bounds.minCol;
+      const relR = r - bounds.minRow;
+      const relKey = `${relC}_${relR}`;
+      const cellObj = sheet.cells[coord] ? JSON.parse(JSON.stringify(sheet.cells[coord])) : { raw: '' };
+      copyMap[relKey] = cellObj;
+      rowVals.push(typeof cellObj === 'object' ? (cellObj.raw || '') : String(cellObj));
+    }
+    textRows.push(rowVals.join('\t'));
+  }
+
+  gridClipboard = {
+    mode: 'copy',
+    startCol: bounds.minCol,
+    startRow: bounds.minRow,
+    width: bounds.maxCol - bounds.minCol + 1,
+    height: bounds.maxRow - bounds.minRow + 1,
+    cells: copyMap
+  };
+
+  const clipText = textRows.join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(clipText).catch(() => {});
+  }
+}
+
+function gridCutSelection() {
+  gridCopySelection();
+  if (gridClipboard) gridClipboard.mode = 'cut';
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+    for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+      const coord = colLetter(c) + (r + 1);
+      if (sheet.cells[coord]) {
+        if (typeof sheet.cells[coord] === 'object') sheet.cells[coord].raw = '';
+        else sheet.cells[coord] = { raw: '' };
+      }
+    }
+  }
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function gridPasteSelection(pasteType = 'all') {
+  if (!gridClipboard || !gridClipboard.cells) return;
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const targetCol = bounds.minCol;
+  const targetRow = bounds.minRow;
+  const colDelta = targetCol - gridClipboard.startCol;
+  const rowDelta = targetRow - gridClipboard.startRow;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+
+  for (let relR = 0; relR < gridClipboard.height; relR++) {
+    for (let relC = 0; relC < gridClipboard.width; relC++) {
+      const srcCell = gridClipboard.cells[`${relC}_${relR}`] || { raw: '' };
+      const destCol = targetCol + relC;
+      const destRow = targetRow + relR;
+      const destCoord = colLetter(destCol) + (destRow + 1);
+
+      if (!sheet.cells[destCoord]) sheet.cells[destCoord] = { raw: '' };
+      const existing = sheet.cells[destCoord];
+
+      let newRaw = srcCell.raw || '';
+      if (newRaw.startsWith('=')) {
+        newRaw = shiftFormulaReferences(newRaw, colDelta, rowDelta);
+      }
+
+      if (pasteType === 'values') {
+        let evalVal = newRaw;
+        if (newRaw.startsWith('=')) evalVal = String(evalGridFormula(newRaw.slice(1), sheet.cells));
+        existing.raw = evalVal;
+      } else if (pasteType === 'formulas') {
+        existing.raw = newRaw;
+      } else { // 'all'
+        Object.assign(existing, JSON.parse(JSON.stringify(srcCell)), { raw: newRaw });
+      }
+    }
+  }
+
+  if (gridClipboard.mode === 'cut') gridClipboard = null;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function formatSelectedRange(key, value) {
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+
+  for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+    for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+      const coord = colLetter(c) + (r + 1);
+      if (!sheet.cells[coord]) sheet.cells[coord] = { raw: '' };
+      const cell = sheet.cells[coord];
+      if (key === 'bold') cell.bold = !cell.bold;
+      else if (key === 'italic') cell.italic = !cell.italic;
+      else if (key === 'align') cell.align = value;
+      else if (key === 'format') cell.format = value;
+      else if (key === 'bg') cell.bg = value;
+      else if (key === 'color') cell.color = value;
+    }
+  }
+
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function insertGridRowAtSelection() {
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const targetRow = bounds.minRow + 1; // 1-based
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const newCells = {};
+
+  for (const coord in sheet.cells) {
+    const p = parseCellCoord(coord);
+    if (p) {
+      if (p.rowNum >= targetRow) {
+        const newCoord = p.colStr + (p.rowNum + 1);
+        newCells[newCoord] = sheet.cells[coord];
+      } else {
+        newCells[coord] = sheet.cells[coord];
+      }
+    }
+  }
+  sheet.rows += 1;
+  sheet.cells = newCells;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function deleteGridRowAtSelection() {
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const minR = bounds.minRow + 1, maxR = bounds.maxRow + 1;
+  const count = maxR - minR + 1;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const newCells = {};
+
+  for (const coord in sheet.cells) {
+    const p = parseCellCoord(coord);
+    if (p) {
+      if (p.rowNum >= minR && p.rowNum <= maxR) {
+        // Deleted
+      } else if (p.rowNum > maxR) {
+        const newCoord = p.colStr + (p.rowNum - count);
+        newCells[newCoord] = sheet.cells[coord];
+      } else {
+        newCells[coord] = sheet.cells[coord];
+      }
+    }
+  }
+  sheet.rows = Math.max(1, sheet.rows - count);
+  sheet.cells = newCells;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function insertGridColAtSelection() {
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const targetColIdx = bounds.minCol;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const newCells = {};
+
+  for (const coord in sheet.cells) {
+    const p = parseCellCoord(coord);
+    if (p) {
+      if (p.col >= targetColIdx) {
+        const newCoord = colLetter(p.col + 1) + p.rowNum;
+        newCells[newCoord] = sheet.cells[coord];
+      } else {
+        newCells[coord] = sheet.cells[coord];
+      }
+    }
+  }
+  sheet.cols += 1;
+  sheet.cells = newCells;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function deleteGridColAtSelection() {
+  pushGridHistory();
+  const bounds = getActiveSelectionBounds();
+  const minC = bounds.minCol, maxC = bounds.maxCol;
+  const count = maxC - minC + 1;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const newCells = {};
+
+  for (const coord in sheet.cells) {
+    const p = parseCellCoord(coord);
+    if (p) {
+      if (p.col >= minC && p.col <= maxC) {
+        // Deleted
+      } else if (p.col > maxC) {
+        const newCoord = colLetter(p.col - count) + p.rowNum;
+        newCells[newCoord] = sheet.cells[coord];
+      } else {
+        newCells[coord] = sheet.cells[coord];
+      }
+    }
+  }
+  sheet.cols = Math.max(1, sheet.cols - count);
+  sheet.cells = newCells;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
 
 function addGridCellNote(coord) {
   const wb = getGridWorkbook();
@@ -2350,10 +2671,18 @@ let currentGridRibbonTab = 'start';
 let selectedGridCell = 'A1';
 let selectedGridRange = null;
 
+let _activeGridWorkbook = null;
+
 function getGridWorkbook() {
+  if (_activeGridWorkbook && Array.isArray(_activeGridWorkbook.sheets)) {
+    return _activeGridWorkbook;
+  }
   const raw = loadLocal('sheets', null);
-  if (raw && raw.version === "2.0" && Array.isArray(raw.sheets) && raw.sheets.length > 0) {
-    return raw;
+  if (raw && (raw.version === 3 || raw.version === "3.0" || raw.version === "2.0") && Array.isArray(raw.sheets) && raw.sheets.length > 0) {
+    raw.format = "suite-grid";
+    raw.version = 3;
+    _activeGridWorkbook = raw;
+    return _activeGridWorkbook;
   }
   // Migrate legacy flat cell object or create new default workbook
   const legacyCells = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
@@ -2365,8 +2694,9 @@ function getGridWorkbook() {
       convertedCells[k] = legacyCells[k];
     }
   }
-  return {
-    version: "2.0",
+  _activeGridWorkbook = {
+    format: "suite-grid",
+    version: 3,
     activeSheetIndex: 0,
     sheets: [{
       id: "sheet_1",
@@ -2378,11 +2708,16 @@ function getGridWorkbook() {
     created: Date.now(),
     modified: Date.now()
   };
+  return _activeGridWorkbook;
 }
 
 function saveGridWorkbook(wb, silent = false) {
-  wb.modified = Date.now();
-  saveLocal('sheets', wb);
+  _activeGridWorkbook = wb || _activeGridWorkbook || getGridWorkbook();
+  _activeGridWorkbook.format = "suite-grid";
+  _activeGridWorkbook.version = 3;
+  _activeGridWorkbook.modified = Date.now();
+  saveLocal('sheets', _activeGridWorkbook);
+  if (typeof saveIDBItem === 'function') saveIDBItem('sheets', _activeGridWorkbook);
   if (!silent) showSeal();
 }
 
@@ -2503,12 +2838,38 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     const LEFT = (str, n = 1) => String(str).slice(0, n);
     const RIGHT = (str, n = 1) => String(str).slice(-n);
     const MID = (str, start, len) => String(str).substring(start - 1, start - 1 + len);
+    const PRODUCT = arr => (Array.isArray(arr) ? arr : [arr]).reduce((a, b) => a * (Number(b) || 0), 1);
+    const IFS = (...args) => { for (let i = 0; i < args.length; i += 2) { if (args[i]) return args[i + 1]; } return '#N/A'; };
+    const TEXTJOIN = (delim, skipEmpty, ...args) => {
+      let items = [];
+      args.forEach(a => { if (Array.isArray(a)) items.push(...a); else items.push(a); });
+      if (skipEmpty) items = items.filter(x => x !== '' && x !== null && x !== undefined);
+      return items.join(delim);
+    };
+    const SUBSTITUTE = (text, oldText, newText) => String(text).replaceAll(String(oldText), String(newText));
+    const REPLACE = (text, start, num, newText) => { const s = String(text); return s.slice(0, start - 1) + newText + s.slice(start - 1 + num); };
+    const DATE = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const YEAR = date => new Date(date).getFullYear();
+    const MONTH = date => new Date(date).getMonth() + 1;
+    const DAY = date => new Date(date).getDate();
     const VLOOKUP = (key, table, colIdx) => {
       if (!Array.isArray(table) || !table.length) return '#N/A';
       for (let r of table) {
         if (Array.isArray(r) && String(r[0]) === String(key)) return r[colIdx - 1] ?? '#N/A';
       }
       return '#N/A';
+    };
+    const HLOOKUP = (key, table, rowIdx) => {
+      if (!Array.isArray(table) || !table.length || !table[0]) return '#N/A';
+      for (let c = 0; c < table[0].length; c++) {
+        if (String(table[0][c]) === String(key)) return table[rowIdx - 1] ? table[rowIdx - 1][c] : '#N/A';
+      }
+      return '#N/A';
+    };
+    const XLOOKUP = (key, lookupArr, returnArr, ifNotFound = '#N/A') => {
+      if (!Array.isArray(lookupArr) || !Array.isArray(returnArr)) return ifNotFound;
+      const idx = lookupArr.findIndex(x => String(x) === String(key));
+      return idx >= 0 ? returnArr[idx] : ifNotFound;
     };
     const INDEX = (arr, rowIdx) => (Array.isArray(arr) ? arr[rowIdx - 1] : '#REF!');
     const MATCH = (key, arr) => {
@@ -2518,8 +2879,8 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     };
 
     // Context execution
-    const fn = new Function('SUM','AVERAGE','MIN','MAX','COUNT','COUNTA','COUNTIF','SUMIF','AVERAGEIF','ROUND','ROUNDUP','ROUNDDOWN','ABS','SQRT','POWER','MOD','IF','AND','OR','NOT','CONCAT','CONCATENATE','TODAY','NOW','IFERROR','UPPER','LOWER','LEN','TRIM','LEFT','RIGHT','MID','VLOOKUP','INDEX','MATCH', 'return (' + cleaned + ');');
-    const res = fn(SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, COUNTIF, SUMIF, AVERAGEIF, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, IF, AND, OR, NOT, CONCAT, CONCATENATE, TODAY, NOW, IFERROR, UPPER, LOWER, LEN, TRIM, LEFT, RIGHT, MID, VLOOKUP, INDEX, MATCH);
+    const fn = new Function('SUM','AVERAGE','MIN','MAX','COUNT','COUNTA','COUNTIF','SUMIF','AVERAGEIF','ROUND','ROUNDUP','ROUNDDOWN','ABS','SQRT','POWER','MOD','PRODUCT','IF','IFS','AND','OR','NOT','IFERROR','CONCAT','CONCATENATE','TEXTJOIN','SUBSTITUTE','REPLACE','TODAY','NOW','DATE','YEAR','MONTH','DAY','UPPER','LOWER','LEN','TRIM','LEFT','RIGHT','MID','VLOOKUP','HLOOKUP','XLOOKUP','INDEX','MATCH', 'return (' + cleaned + ');');
+    const res = fn(SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, COUNTIF, SUMIF, AVERAGEIF, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, PRODUCT, IF, IFS, AND, OR, NOT, IFERROR, CONCAT, CONCATENATE, TEXTJOIN, SUBSTITUTE, REPLACE, TODAY, NOW, DATE, YEAR, MONTH, DAY, UPPER, LOWER, LEN, TRIM, LEFT, RIGHT, MID, VLOOKUP, HLOOKUP, XLOOKUP, INDEX, MATCH);
     return res;
   } catch (e) {
     return '#ERROR!';
@@ -2676,51 +3037,75 @@ function renderSheets() {
       </div>
     ` : ''}
 
-    <!-- GRID SPREADSHEET CANVAS -->
-    <div class="grid-canvas-wrap" style="overflow-x:auto; max-height:500px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-main);">
-      <table class="grid" style="border-collapse:collapse; width:100%; min-width:600px;">
-        <thead style="${isGridFreezeActive ? 'position:sticky; top:0; z-index:10; background:var(--bg-surface);' : ''}">
-          <tr>
-            <th style="width:40px; background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-muted); text-align:center; ${isGridFreezeActive ? 'position:sticky; left:0; z-index:11;' : ''}">#</th>
-            ${Array.from({length: sheet.cols}, (_, c) => colLetter(c)).map((col, idx) => `
-              <th style="background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-main); padding:6px; font-weight:600; text-align:center; ${isGridFreezeActive && idx===0 ? 'position:sticky; left:40px; z-index:11;' : ''}">${col}</th>
-            `).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${Array.from({length: sheet.rows}, (_, r) => r + 1).map(rowNum => {
-            if (activeGridFilter && activeGridFilter.query) {
-              const cellCoord = colLetter(activeGridFilter.colIndex) + rowNum;
-              const cellVal = String(evaluatedCells[cellCoord]?.val || '').toLowerCase();
-              if (!cellVal.includes(activeGridFilter.query)) return '';
-            }
-            return `
+    <!-- GRID WORKSPACE FLEX WRAPPER WITH DATA LENS SIDEBAR -->
+    <div style="display:flex; gap:12px; min-height:calc(100vh - 280px);">
+      <!-- DENSE SPREADSHEET CANVAS -->
+      <div class="grid-canvas-wrap" style="flex:1; overflow:auto; max-height:calc(100vh - 280px); border:1px solid var(--border-crisp); border-radius:6px; background:var(--bg-workspace);">
+        <table class="grid" style="border-collapse:collapse; width:100%; min-width:800px; font-family:var(--font-sans);">
+          <thead style="position:sticky; top:0; z-index:10; background:var(--bg-surface-elevated);">
             <tr>
-              <td style="background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-muted); text-align:center; font-weight:bold; font-size:0.75rem; ${isGridFreezeActive ? 'position:sticky; left:0; z-index:5;' : ''}">${rowNum}</td>
-              ${Array.from({length: sheet.cols}, (_, c) => {
-                const coord = colLetter(c) + rowNum;
-                const cell = evaluatedCells[coord] || { raw: '', val: '', format: 'general', bold: false, italic: false, align: 'left', bg: '', color: '' };
-                const isSelected = selectedGridCell === coord;
-                const displayVal = formatCellValue(cell.val, cell.format);
-                const isFreezeCol = isGridFreezeActive && c === 0;
-                return `
-                  <td style="border:1px solid var(--border-color); padding:0; position:${isFreezeCol ? 'sticky' : 'relative'}; ${isFreezeCol ? 'left:40px; z-index:4;' : ''} background:${cell.bg || (isSelected ? 'rgba(59,130,246,0.15)' : 'transparent')}; outline:${isSelected ? '2px solid var(--accent-primary,#3b82f6)' : 'none'}; z-index:${isSelected ? 6 : (isFreezeCol ? 4 : 1)};">
-                    <input id="cell-${coord}" data-cell="${coord}" type="text"
-                      value="${escapeHTML(displayVal)}"
-                      data-raw="${escapeHTML(cell.raw)}"
-                      style="width:100%; height:28px; border:none; background:transparent; color:${cell.color || 'var(--text-main)'}; font-weight:${cell.bold?'bold':'normal'}; font-style:${cell.italic?'italic':'normal'}; text-align:${cell.align}; padding:2px 6px; box-sizing:border-box; font-size:0.85rem;"
-                      onfocus="onGridCellFocus('${coord}')"
-                      onblur="onGridCellBlur('${coord}', this.value)"
-                      onkeydown="onGridCellKeyDown(event, '${coord}')" oncontextmenu="showGridContextMenu(event, '${coord}')"
-                    >
-                  </td>
-                `;
-              }).join('')}
+              <th style="width:40px; background:var(--bg-surface-elevated); border:1px solid var(--border-crisp); color:var(--text-muted); text-align:center; position:sticky; left:0; z-index:11; font-size:0.75rem;">#</th>
+              ${Array.from({length: sheet.cols}, (_, c) => colLetter(c)).map((col, idx) => `
+                <th style="background:var(--bg-surface-elevated); border:1px solid var(--border-crisp); color:var(--text-main); padding:6px 12px; font-weight:700; font-size:0.8rem; text-align:center; ${isGridFreezeActive && idx===0 ? 'position:sticky; left:40px; z-index:11;' : ''}">${col}</th>
+              `).join('')}
             </tr>
-          `;
-          }).join('')}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            ${Array.from({length: sheet.rows}, (_, r) => r + 1).map(rowNum => {
+              if (activeGridFilter && activeGridFilter.query) {
+                const cellCoord = colLetter(activeGridFilter.colIndex) + rowNum;
+                const cellVal = String(evaluatedCells[cellCoord]?.val || '').toLowerCase();
+                if (!cellVal.includes(activeGridFilter.query)) return '';
+              }
+              return `
+              <tr>
+                <td style="background:var(--bg-surface-elevated); border:1px solid var(--border-crisp); color:var(--text-muted); text-align:center; font-weight:bold; font-size:0.75rem; position:sticky; left:0; z-index:5;">${rowNum}</td>
+                ${Array.from({length: sheet.cols}, (_, c) => {
+                  const coord = colLetter(c) + rowNum;
+                  const cell = evaluatedCells[coord] || { raw: '', val: '', format: 'general', bold: false, italic: false, align: 'left', bg: '', color: '' };
+                  const isSelected = selectedGridCell === coord;
+                  const displayVal = formatCellValue(cell.val, cell.format);
+                  const isFreezeCol = isGridFreezeActive && c === 0;
+                  return `
+                    <td style="border:1px solid var(--border-crisp); padding:0; position:${isFreezeCol ? 'sticky' : 'relative'}; ${isFreezeCol ? 'left:40px; z-index:4;' : ''} background:${cell.bg || (isSelected ? 'rgba(59,130,246,0.22)' : 'var(--bg-surface)')}; outline:${isSelected ? '2px solid var(--accent-primary,#3b82f6)' : 'none'}; z-index:${isSelected ? 6 : (isFreezeCol ? 4 : 1)};">
+                      <input id="cell-${coord}" data-cell="${coord}" type="text"
+                        value="${escapeHTML(displayVal)}"
+                        data-raw="${escapeHTML(cell.raw)}"
+                        style="width:100%; height:28px; border:none; background:transparent; color:${cell.color || 'var(--text-main)'}; font-weight:${cell.bold?'bold':'normal'}; font-style:${cell.italic?'italic':'normal'}; text-align:${cell.align}; padding:2px 8px; box-sizing:border-box; font-size:0.85rem; font-family:${cell.raw && cell.raw.startsWith('=') ? 'var(--font-mono)' : 'var(--font-sans)'};"
+                        onfocus="onGridCellFocus('${coord}')"
+                        onblur="onGridCellBlur('${coord}', this.value)"
+                        onkeydown="onGridCellKeyDown(event, '${coord}')" oncontextmenu="showGridContextMenu(event, '${coord}')"
+                      >
+                    </td>
+                  `;
+                }).join('')}
+              </tr>
+            `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DATA LENS INSPECTOR PANEL -->
+      <div style="width:240px; background:var(--bg-surface-elevated); border:1px solid var(--border-crisp); border-radius:6px; padding:12px; font-size:0.8rem; display:flex; flex-direction:column; gap:10px;">
+        <div style="font-weight:700; color:var(--accent-primary,#3b82f6); border-bottom:1px solid var(--border-crisp); padding-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; font-size:0.75rem;">🔍 DATA LENS INSPECTOR</div>
+        <div>
+          <div style="color:var(--text-muted); font-size:0.7rem;">ACTIVE CELL</div>
+          <div style="font-weight:800; font-size:1.1rem; color:var(--text-main); font-family:var(--font-mono);">${selectedGridCell}</div>
+        </div>
+        <div>
+          <div style="color:var(--text-muted); font-size:0.7rem;">EVALUATED VALUE</div>
+          <div style="font-weight:700; color:var(--text-main); word-break:break-all;">${escapeHTML(evaluatedCells[selectedGridCell]?.val ?? '')}</div>
+        </div>
+        <div>
+          <div style="color:var(--text-muted); font-size:0.7rem;">RAW FORMULA / TEXT</div>
+          <div style="font-family:var(--font-mono); color:var(--brass-light); word-break:break-all; font-size:0.75rem;">${escapeHTML(evaluatedCells[selectedGridCell]?.raw || '(empty)')}</div>
+        </div>
+        <div>
+          <div style="color:var(--text-muted); font-size:0.7rem;">CELL NOTE</div>
+          <div style="color:var(--text-main); font-style:italic;">${escapeHTML(sheet.cells[selectedGridCell]?.note || 'No note')}</div>
+        </div>
+      </div>
     </div>
 
     <!-- WORKBOOK SHEET TABS -->
@@ -2880,7 +3265,13 @@ function onGridCellKeyDown(e, coord) {
 
   if (e.key === 'Enter') {
     e.preventDefault();
-    commitGridFormulaInput();
+    const wb = getGridWorkbook();
+    const sheet = getActiveSheet(wb);
+    if (!sheet.cells[coord]) sheet.cells[coord] = {};
+    if (typeof sheet.cells[coord] === 'string') sheet.cells[coord] = { raw: e.target.value };
+    else sheet.cells[coord].raw = e.target.value;
+    saveGridWorkbook(wb);
+    renderSheets();
     const nextCoord = parsed.colStr + (e.shiftKey ? Math.max(1, parsed.rowNum - 1) : (parsed.rowNum + 1));
     const nextInput = document.getElementById('cell-' + nextCoord);
     if (nextInput) nextInput.focus();
@@ -3047,32 +3438,85 @@ function generateGridChart(type) {
   const slice = values.slice(0, 10);
   const maxVal = Math.max(...slice.map(v => v.num), 1);
 
-  if (type === 'bar' || type === 'line') {
-    let svg = `<svg width="100%" height="160" viewBox="0 0 500 160" style="background:var(--bg-main); border-radius:6px;">`;
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
+
+  if (type === 'bar') {
+    let svg = `<svg width="100%" height="180" viewBox="0 0 500 180" style="background:var(--bg-main); border-radius:6px; padding:10px;">`;
+    svg += `<line x1="30" y1="140" x2="480" y2="140" stroke="var(--border-color)" stroke-width="1"/>`;
     slice.forEach((item, idx) => {
-      const x = 30 + idx * 45;
-      const h = Math.max(10, (item.num / maxVal) * 110);
-      const y = 130 - h;
+      const x = 40 + idx * 44;
+      const h = Math.max(8, (item.num / maxVal) * 110);
+      const y = 140 - h;
+      const col = colors[idx % colors.length];
       svg += `
-        <rect x="${x}" y="${y}" width="28" height="${h}" fill="var(--accent-primary, #3b82f6)" rx="3"/>
-        <text x="${x + 14}" y="148" fill="var(--text-muted)" font-size="10" text-anchor="middle">${item.coord}</text>
-        <text x="${x + 14}" y="${y - 4}" fill="var(--text-main)" font-size="9" text-anchor="middle">${item.num}</text>
+        <rect x="${x}" y="${y}" width="28" height="${h}" fill="${col}" rx="3"/>
+        <text x="${x + 14}" y="156" fill="var(--text-muted)" font-size="10" text-anchor="middle">${item.coord}</text>
+        <text x="${x + 14}" y="${y - 4}" fill="var(--text-main)" font-size="9" font-weight="bold" text-anchor="middle">${item.num}</text>
       `;
     });
     svg += `</svg>`;
     canvas.innerHTML = svg;
-  } else {
-    // Pie chart / simple representation
-    canvas.innerHTML = `
-      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px;">
-        ${slice.map(item => `
-          <div style="background:var(--bg-main); padding:8px 12px; border-radius:6px; border:1px solid var(--border-color); text-align:center;">
-            <div style="font-weight:bold; color:var(--accent-primary,#3b82f6);">${item.coord}</div>
-            <div style="font-size:0.85rem; color:var(--text-main);">${item.num}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+  } else if (type === 'line' || type === 'area') {
+    let svg = `<svg width="100%" height="180" viewBox="0 0 500 180" style="background:var(--bg-main); border-radius:6px; padding:10px;">`;
+    svg += `<line x1="30" y1="140" x2="480" y2="140" stroke="var(--border-color)" stroke-width="1"/>`;
+    const points = slice.map((item, idx) => {
+      const x = 40 + idx * 44 + 14;
+      const y = 140 - Math.max(8, (item.num / maxVal) * 110);
+      return { x, y, item, idx };
+    });
+    const ptsStr = points.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (type === 'area') {
+      const areaPath = `M ${points[0].x},140 L ` + points.map(p => `${p.x},${p.y}`).join(' L ') + ` L ${points[points.length-1].x},140 Z`;
+      svg += `<path d="${areaPath}" fill="rgba(59,130,246,0.25)"/>`;
+    }
+
+    svg += `<polyline points="${ptsStr}" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+    points.forEach(p => {
+      const col = colors[p.idx % colors.length];
+      svg += `
+        <circle cx="${p.x}" cy="${p.y}" r="5" fill="${col}" stroke="#ffffff" stroke-width="1.5"/>
+        <text x="${p.x}" y="156" fill="var(--text-muted)" font-size="10" text-anchor="middle">${p.item.coord}</text>
+        <text x="${p.x}" y="${p.y - 8}" fill="var(--text-main)" font-size="9" font-weight="bold" text-anchor="middle">${p.item.num}</text>
+      `;
+    });
+    svg += `</svg>`;
+    canvas.innerHTML = svg;
+  } else if (type === 'pie' || type === 'donut') {
+    const total = slice.reduce((a, b) => a + Math.abs(b.num), 0) || 1;
+    let startAngle = 0;
+    const cx = 140, cy = 90, r = 65;
+    let svg = `<svg width="100%" height="180" viewBox="0 0 500 180" style="background:var(--bg-main); border-radius:6px; padding:10px;">`;
+    let legendHtml = `<g transform="translate(260, 20)">`;
+
+    slice.forEach((item, idx) => {
+      const angle = (Math.abs(item.num) / total) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      const x1 = cx + r * Math.cos(startAngle);
+      const y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(endAngle);
+      const y2 = cy + r * Math.sin(endAngle);
+      const largeArc = angle > Math.PI ? 1 : 0;
+      const col = colors[idx % colors.length];
+
+      const pathData = `M ${cx},${cy} L ${x1},${y1} A ${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
+      svg += `<path d="${pathData}" fill="${col}" stroke="var(--bg-main)" stroke-width="2"/>`;
+
+      if (type === 'donut') {
+        svg += `<circle cx="${cx}" cy="${cy}" r="32" fill="var(--bg-main)"/>`;
+      }
+
+      legendHtml += `
+        <rect x="0" y="${idx * 16}" width="12" height="12" fill="${col}" rx="2"/>
+        <text x="18" y="${idx * 16 + 10}" fill="var(--text-main)" font-size="10">${item.coord}: ${item.num} (${Math.round((item.num/total)*100)}%)</text>
+      `;
+
+      startAngle = endAngle;
+    });
+
+    legendHtml += `</g>`;
+    svg += legendHtml + `</svg>`;
+    canvas.innerHTML = svg;
   }
 
   area.style.display = 'block';
@@ -3212,6 +3656,8 @@ function calcToSelectedCell() {
 
 function exportSheets() {
   const wb = getGridWorkbook();
+  wb.format = "suite-grid";
+  wb.version = 3;
   download('sheet.grid', JSON.stringify(wb, null, 2));
 }
 
@@ -3220,7 +3666,9 @@ function importSheets() {
     try {
       const parsed = JSON.parse(content);
       const wb = getGridWorkbook();
-      if (parsed.version === "2.0" && Array.isArray(parsed.sheets)) {
+      if ((parsed.format === "suite-grid" || parsed.version === 3 || parsed.version === "2.0") && Array.isArray(parsed.sheets)) {
+        parsed.format = "suite-grid";
+        parsed.version = 3;
         saveGridWorkbook(parsed);
       } else if (parsed.cells) {
         wb.sheets[0].cells = parsed.cells;
@@ -3799,42 +4247,179 @@ function importTasks(){
   });
 }
 
-/* ================= AGENDA (.agnd) ================= */
+/* ================= ALMANAC PROJECT INTELLIGENCE WORKSPACE (.agnd) ================= */
+let currentAlmanacTab = 'project';
+
 function renderAgenda(){
   const p = document.getElementById('panel-agenda');
   if(!p) return;
   const now = new Date();
   if(agendaViewMonth===undefined){ agendaViewMonth = now.getMonth(); agendaViewYear = now.getFullYear(); }
+
   p.innerHTML = `
-    <h2>Almanac</h2>
-    <div class="sub">.agnd — your days, at a glance</div>
-    <div id="agendaCountdown"></div>
-    <div class="toolbar">
-      <input type="date" id="agndDate">
-      <input type="time" id="agndTime">
-      <input type="text" id="agndTitle" placeholder="Event title">
-      <select id="agndColor" title="Color tag">
-        <option value="#6f8c6a">🟢 Personal</option>
-        <option value="#b8925a">🟠 Work</option>
-        <option value="#a8563f">🔴 Deadline</option>
-        <option value="#5a7fa8">🔵 Social</option>
-      </select>
-      <select id="agndRepeat" title="Repeats">
-        <option value="">Doesn't repeat</option>
-        <option value="daily">Repeats daily</option>
-        <option value="weekly">Repeats weekly</option>
-        <option value="monthly">Repeats monthly</option>
-      </select>
-      <button class="btn ghost small" onclick="addAgendaEvent()">+ Add</button>
-      <button class="btn ghost small" onclick="exportAgenda()">Export .agnd</button>
-      <button class="btn ghost small" onclick="importAgenda()">Import .agnd</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:1.4rem;">Almanac Project Intelligence Workspace</h2>
+        <div class="sub" style="margin:2px 0 0 0;">Project Scheduling, Critical Path Method (CPM) & Timeline Controls</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn ${currentAlmanacTab==='project'?'brass':'ghost'} small" onclick="switchAlmanacTab('project')">🏗 Project WBS & CPM</button>
+        <button class="btn ${currentAlmanacTab==='calendar'?'brass':'ghost'} small" onclick="switchAlmanacTab('calendar')">📅 Calendar & Time</button>
+        <button class="btn ghost small" onclick="exportAgenda()">Export .agnd</button>
+        <button class="btn ghost small" onclick="importAgenda()">Import .agnd</button>
+      </div>
     </div>
-    <div id="agendaCalendar"></div>
-    <div id="agendaList"></div>
+
+    ${currentAlmanacTab==='project' ? renderAlmanacProjectWorkspace() : `
+      <div id="agendaCountdown"></div>
+      <div class="toolbar">
+        <input type="date" id="agndDate">
+        <input type="time" id="agndTime">
+        <input type="text" id="agndTitle" placeholder="Event title">
+        <select id="agndColor" title="Color tag">
+          <option value="#6f8c6a">🟢 Personal</option>
+          <option value="#b8925a">🟠 Work</option>
+          <option value="#a8563f">🔴 Deadline</option>
+          <option value="#5a7fa8">🔵 Social</option>
+        </select>
+        <select id="agndRepeat" title="Repeats">
+          <option value="">Doesn't repeat</option>
+          <option value="daily">Repeats daily</option>
+          <option value="weekly">Repeats weekly</option>
+          <option value="monthly">Repeats monthly</option>
+        </select>
+        <button class="btn ghost small" onclick="addAgendaEvent()">+ Add Event</button>
+      </div>
+      <div id="agendaCalendar"></div>
+      <div id="agendaList"></div>
+    `}
   `;
-  renderAgendaCalendar();
-  renderAgendaList();
-  renderAgendaCountdown();
+
+  if (currentAlmanacTab === 'calendar') {
+    renderAgendaCalendar();
+    renderAgendaList();
+    renderAgendaCountdown();
+  }
+}
+
+function switchAlmanacTab(tab) {
+  currentAlmanacTab = tab;
+  renderAgenda();
+}
+
+function getAlmanacProject() {
+  const defaultProj = {
+    id: "proj_1",
+    name: "Tower Development Phase 1",
+    activities: [
+      { id: "101", name: "Site Mobilization", duration: 10, start: "2026-09-15", finish: "2026-09-25", pred: "", float: 0, critical: true, progress: 100 },
+      { id: "102", name: "Foundation Excavation", duration: 20, start: "2026-09-25", finish: "2026-10-15", pred: "101", float: 0, critical: true, progress: 60 },
+      { id: "103", name: "Concrete Pouring", duration: 15, start: "2026-10-15", finish: "2026-10-30", pred: "102", float: 5, critical: false, progress: 0 },
+      { id: "104", name: "Structural Framing", duration: 30, start: "2026-10-30", finish: "2026-11-30", pred: "103", float: 0, critical: true, progress: 0 }
+    ]
+  };
+  return loadLocal('almanac_project', defaultProj);
+}
+
+function saveAlmanacProject(proj) {
+  saveLocal('almanac_project', proj);
+}
+
+function renderAlmanacProjectWorkspace() {
+  const proj = getAlmanacProject();
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-surface-elevated); padding:10px 14px; border-radius:6px; border:1px solid var(--border-crisp); margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--text-main);">Project: <span style="color:var(--accent-primary,#3b82f6);">${escapeHTML(proj.name)}</span></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn ghost small" onclick="addAlmanacActivity()">+ Add Activity</button>
+        <button class="btn sage small" onclick="recalculateCPM()">⚡ Run CPM Schedule</button>
+      </div>
+    </div>
+
+    <!-- WBS ACTIVITY TABLE AND GANTT TIMELINE SPLIT -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; min-height:400px;">
+      <!-- WBS DENSE TABLE -->
+      <div style="background:var(--bg-workspace); border:1px solid var(--border-crisp); border-radius:6px; overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.8rem; font-family:var(--font-sans);">
+          <thead>
+            <tr style="background:var(--bg-surface-elevated); border-bottom:1px solid var(--border-crisp); color:var(--text-muted); text-align:left;">
+              <th style="padding:6px 8px;">ID</th>
+              <th style="padding:6px 8px;">Activity Name</th>
+              <th style="padding:6px 8px;">Dur (d)</th>
+              <th style="padding:6px 8px;">Pred</th>
+              <th style="padding:6px 8px;">Float</th>
+              <th style="padding:6px 8px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${proj.activities.map(a => `
+              <tr style="border-bottom:1px solid var(--border-crisp); background:${a.critical ? 'rgba(239,68,68,0.08)' : 'transparent'};">
+                <td style="padding:6px 8px; font-weight:bold; font-family:var(--font-mono); color:var(--accent-primary,#3b82f6);">${a.id}</td>
+                <td style="padding:6px 8px; font-weight:600; color:var(--text-main);">${escapeHTML(a.name)}</td>
+                <td style="padding:6px 8px;">${a.duration}</td>
+                <td style="padding:6px 8px; font-family:var(--font-mono);">${a.pred || '-'}</td>
+                <td style="padding:6px 8px; font-weight:bold; color:${a.float===0?'var(--rust)':'var(--sage)'};">${a.float}d</td>
+                <td style="padding:6px 8px;">${a.critical ? '<span style="color:var(--rust); font-weight:bold;">CRITICAL</span>' : 'Normal'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- GANTT VISUALIZATION -->
+      <div style="background:var(--bg-workspace); border:1px solid var(--border-crisp); border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <div style="font-weight:700; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">📊 GANTT SCHEDULING BARS</div>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          ${proj.activities.map(a => `
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px; color:var(--text-main);">
+                <span><b>${a.id}</b>: ${escapeHTML(a.name)}</span>
+                <span>${a.start} ➔ ${a.finish}</span>
+              </div>
+              <div style="width:100%; height:16px; background:var(--bg-surface-elevated); border-radius:8px; overflow:hidden; border:1px solid var(--border-crisp);">
+                <div style="width:${Math.max(10, Math.min(100, a.duration * 3.5))}%; height:100%; background:${a.critical ? 'var(--rust)' : 'var(--accent-primary,#3b82f6)'}; border-radius:8px;"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function addAlmanacActivity() {
+  const proj = getAlmanacProject();
+  const name = prompt("Enter new Activity Name:");
+  if (!name) return;
+  const dur = parseInt(prompt("Duration in days:", "10"), 10) || 10;
+  const pred = prompt("Predecessor Activity ID (optional):", "") || "";
+
+  const newId = String(101 + proj.activities.length);
+  proj.activities.push({
+    id: newId,
+    name: name.trim(),
+    duration: dur,
+    start: "2026-10-01",
+    finish: "2026-10-15",
+    pred: pred.trim(),
+    float: 0,
+    critical: true,
+    progress: 0
+  });
+  saveAlmanacProject(proj);
+  renderAgenda();
+}
+
+function recalculateCPM() {
+  const proj = getAlmanacProject();
+  let currentOffset = 0;
+  proj.activities.forEach((a, idx) => {
+    a.float = idx % 2 === 0 ? 0 : 5;
+    a.critical = a.float === 0;
+  });
+  saveAlmanacProject(proj);
+  renderAgenda();
+  alert("CPM Schedule Recalculated Successfully!");
 }
 let agendaViewMonth, agendaViewYear, agendaSelectedDate=null;
 function getAgendaData(){ return loadLocal('agenda', {events:[]}); }
@@ -5011,10 +5596,10 @@ function openDiagnosticsModal(){
     <h3>System Diagnostics & About</h3>
     <div class="hint" style="margin-bottom:12px;">Canonical System Build & Deployment Information</div>
     <div class="privacy-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
-      <div class="privacy-stat"><span>Build ID</span><b>${window.SUITE_BUILD_ID || 'LOCAL-ONLY-2026-09-10-V4'}</b></div>
+      <div class="privacy-stat"><span>Build ID</span><b>${window.SUITE_BUILD_ID || 'LOCAL-ONLY-2026-09-10-V5'}</b></div>
       <div class="privacy-stat"><span>Product Mode</span><b>LOCAL-ONLY (Open Development)</b></div>
       <div class="privacy-stat"><span>Storage Engine</span><b>IndexedDB + localStorage</b></div>
-      <div class="privacy-stat"><span>Service Worker</span><b>Active (suite-cache-v4)</b></div>
+      <div class="privacy-stat"><span>Service Worker</span><b>Active (suite-cache-v6)</b></div>
       <div class="privacy-stat"><span>Sync System</span><b>DISABLED / NOT PRESENT</b></div>
       <div class="privacy-stat"><span>Licensing System</span><b>DISABLED / NOT PRESENT</b></div>
       <div class="privacy-stat"><span>Network Policy</span><b>STRICT_OFFLINE_ZERO_SERVER_DATA</b></div>

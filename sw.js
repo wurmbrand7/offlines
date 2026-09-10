@@ -1,6 +1,6 @@
 // Suite service worker — strict offline shell caching for standalone privacy operating suite.
-// Cache Version: suite-cache-v4 — purges all legacy caches on activation.
-const CACHE_NAME = 'suite-cache-v4';
+// Cache Version: suite-cache-v5 — purges all legacy caches on activation.
+const CACHE_NAME = 'suite-cache-v6';
 const ASSETS = [
   './',
   './index.html',
