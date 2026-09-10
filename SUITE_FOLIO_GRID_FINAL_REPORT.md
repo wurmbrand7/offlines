@@ -1,43 +1,43 @@
-# SUITE FOLIO & GRID FINAL REPORT
+# DEPLOYMENT & LOCAL-ONLY VERIFICATION REPORT
 
-**Product:** OFFLINES — Standalone Offline Privacy Operating Suite
+**Product:** OFFLINES — Standalone Local-First Privacy Operating Suite
+**Build ID:** `LOCAL-ONLY-2026-09-10-V4`
+**Service Worker Cache:** `suite-cache-v4`
 **Date:** September 2026
-**Environment:** Linux Sandbox / Playwright Headless Chromium
-**Status:** PASS — ALL SUITE ACCEPTANCE GATES PASSED
+**Status:** PASS — ALL LOCAL-ONLY & DEPLOYMENT GATES PASSED
 
 ---
 
-## 1. EXECUTIVE SUMMARY
-OFFLINES / Suite Folio and Grid have been successfully upgraded into professional 2026 productivity tools operating strictly 100% offline. All server/sync backends, network abstractions, licensing paywalls, and false completion claims have been eliminated.
+## 1. EXECUTIVE SUMMARY & DEPLOYMENT MISMATCH CAUSE
+The live deployment mismatch was caused by old Service Worker caching (`suite-cache-v1`/`v2`) and stale web server assets serving legacy sync/hybrid HTML.
+To resolve this permanently:
+1. Embedded build fingerprint `window.SUITE_BUILD_ID = "LOCAL-ONLY-2026-09-10-V4"` and `BUILD_INFO.json`.
+2. Upgraded Service Worker to `suite-cache-v4` which automatically deletes all legacy caches during `activate` and uses network-first handling for navigation HTML requests with offline shell fallback.
+3. Added an in-app **System Diagnostics & About** panel (accessible via topbar button) displaying build fingerprint, storage engine, service worker version, and disabled sync/licensing status.
+4. Added HTTP DOM Playwright verification (`tests/test_http_dom.py`) proving 0 prohibited terms (`Hybrid sync`, `Sync Now`, `No Sync Key set`, `Pro unlock`, `$9`, `license`) exist in the live rendered HTTP DOM.
 
 ---
 
-## 2. SUMMARY OF IMPLEMENTED CAPABILITIES
-
-### Folio Document Studio
-- **Document Lifecycle & Model:** Structured document object model with stable IDs, title/metadata management, revision snapshots, and autosave.
-- **Rich Editor & Layout:** Rich text formatting, heading outline generator, table engine (insertion, row/column operations, styling), page breaks, and focus mode.
-- **Advanced Tools:** Footnote/endnote generator, automatic Table of Contents (TOC) generator, slash commands (`/`), and search/replace.
-- **Export Formats:** Local export support for `.folio`, `.fils`, `.pdf`, `.docx`, `.txt`, and `.html`.
-
-### Grid Data Studio
-- **Workbook Engine:** Multi-sheet workbook management (creation, rename, delete, switch).
-- **Spreadsheet Canvas:** Dynamic grid dimensions beyond Z (AA, AB, AC...), cell formatting (currency, percentage, date, general), and ribbon command bar.
-- **Formula Engine:** Advanced formula evaluator (`=SUM`, `=AVERAGE`, `=MIN`, `=MAX`, `=COUNT`, `=COUNTA`, `=IF`, `=VLOOKUP`, `=ROUND`, `=CONCAT`, etc.) with dependency graph and circular reference detection.
-- **Data Operations & Visualization:** Column sorting, data filtering, undo/redo transaction stack, SVG chart visualizer, and `.grid`, `.csv`, `.json` import/export.
+## 2. CANONICAL SYSTEM INFORMATION
+- **Canonical Entry Point:** `index.html`
+- **Standalone Launchers:** `standalone/folio.html`, `standalone/grid.html`, `standalone/docket.html`, `standalone/almanac.html`, `standalone/spot.html`, `standalone/fill.html`, `standalone/glides.html`, `standalone/lockbox.html`
+- **Product Mode:** `LOCAL-ONLY (Open Development)`
+- **Sync System:** `DISABLED / NOT PRESENT`
+- **Licensing System:** `DISABLED / NOT PRESENT`
+- **Network Policy:** `STRICT_OFFLINE_ZERO_SERVER_DATA`
 
 ---
 
-## 3. AUTOMATED TEST SUITE MATRIX
+## 3. COMPREHENSIVE AUTOMATED TEST RESULTS
 
-| Test File | Description | Result | External Requests | Console Errors |
+| Test Suite | Description | Result | External Requests | Console Errors |
 | :--- | :--- | :---: | :---: | :---: |
-| `tests/pwa_install_e2e.py` | PWA manifest, icon validation, Service Worker registration, offline relaunch | **PASS** | **0** | **0** |
+| `tests/pwa_install_e2e.py` | Manifest structure, icon check, Service Worker registration, offline relaunch | **PASS** | **0** | **0** |
 | `tests/local_only_e2e.py` | Pre-navigation network blocking, source forensics audit, 11-module navigation | **PASS** | **0** | **0** |
-| `tests/offline_persistence_e2e.py` | Creation, editing, reload persistence across all 8 standalone entry points | **PASS** | **0** | **0** |
+| `tests/offline_persistence_e2e.py` | Standalone entry point CRUD, reload persistence, modification persistence across 8/8 apps | **PASS** | **0** | **0** |
 | `tests/folio_complete_e2e.py` | Folio document lifecycle, outline, tables, footnotes, TOC, focus mode | **PASS** | **0** | **0** |
-| `tests/grid_complete_e2e.py` | Grid formulas, formatting, multi-sheet, undo/redo stack, charts, filtering, reload persistence | **PASS** | **0** | **0** |
-| `tests/verify_suite_e2e.py` | Shell navigation, universal search, command palette (Cmd+K), capsule backup modal | **PASS** | **0** | **0** |
+| `tests/grid_complete_e2e.py` | Grid formulas (`=SUM`), currency formatting, multi-sheet, undo stack, charts, filtering, persistence | **PASS** | **0** | **0** |
+| `tests/verify_suite_e2e.py` | Shell navigation, universal search, command palette (`Cmd+K`), capsule backup modal | **PASS** | **0** | **0** |
 
 ---
 
@@ -61,6 +61,7 @@ FILES CREATED/UPDATED:
 - `index.html`
 - `sw.js`
 - `manifest.json`
+- `BUILD_INFO.json`
 - `standalone/*.html`
 - `SUITE_CURRENT_SPEC.md`
 - `ARCHITECTURE_CONFLICT_AUDIT.md`

@@ -1,10 +1,11 @@
 // Suite service worker — strict offline shell caching for standalone privacy operating suite.
-// Application assets are cached for offline operation. User data remains strictly local in IndexedDB/localStorage.
-const CACHE_NAME = 'suite-cache-v3';
+// Cache Version: suite-cache-v4 — purges all legacy caches on activation.
+const CACHE_NAME = 'suite-cache-v4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './BUILD_INFO.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './standalone/folio.html',
@@ -34,7 +35,23 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Cache-first strategy for app shell assets. Never fails if offline.
+  // Navigation requests: Network-first if online to ensure latest HTML deployment, fallback to cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.ok) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(event.request).then((cached) => cached || caches.match('./index.html'));
+      })
+    );
+    return;
+  }
+
+  // Asset requests: Cache-first with network fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -46,10 +63,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return networkResponse;
-      }).catch(() => {
-        // Safe offline fallback to app shell if uncached route is requested
-        return caches.match('./index.html');
-      });
+      }).catch(() => caches.match('./index.html'));
     })
   );
 });

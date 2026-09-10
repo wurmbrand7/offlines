@@ -938,7 +938,8 @@ table.grid th{
       <div style="font-size:0.8rem; font-weight:700; color:var(--accent-primary,#3b82f6); letter-spacing:0.05em; text-transform:uppercase; padding:4px 10px; background:rgba(59,130,246,0.1); border-radius:4px; border:1px solid rgba(59,130,246,0.3);">
         Local Workspace
       </div>
-      <div class="security-pill" id="securityPill"><span class="dot"></span><span id="securityPillText">Local only · nothing leaves this device</span></div>
+      <button class="btn ghost small" onclick="openDiagnosticsModal()" style="font-size:0.75rem; padding:4px 8px;">⚙ Diagnostics</button>
+<div class="security-pill" id="securityPill"><span class="dot"></span><span id="securityPillText">Local only · nothing leaves this device</span></div>
       <div class="global-search-results" id="globalSearchResults"></div>
     </div>
 
@@ -959,6 +960,8 @@ table.grid th{
 </div>
 
 <script>
+window.SUITE_BUILD_ID = "LOCAL-ONLY-2026-09-10-V4";
+window.SUITE_MODE = "LOCAL-ONLY";
 /* ---------- Storage helpers & SuiteStorage Engine ---------- */
 const KEY_PREFIX = "suite_v1_";
 
@@ -4928,6 +4931,28 @@ async function runBreachCheckAll(){
   const el = document.getElementById('breachResults');
   if(!el) return;
   el.innerHTML = '<div class="hint">Online breach check unavailable in Local Mode — no external network requests allowed. Your passwords remain 100% private on this device.</div>';
+}
+
+function openDiagnosticsModal(){
+  const modal = document.getElementById('capsuleModal');
+  modal.innerHTML = `
+    <h3>System Diagnostics & About</h3>
+    <div class="hint" style="margin-bottom:12px;">Canonical System Build & Deployment Information</div>
+    <div class="privacy-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
+      <div class="privacy-stat"><span>Build ID</span><b>${window.SUITE_BUILD_ID || 'LOCAL-ONLY-2026-09-10-V4'}</b></div>
+      <div class="privacy-stat"><span>Product Mode</span><b>LOCAL-ONLY (Open Development)</b></div>
+      <div class="privacy-stat"><span>Storage Engine</span><b>IndexedDB + localStorage</b></div>
+      <div class="privacy-stat"><span>Service Worker</span><b>Active (suite-cache-v4)</b></div>
+      <div class="privacy-stat"><span>Sync System</span><b>DISABLED / NOT PRESENT</b></div>
+      <div class="privacy-stat"><span>Licensing System</span><b>DISABLED / NOT PRESENT</b></div>
+      <div class="privacy-stat"><span>Network Policy</span><b>STRICT_OFFLINE_ZERO_SERVER_DATA</b></div>
+      <div class="privacy-stat"><span>Canonical Entry</span><b>index.html</b></div>
+    </div>
+    <div style="display:flex; justify-content:flex-end;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close Diagnostics</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg').classList.add('show');
 }
 
 function openCapsuleModal(kind){
