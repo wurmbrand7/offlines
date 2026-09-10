@@ -28,7 +28,7 @@ def capture_visual_screenshots():
                 page = browser.new_page(viewport={"width": vp["width"], "height": vp["height"]})
                 url = f"http://localhost:{port}/index.html"
                 page.goto(url)
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(2500)
 
                 # Screenshot 1: Dashboard
                 dash_path = f"/tmp/screenshots/dashboard_{vp['name']}.png"
@@ -53,7 +53,7 @@ def capture_visual_screenshots():
                 page.fill("#cell-B2", "850")
                 page.keyboard.press("Enter")
 
-                page.click("button:has-text('insert')")
+                page.click("#panel-sheets button:has-text('insert')")
                 page.wait_for_timeout(200)
                 page.click("button:has-text('Bar Chart')")
                 page.wait_for_timeout(300)
