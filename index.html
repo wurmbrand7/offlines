@@ -3063,11 +3063,16 @@ function renderSheets() {
                 ${Array.from({length: sheet.cols}, (_, c) => {
                   const coord = colLetter(c) + rowNum;
                   const cell = evaluatedCells[coord] || { raw: '', val: '', format: 'general', bold: false, italic: false, align: 'left', bg: '', color: '' };
-                  const isSelected = selectedGridCell === coord;
+                  const bounds = getActiveSelectionBounds();
+                  const inBounds = c >= bounds.minCol && c <= bounds.maxCol && (rowNum - 1) >= bounds.minRow && (rowNum - 1) <= bounds.maxRow;
+                  const isSelected = selectedGridCell === coord || inBounds;
                   const displayVal = formatCellValue(cell.val, cell.format);
                   const isFreezeCol = isGridFreezeActive && c === 0;
                   return `
-                    <td style="border:1px solid var(--border-crisp); padding:0; position:${isFreezeCol ? 'sticky' : 'relative'}; ${isFreezeCol ? 'left:40px; z-index:4;' : ''} background:${cell.bg || (isSelected ? 'rgba(59,130,246,0.22)' : 'var(--bg-surface)')}; outline:${isSelected ? '2px solid var(--accent-primary,#3b82f6)' : 'none'}; z-index:${isSelected ? 6 : (isFreezeCol ? 4 : 1)};">
+                    <td style="border:1px solid var(--border-crisp); padding:0; position:${isFreezeCol ? 'sticky' : 'relative'}; ${isFreezeCol ? 'left:40px; z-index:4;' : ''} background:${cell.bg || (isSelected ? 'rgba(59,130,246,0.22)' : 'var(--bg-surface)')}; outline:${isSelected ? '2px solid var(--accent-primary,#3b82f6)' : 'none'}; z-index:${isSelected ? 6 : (isFreezeCol ? 4 : 1)};"
+                        onmousedown="onGridCellMouseDown(event, '${coord}')"
+                        onmouseenter="onGridCellMouseEnter(event, '${coord}')"
+                    >
                       <input id="cell-${coord}" data-cell="${coord}" type="text"
                         value="${escapeHTML(displayVal)}"
                         data-raw="${escapeHTML(cell.raw)}"
@@ -3231,6 +3236,38 @@ function renderGridRibbonTools(sheet) {
   return ``;
 }
 
+/* Cell Drag Selection Handlers */
+function onGridCellMouseDown(e, coord) {
+  if (e.button !== 0) return; // Only left mouse button
+  const p = parseCellCoord(coord);
+  if (!p) return;
+
+  selectedGridCell = coord;
+  if (e.shiftKey && gridSelectionRange) {
+    gridSelectionRange.endCol = p.col;
+    gridSelectionRange.endRow = p.row;
+  } else {
+    gridSelectionRange = { startCol: p.col, startRow: p.row, endCol: p.col, endRow: p.row };
+  }
+  isGridDraggingSelection = true;
+  renderSheets();
+}
+
+function onGridCellMouseEnter(e, coord) {
+  if (!isGridDraggingSelection) return;
+  const p = parseCellCoord(coord);
+  if (!p || !gridSelectionRange) return;
+  gridSelectionRange.endCol = p.col;
+  gridSelectionRange.endRow = p.row;
+  renderSheets();
+}
+
+document.addEventListener('mouseup', () => {
+  if (isGridDraggingSelection) {
+    isGridDraggingSelection = false;
+  }
+});
+
 /* Cell Events & Focus Handlers */
 function onGridCellFocus(coord) {
   selectedGridCell = coord;
@@ -3342,18 +3379,24 @@ function formatActiveCell(key, value) {
 }
 
 function clearGridFormats() {
+  const bounds = getActiveSelectionBounds();
   const wb = getGridWorkbook();
   const sheet = getActiveSheet(wb);
-  for (const k in sheet.cells) {
-    if (sheet.cells[k] && typeof sheet.cells[k] === 'object') {
-      sheet.cells[k].format = 'general';
-      sheet.cells[k].bold = false;
-      sheet.cells[k].italic = false;
-      sheet.cells[k].align = 'left';
-      sheet.cells[k].bg = '';
-      sheet.cells[k].color = '';
+
+  for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+    for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+      const coord = colLetter(c) + (r + 1);
+      if (sheet.cells[coord] && typeof sheet.cells[coord] === 'object') {
+        sheet.cells[coord].format = 'general';
+        sheet.cells[coord].bold = false;
+        sheet.cells[coord].italic = false;
+        sheet.cells[coord].align = 'left';
+        sheet.cells[coord].bg = '';
+        sheet.cells[coord].color = '';
+      }
     }
   }
+
   saveGridWorkbook(wb);
   renderSheets();
 }
@@ -4412,11 +4455,94 @@ function addAlmanacActivity() {
 
 function recalculateCPM() {
   const proj = getAlmanacProject();
-  let currentOffset = 0;
-  proj.activities.forEach((a, idx) => {
-    a.float = idx % 2 === 0 ? 0 : 5;
-    a.critical = a.float === 0;
+  if (!proj || !proj.activities || !proj.activities.length) return;
+
+  const actMap = {};
+  proj.activities.forEach(a => {
+    actMap[a.id] = a;
+    a.duration = parseInt(a.duration, 10) || 1;
+    a.es = 0;
+    a.ef = a.duration;
+    a.ls = 0;
+    a.lf = 0;
+    a.float = 0;
+    a.critical = false;
   });
+
+  // FORWARD PASS (Early Start & Early Finish)
+  let maxProjectEF = 0;
+  let changed = true;
+  let passCount = 0;
+
+  while (changed && passCount < proj.activities.length * 2) {
+    changed = false;
+    passCount++;
+    proj.activities.forEach(a => {
+      let maxPredEF = 0;
+      if (a.pred) {
+        const preds = a.pred.split(',').map(p => p.trim()).filter(Boolean);
+        preds.forEach(pId => {
+          if (actMap[pId]) {
+            maxPredEF = Math.max(maxPredEF, actMap[pId].ef);
+          }
+        });
+      }
+      if (a.es !== maxPredEF) {
+        a.es = maxPredEF;
+        a.ef = a.es + a.duration;
+        changed = true;
+      }
+      maxProjectEF = Math.max(maxProjectEF, a.ef);
+    });
+  }
+
+  // BACKWARD PASS (Late Finish & Late Start)
+  proj.activities.forEach(a => {
+    a.lf = maxProjectEF;
+    a.ls = a.lf - a.duration;
+  });
+
+  passCount = 0;
+  changed = true;
+
+  while (changed && passCount < proj.activities.length * 2) {
+    changed = false;
+    passCount++;
+    proj.activities.forEach(a => {
+      let minSuccLS = maxProjectEF;
+      let hasSucc = false;
+      proj.activities.forEach(succ => {
+        if (succ.pred) {
+          const preds = succ.pred.split(',').map(p => p.trim()).filter(Boolean);
+          if (preds.includes(a.id)) {
+            hasSucc = true;
+            minSuccLS = Math.min(minSuccLS, succ.ls);
+          }
+        }
+      });
+      if (hasSucc && a.lf !== minSuccLS) {
+        a.lf = minSuccLS;
+        a.ls = a.lf - a.duration;
+        changed = true;
+      }
+    });
+  }
+
+  // FLOAT & CRITICAL PATH CALCULATION
+  const baseStartDate = new Date(proj.start || "2026-09-15");
+  proj.activities.forEach(a => {
+    a.float = Math.max(0, a.ls - a.es);
+    a.critical = (a.float === 0);
+
+    const sDate = new Date(baseStartDate);
+    sDate.setDate(sDate.getDate() + a.es);
+    const fDate = new Date(baseStartDate);
+    fDate.setDate(fDate.getDate() + a.ef);
+
+    a.start = sDate.toISOString().slice(0, 10);
+    a.finish = fDate.toISOString().slice(0, 10);
+  });
+
   saveAlmanacProject(proj);
   renderAgenda();
   alert("CPM Schedule Recalculated Successfully!");
