@@ -433,6 +433,20 @@ body{
   min-height:400px;
   display:none;
 }
+.today-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;
+  margin:16px 0;
+  width:100%;
+}
+.today-card{
+  background:var(--paper-dark, #ece4d0);
+  border:1px solid var(--line, #d8cdb0);
+  border-radius:8px;
+  padding:16px 18px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.06);
+}
 .panel.active{display:block;}
 .panel h2{
   margin:0 0 4px 0;
@@ -515,15 +529,17 @@ button.btn.sage:hover{background:var(--sage-dark);}
 }
 .today-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:14px;
-  margin:14px 0;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;
+  margin:16px 0;
+  width:100%;
 }
 .today-card{
-  background:var(--paper-dark);
-  border:1px solid var(--line);
-  border-radius:6px;
-  padding:14px 16px;
+  background:var(--bg-surface, #1e293b);
+  border:1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius:8px;
+  padding:18px 20px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
 .today-card h3{
   font-family:'Helvetica Neue',Arial,sans-serif;
@@ -1159,45 +1175,100 @@ function renderToday(){
   const openTasks = (tasksD.items||[]).filter(t=>!t.done);
   const streak = computeSpotStreak();
   const moon = moonPhaseEmoji(now);
+  const docObj = getFolioDocument();
+  const wbObj = getGridWorkbook();
+
   p.innerHTML = `
-    <h2>Today</h2>
-    <div class="sub">${now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'})} · ${moon} ${moonPhaseName(now)}</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:1.6rem; font-weight:800; color:var(--navy);">Dashboard Command Center</h2>
+        <div class="sub" style="margin-top:4px; font-size:0.9rem; color:#6b6250;">${now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric', year:'numeric'})} · ${moon} ${moonPhaseName(now)}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn brass small" onclick="openDiagnosticsModal()">⚙ System Status</button>
+        <button class="btn sage small" onclick="openCapsuleModal('export')">💾 Export Capsule</button>
+      </div>
+    </div>
+
+    <!-- WORKSPACE KPI METRIC CARDS -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:20px;">
+      <div class="today-card" style="cursor:pointer; background:var(--paper-dark); border:1px solid var(--line);" onclick="activateTab('tasks')">
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--navy); font-weight:700;">Active Tasks</div>
+        <div style="font-size:2rem; font-weight:800; color:var(--navy); margin-top:2px;">${openTasks.length}</div>
+        <div style="font-size:0.8rem; color:var(--rust); margin-top:4px; font-weight:600;">Docket Studio →</div>
+      </div>
+      <div class="today-card" style="cursor:pointer; background:var(--paper-dark); border:1px solid var(--line);" onclick="activateTab('agenda')">
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--navy); font-weight:700;">Scheduled Events</div>
+        <div style="font-size:2rem; font-weight:800; color:var(--navy); margin-top:2px;">${todaysEvents.length}</div>
+        <div style="font-size:0.8rem; color:var(--sage-dark); margin-top:4px; font-weight:600;">Almanac Time →</div>
+      </div>
+      <div class="today-card" style="cursor:pointer; background:var(--paper-dark); border:1px solid var(--line);" onclick="activateTab('docs')">
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--navy); font-weight:700;">Folio Document</div>
+        <div style="font-size:1rem; font-weight:700; color:var(--navy); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(docObj.document.title)}</div>
+        <div style="font-size:0.8rem; color:var(--brass-dark, #8a6a3a); margin-top:4px; font-weight:600;">Open Folio →</div>
+      </div>
+      <div class="today-card" style="cursor:pointer; background:var(--paper-dark); border:1px solid var(--line);" onclick="activateTab('sheets')">
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--navy); font-weight:700;">Grid Workbook</div>
+        <div style="font-size:1.2rem; font-weight:800; color:var(--navy); margin-top:4px;">${wbObj.sheets.length} sheet${wbObj.sheets.length===1?'':'s'}</div>
+        <div style="font-size:0.8rem; color:var(--navy); margin-top:4px; font-weight:600;">Open Grid →</div>
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS TOOLBAR -->
+    <div style="background:var(--navy); border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--paper);">
+      <span style="font-size:0.8rem; font-weight:700; color:var(--brass-light); text-transform:uppercase; letter-spacing:0.05em;">Quick Actions:</span>
+      <button class="btn brass small" onclick="activateTab('docs')">+ Document</button>
+      <button class="btn sage small" onclick="activateTab('tasks')">+ Task</button>
+      <button class="btn sage small" onclick="activateTab('agenda')">+ Event</button>
+      <button class="btn brass small" onclick="activateTab('notes')">+ Note</button>
+      <button class="btn ghost small" style="color:var(--paper); border-color:rgba(246,241,228,0.3);" onclick="activateTab('sheets')">+ Grid</button>
+      <button class="btn ghost small" style="color:var(--paper); border-color:rgba(246,241,228,0.3);" onclick="activateTab('lockbox')">🔒 Lockbox</button>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTENT GRID -->
     <div class="today-grid">
-      <div class="today-card">
-        <h3>📅 Almanac</h3>
-        ${todaysEvents.length ? todaysEvents.map(e=>`<div class="today-item" style="border-left:3px solid ${e.color||'#6f8c6a'};padding-left:8px;">${e.time} — ${e.title}</div>`).join('') : '<div class="hint">Nothing scheduled today.</div>'}
+      <div class="today-card" style="background:var(--paper-dark); border:1px solid var(--line);">
+        <h3 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:700; color:var(--navy); letter-spacing:0.05em;">📅 ALMANAC SCHEDULE</h3>
+        ${todaysEvents.length ? todaysEvents.map(e=>`<div class="today-item" style="border-left:3px solid ${e.color||'var(--sage)'};padding-left:8px; margin-bottom:6px; color:var(--ink);"><b>${e.time}</b> — ${escapeHTML(e.title)}</div>`).join('') : '<div class="hint" style="color:#6b6250;">No scheduled events for today.</div>'}
       </div>
-      <div class="today-card">
-        <h3>📌 Docket</h3>
-        ${openTasks.length ? openTasks.slice(0,6).map(t=>`<div class="today-item">${t.label}${daysCarried(t)>0?` <span class="repeat-badge">carried ${daysCarried(t)}d</span>`:''}</div>`).join('') : '<div class="hint">Docket is clear.</div>'}
+
+      <div class="today-card" style="background:var(--paper-dark); border:1px solid var(--line);">
+        <h3 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:700; color:var(--navy); letter-spacing:0.05em;">📌 DOCKET ACTIVE TASKS</h3>
+        ${openTasks.length ? openTasks.slice(0,6).map(t=>`<div class="today-item" style="margin-bottom:6px; color:var(--ink);">• ${escapeHTML(t.label)}${daysCarried(t)>0?` <span class="repeat-badge">carried ${daysCarried(t)}d</span>`:''}</div>`).join('') : '<div class="hint" style="color:#6b6250;">All tasks completed. Docket is clear.</div>'}
       </div>
-      <div class="today-card">
-        <h3>✏️ Spot streak</h3>
-        <div class="today-item">${streak>0 ? `${streak} day${streak===1?'':'s'} in a row` : 'No streak yet — jot something in Spot.'}</div>
+
+      <div class="today-card" style="background:var(--paper-dark); border:1px solid var(--line);">
+        <h3 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:700; color:var(--navy); letter-spacing:0.05em;">✏️ SPOT STREAK & CAPTURE</h3>
+        <div class="today-item" style="color:var(--ink);">${streak>0 ? `🔥 <b>${streak} day${streak===1?'':'s'}</b> capture streak` : 'No streak yet — capture a note in Spot.'}</div>
       </div>
-      <div class="today-card">
-        <h3>🔑 Password generator</h3>
-        <div class="toolbar" style="margin:0 0 8px 0;">
-          <input type="number" id="pwGenLength" value="16" min="8" max="64" style="width:60px;" onchange="renderPasswordGeneratorStandalone()">
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenLower" checked onchange="renderPasswordGeneratorStandalone()"> a-z</label>
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenUpper" checked onchange="renderPasswordGeneratorStandalone()"> A-Z</label>
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenDigits" checked onchange="renderPasswordGeneratorStandalone()"> 0-9</label>
-          <label style="font-size:0.8em;"><input type="checkbox" id="pwGenSymbols" onchange="renderPasswordGeneratorStandalone()"> !@#</label>
+
+      <div class="today-card" style="background:var(--paper-dark); border:1px solid var(--line);">
+        <h3 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:700; color:var(--navy); letter-spacing:0.05em;">🔑 LOCAL PASSWORD GENERATOR</h3>
+        <div class="toolbar" style="margin:0 0 8px 0; gap:8px;">
+          <input type="number" id="pwGenLength" value="16" min="8" max="64" style="width:55px; background:var(--paper); border:1px solid var(--line); color:var(--ink);" onchange="renderPasswordGeneratorStandalone()">
+          <label style="font-size:0.8em; color:var(--ink);"><input type="checkbox" id="pwGenLower" checked onchange="renderPasswordGeneratorStandalone()"> a-z</label>
+          <label style="font-size:0.8em; color:var(--ink);"><input type="checkbox" id="pwGenUpper" checked onchange="renderPasswordGeneratorStandalone()"> A-Z</label>
+          <label style="font-size:0.8em; color:var(--ink);"><input type="checkbox" id="pwGenDigits" checked onchange="renderPasswordGeneratorStandalone()"> 0-9</label>
+          <label style="font-size:0.8em; color:var(--ink);"><input type="checkbox" id="pwGenSymbols" onchange="renderPasswordGeneratorStandalone()"> !@#</label>
         </div>
-        <div id="pwGenOutput" class="today-item"></div>
-        <div class="toolbar" style="margin-top:8px;">
-          <button class="btn ghost small" onclick="renderPasswordGeneratorStandalone()">↻ Regenerate</button>
-          <button class="btn ghost small" onclick="copyGeneratedStandalone()">⧉ Copy</button>
+        <div id="pwGenOutput" class="today-item" style="font-family:monospace; font-weight:bold; font-size:1.05rem; color:var(--sage-dark); background:var(--paper); padding:6px 10px; border-radius:4px; border:1px solid var(--line);"></div>
+        <div class="toolbar" style="margin-top:10px;">
+          <button class="btn brass small" onclick="renderPasswordGeneratorStandalone()">↻ Regenerate</button>
+          <button class="btn ghost small" style="border-color:var(--line); color:var(--navy);" onclick="copyGeneratedStandalone()">⧉ Copy</button>
         </div>
       </div>
     </div>
-    <div class="toolbar" style="margin-top:16px;">
-      <input type="text" id="universalSearch" placeholder="Search everything…" oninput="universalSearch(this.value)" style="min-width:260px;">
+
+    <!-- UNIVERSAL SEARCH -->
+    <div style="background:var(--paper-dark); border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:20px;">
+      <h3 style="margin:0 0 8px 0; font-size:0.85rem; font-weight:700; color:var(--navy); letter-spacing:0.05em;">🔍 UNIVERSAL LOCAL WORKSPACE SEARCH</h3>
+      <input type="text" id="universalSearch" placeholder="Search documents, spreadsheets, notes, tasks, events, vault items..." oninput="universalSearch(this.value)" style="width:100%; box-sizing:border-box; padding:10px 14px; background:var(--paper); border:1px solid var(--line); color:var(--ink); border-radius:6px; font-size:0.95rem;">
+      <div id="universalSearchResults" style="margin-top:12px;"></div>
     </div>
-    <div id="universalSearchResults"></div>
   `;
   renderPasswordGeneratorStandalone();
 }
+
 function universalSearch(query){
   const el = document.getElementById('universalSearchResults');
   if(!query || query.trim().length<2){ el.innerHTML=''; return; }
@@ -1285,6 +1356,7 @@ function activateTab(id){
   if(id==='agenda') renderAgenda();
   if(id==='slides') renderSlides();
   if(id==='lockbox') renderLockbox();
+  if(id==='today') renderToday();
   if(id==='privacy') renderPrivacyCenter();
   if(id==='security') renderSecurityCenter();
   const gsr = document.getElementById('globalSearchResults');
