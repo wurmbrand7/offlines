@@ -1,0 +1,15 @@
+{
+  "name": "Offlines — your files, your device",
+  "short_name": "Offlines",
+  "description": "Professional 100% offline privacy operating suite with 11 apps: Folio, Grid, Fill, Spot, Docket, Almanac, Glides, Lockbox, Formula, Transmute, and Doxera.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c1017",
+  "theme_color": "#0c1017",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
