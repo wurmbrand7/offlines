@@ -10,8 +10,17 @@ ALL_SUITE_MODULES = [
 ]
 
 STANDALONE_FILES = [
-    'almanac.html', 'docket.html', 'doxera.html', 'fill.html', 'folio.html',
-    'formula.html', 'glides.html', 'grid.html', 'lockbox.html', 'spot.html', 'transmute.html'
+    ('almanac.html', 'Almanac'),
+    ('docket.html', 'Docket'),
+    ('doxera.html', 'Doxera'),
+    ('fill.html', 'Fill'),
+    ('folio.html', 'Folio'),
+    ('formula.html', 'Formula'),
+    ('glides.html', 'Glides'),
+    ('grid.html', 'Grid'),
+    ('lockbox.html', 'Lockbox'),
+    ('spot.html', 'Spot'),
+    ('transmute.html', 'Transmute')
 ]
 
 async def run_comprehensive_e2e():
@@ -74,14 +83,26 @@ async def run_comprehensive_e2e():
         assert "Security Protocol 2026" in doc_list_text, "Doxera document title not in index!"
         print("✓ Doxera studio verified.")
 
-        print("6. Verifying all 11 Standalone Entry HTML files...")
-        for st in STANDALONE_FILES:
-            st_path = f"file://{os.path.abspath(os.path.join('standalone', st))}"
+        print("6. Verifying all 11 Standalone Entry HTML files (Strict Non-Iframe, Non-Redirect Audit)...")
+        for st_file, st_name in STANDALONE_FILES:
+            st_path = f"file://{os.path.abspath(os.path.join('standalone', st_file))}"
             await page.goto(st_path)
-            await page.wait_for_timeout(100)
-            iframe_src = await page.get_attribute("iframe", "src")
-            assert "index.html?suite_only=" in iframe_src, f"Standalone page {st} iframe missing suite_only param!"
-        print(f"✓ All {len(STANDALONE_FILES)} standalone entry points verified (rendered via non-redirect iframe viewport).")
+            await page.wait_for_timeout(300)
+
+            # Assert NO iframe exists on the standalone page
+            iframe_count = await page.locator("iframe").count()
+            assert iframe_count == 0, f"Standalone page {st_file} contains an iframe wrapper!"
+
+            # Assert URL did NOT perform a location redirect
+            current_url = page.url
+            assert "standalone/" in current_url, f"Standalone page {st_file} redirected top-level location to {current_url}!"
+
+            # Assert standalone UI is rendered natively in top-level document
+            title = await page.title()
+            assert st_name in title, f"Standalone page {st_file} title '{title}' missing '{st_name}'!"
+            print(f"  ✓ Standalone {st_file} loaded natively (0 iframes, 0 redirects). Title: '{title}'")
+
+        print(f"✓ All {len(STANDALONE_FILES)} standalone application entry points verified as strict non-iframe, non-redirect native applications.")
 
         print("7. Generating verification screenshot on Dashboard Command Center...")
         await page.goto(file_path)

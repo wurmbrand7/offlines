@@ -4,6 +4,8 @@ const CACHE_NAME = 'suite-cache-v7';
 const ASSETS = [
   './',
   './index.html',
+  './suite.css',
+  './suite.js',
   './manifest.json',
   './BUILD_INFO.json',
   './icons/icon-192.png',

@@ -5,12 +5,62 @@
 <title>Glides — Presentation Studio</title>
 <link rel="manifest" href="../manifest.json">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#0b0f17; }
-  iframe { width:100%; height:100%; border:none; display:block; }
-</style>
+<link rel="stylesheet" href="../suite.css">
+<script>
+window.SUITE_ONLY = 'slides';
+</script>
 </head>
 <body>
-<iframe src="../index.html?suite_only=slides" title="Glides — Presentation Studio"></iframe>
+
+
+<div class="tabs" id="tabs"></div>
+
+<div class="app-shell">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="name"><b>OFF</b><span id="brandTitle">LINES</span></div>
+      <div class="tag">the server delivers the app. it never sees your data.</div>
+    </div>
+    <div id="sidebarNav"></div>
+  </div>
+
+  <div class="main-col">
+    <div class="topstrip" style="position:relative;">
+      <div class="gsearch">
+        <span style="opacity:0.5;">⌕</span>
+        <input type="text" id="gSearchInput" placeholder="Search everything…" oninput="globalSearch(this.value)" onfocus="globalSearch(this.value)">
+        <span class="kbd">/</span>
+      </div>
+      <div class="capsule-bar">
+        <button class="btn brass small" onclick="openCapsuleModal('export')">Export Capsule</button>
+        <button class="btn ghost small" onclick="openCapsuleModal('import')">Import Capsule</button>
+      </div>
+      <div style="font-size:0.8rem; font-weight:700; color:var(--accent-primary,#3b82f6); letter-spacing:0.05em; text-transform:uppercase; padding:4px 10px; background:rgba(59,130,246,0.1); border-radius:4px; border:1px solid rgba(59,130,246,0.3);">
+        Local Workspace
+      </div>
+      <button class="btn ghost small" onclick="openDiagnosticsModal()" style="font-size:0.75rem; padding:4px 8px;">⚙ Diagnostics</button>
+<div class="security-pill" id="securityPill"><span class="dot"></span><span id="securityPillText">Local only · nothing leaves this device</span></div>
+      <div class="global-search-results" id="globalSearchResults"></div>
+    </div>
+
+    <div class="workspace" id="workspace"></div>
+
+    <div class="footer-note">No account. No server required. Every save is yours to keep — export a Capsule anytime.<br>
+    <span style="opacity:0.85;">A note: because nothing is stored anywhere but this device, there's no "forgot my passphrase" recovery and no cloud backup unless you make one. That's the trade — getting to "no one else can touch your data" means no one else can rescue it for you either. Export a Capsule regularly and keep it somewhere safe.</span>
+    </div>
+  </div>
+</div>
+
+<div class="capsule-modal-bg" id="capsuleModalBg">
+  <div class="capsule-modal" id="capsuleModal"></div>
+</div>
+
+<div class="seal-overlay" id="sealOverlay">
+  <div class="seal-stamp">SEALED<br>& SAVED</div>
+</div>
+
+
+
+<script src="../suite.js"></script>
 </body>
 </html>
