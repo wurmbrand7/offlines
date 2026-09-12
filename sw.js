@@ -1,6 +1,6 @@
 // Suite service worker — strict offline shell caching for standalone privacy operating suite.
-// Cache Version: suite-cache-v6 — purges all legacy caches on activation.
-const CACHE_NAME = 'suite-cache-v6';
+// Cache Version: suite-cache-v7 — purges all legacy caches on activation.
+const CACHE_NAME = 'suite-cache-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,10 @@ const ASSETS = [
   './standalone/spot.html',
   './standalone/fill.html',
   './standalone/glides.html',
-  './standalone/lockbox.html'
+  './standalone/lockbox.html',
+  './standalone/formula.html',
+  './standalone/transmute.html',
+  './standalone/doxera.html'
 ];
 
 self.addEventListener('install', (event) => {

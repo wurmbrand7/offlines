@@ -5,12 +5,12 @@
 <title>Grid — Data Studio</title>
 <link rel="manifest" href="../manifest.json">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-window.SUITE_ONLY = 'sheets';
-window.location.replace('../index.html?suite_only=sheets');
-</script>
+<style>
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#0b0f17; }
+  iframe { width:100%; height:100%; border:none; display:block; }
+</style>
 </head>
-<body style="background:#0b0f17; color:#f8fafc; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
-<div style="text-align:center;">Loading Grid — Data Studio...</div>
+<body>
+<iframe src="../index.html?suite_only=sheets" title="Grid — Data Studio"></iframe>
 </body>
 </html>

@@ -79,9 +79,9 @@ async def run_comprehensive_e2e():
             st_path = f"file://{os.path.abspath(os.path.join('standalone', st))}"
             await page.goto(st_path)
             await page.wait_for_timeout(100)
-            st_body = await page.text_content("body")
-            assert "Loading" in st_body or "Offlines" in (await page.title()), f"Standalone page {st} failed to load!"
-        print(f"✓ All {len(STANDALONE_FILES)} standalone entry points verified.")
+            iframe_src = await page.get_attribute("iframe", "src")
+            assert "index.html?suite_only=" in iframe_src, f"Standalone page {st} iframe missing suite_only param!"
+        print(f"✓ All {len(STANDALONE_FILES)} standalone entry points verified (rendered via non-redirect iframe viewport).")
 
         print("7. Generating verification screenshot on Dashboard Command Center...")
         await page.goto(file_path)
