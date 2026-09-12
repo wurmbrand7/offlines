@@ -3,7 +3,11 @@ import sys
 import asyncio
 from playwright.async_api import async_playwright
 
-MODULES = ['today', 'docs', 'sheets', 'forms', 'notes', 'tasks', 'agenda', 'slides', 'lockbox', 'privacy', 'security']
+MODULES = [
+    'today', 'docs', 'sheets', 'forms', 'notes', 'tasks',
+    'agenda', 'slides', 'lockbox', 'formula', 'transmute', 'doxera',
+    'privacy', 'security'
+]
 
 async def run_e2e_tests():
     print("=== STARTING OFFLINES E2E TEST SUITE ===")
@@ -22,7 +26,7 @@ async def run_e2e_tests():
         app_title = await page.title()
         print(f"✓ App shell loaded. Title: '{app_title}'")
 
-        print("2. Testing navigation across all workspace modules...")
+        print("2. Testing navigation across all 14 workspace modules...")
         unlocked_count = 0
         for m in MODULES:
             await page.evaluate(f"activateTab('{m}')")
