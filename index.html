@@ -250,7 +250,8 @@ body{
   border:1px solid var(--line);
   border-radius:5px;
   margin-bottom:6px;
-  background:var(--paper);
+  background:var(--bg-surface-elevated, #1a2332);
+  color:var(--text-workspace, #f1f5f9);
 }
 .vault-row-main{ cursor:pointer; flex:1; }
 .vault-row-sub{ color:#8a7f66; font-size:0.85em; margin-left:8px; font-family:'Courier New',monospace; }
@@ -380,9 +381,11 @@ body{
 .cmd-palette-bg.open{ display:flex; }
 .cmd-palette{
   width:min(520px, 90vw);
-  background:var(--paper);
+  background:var(--bg-surface-elevated, #1a2332);
+  color:var(--text-workspace, #f1f5f9);
+  border:1px solid var(--border-crisp);
   border-radius:8px;
-  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
   overflow:hidden;
 }
 .cmd-palette input{
@@ -530,7 +533,8 @@ button.btn.sage:hover{background:var(--sage-dark); color:#ffffff;}
   border-radius:4px;
   padding:4px;
   cursor:pointer;
-  background:var(--paper);
+  background:var(--bg-surface-elevated, #1a2332);
+  color:var(--text-workspace, #f1f5f9);
 }
 .cal-cell:hover{background:var(--paper-dark);}
 .cal-cell.empty{border:none; cursor:default; background:transparent;}
@@ -796,7 +800,7 @@ table.grid th{
   font-family:'Helvetica Neue',Arial,sans-serif;
 }
 .spot-note textarea{
-  width:100%;height:60px;border:none;background:transparent;resize:none;font-family:inherit;font-size:1em;outline:none;
+  width:100%;height:60px;border:none;background:transparent;resize:none;font-family:inherit;font-size:1em;outline:none;color:#0f172a;
 }
 .spot-note .del{
   position:absolute;top:2px;right:4px;cursor:pointer;color:#a8563f;font-weight:bold;font-size:0.9em;
@@ -870,7 +874,7 @@ table.grid th{
 .slide-editor{
   margin-top:14px;border:1px solid var(--line);border-radius:6px;padding:16px;background:#fffdf8;min-height:200px;
 }
-.slide-editor textarea{width:100%;min-height:160px;border:none;outline:none;font-family:inherit;font-size:1em;resize:vertical;}
+.slide-editor textarea{width:100%;min-height:160px;border:none;outline:none;font-family:inherit;font-size:1em;resize:vertical;color:#0f172a;}
 
 /* LOCKBOX */
 .lockbox-row{
@@ -936,11 +940,11 @@ table.grid th{
 }
 .capsule-modal-bg.show{display:flex;}
 .capsule-modal{
-  background:var(--paper);border-radius:8px;padding:24px;max-width:420px;width:90%;
-  box-shadow:0 20px 50px rgba(0,0,0,0.4);font-family:'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg-surface-elevated, #1a2332);color:var(--text-workspace, #f1f5f9);border:1px solid var(--border-crisp);border-radius:8px;padding:24px;max-width:420px;width:90%;
+  box-shadow:0 20px 50px rgba(0,0,0,0.6);font-family:'Helvetica Neue',Arial,sans-serif;
 }
 .capsule-modal h3{font-family:'Iowan Old Style',Georgia,serif;margin:0 0 10px;color:var(--text-workspace, #f1f5f9);}
-.capsule-modal p{font-size:0.85em;line-height:1.6;color:var(--ink);margin:0 0 14px;}
+.capsule-modal p{font-size:0.85em;line-height:1.6;color:var(--text-muted, #94a3b8);margin:0 0 14px;}
 .capsule-modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
 
 </style>
@@ -3039,9 +3043,9 @@ function renderSheets() {
     ` : ''}
 
     <!-- GRID WORKSPACE FLEX WRAPPER WITH DATA LENS SIDEBAR -->
-    <div style="display:flex; gap:12px; min-height:calc(100vh - 280px);">
+    <div style="display:flex; gap:12px; min-height:calc(100vh - 220px);">
       <!-- DENSE SPREADSHEET CANVAS -->
-      <div class="grid-canvas-wrap" style="flex:1; overflow:auto; max-height:calc(100vh - 280px); border:1px solid var(--border-crisp); border-radius:6px; background:var(--bg-workspace);">
+      <div class="grid-canvas-wrap" style="flex:1; overflow:auto; max-height:calc(100vh - 220px); border:1px solid var(--border-crisp); border-radius:6px; background:var(--bg-workspace);">
         <table class="grid" style="border-collapse:collapse; width:100%; min-width:800px; font-family:var(--font-sans);">
           <thead style="position:sticky; top:0; z-index:10; background:var(--bg-surface-elevated);">
             <tr>
