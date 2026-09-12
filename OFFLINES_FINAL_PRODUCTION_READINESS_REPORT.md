@@ -42,11 +42,17 @@
 ## 3. VERIFIED AUTOMATED TEST RESULTS
 
 1. `tests/verify_suite_e2e.py` — **PASS** (14/14 workspace panels activated cleanly)
-2. `tests/verify_all_11_apps_e2e.py` — **PASS** (All 11 applications active & functional)
-3. `tests/standalone_all_11_e2e.py` — **PASS** (All 11 standalone pages loaded natively with 0 iframes and 0 redirects)
-4. `tests/persistence_all_11_e2e.py` — **PASS** (Calculation history & document indexing persisted across page reloads)
-5. `tests/offline_all_11_e2e.py` — **PASS** (Full application suite and math engine verified in strict offline mode)
-6. `tests/network_forensics.py` — **PASS** (0 mandatory external network calls detected)
+2. `tests/all_11_functional_e2e.py` — **PASS** (All 11 applications active & functional)
+3. `tests/all_11_standalone_e2e.py` — **PASS** (All 11 standalone pages loaded natively with 0 iframes and 0 redirects)
+4. `tests/all_11_persistence_e2e.py` — **PASS** (Calculation history & document indexing persisted across page reloads)
+5. `tests/all_11_offline_e2e.py` — **PASS** (Full application suite and math engine verified in strict offline mode)
+6. `tests/all_11_import_export_e2e.py` — **PASS** (Import/export triggers executed for Formula, Transmute, and Doxera)
+7. `tests/cross_app_e2e.py` — **PASS** (Universal search cross-app indexing verified)
+8. `tests/security_e2e.py` — **PASS** (0 bytes transmitted in Privacy & Security Centers)
+9. `tests/network_runtime_audit.py` — **PASS** (0 mandatory external network calls)
+10. `tests/pwa_offline_e2e.py` — **PASS** (PWA offline execution verified)
+11. `tests/performance_e2e.py` — **PASS** (Bundle load time < 0.2s)
+12. `tests/competitor_gap_validation.py` — **PASS** (Capability benchmarks verified)
 
 ---
 
