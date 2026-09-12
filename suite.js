@@ -5313,6 +5313,7 @@ const ITEM_LIST_MODULES = {};
 /* ---------- PWA: register service worker so this installs like a real app ---------- */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(()=>{ /* fine if this fails when opened via file:// */ });
+    const swPath = window.location.pathname.includes('/standalone/') ? '../sw.js' : './sw.js';
+    navigator.serviceWorker.register(swPath).catch(()=>{ /* fine if this fails when opened via file:// */ });
   });
 }

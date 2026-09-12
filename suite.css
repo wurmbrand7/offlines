@@ -634,7 +634,7 @@ body.standalone .tabs{ display:none; }
   margin:8px 0 12px 0;
 }
 .formula-guide-grid div{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
-.formula-guide-grid span{color:#8a7f66; font-style:italic;}
+.formula-guide-grid span{color:#60a5fa; font-style:italic;}
 .grid-calc{
   background:var(--navy);
   border-radius:8px;
@@ -650,11 +650,11 @@ body.standalone .tabs{ display:none; }
   font-size:1.2em;
   padding:10px;
   border-radius:4px;
-  border:none;
+  border:1px solid var(--border-crisp);
   margin-bottom:10px;
   text-align:right;
-  background:var(--paper);
-  color:var(--ink);
+  background:var(--bg-surface-elevated, #1e293b);
+  color:#f8fafc;
 }
 .calc-buttons{
   display:grid;
@@ -862,7 +862,7 @@ table.grid th{
 .slide-editor{
   margin-top:14px;border:1px solid var(--line);border-radius:6px;padding:16px;background:#fffdf8;min-height:200px;
 }
-.slide-editor textarea{width:100%;min-height:160px;border:none;outline:none;font-family:inherit;font-size:1em;resize:vertical;color:#0f172a;}
+.slide-editor textarea{width:100%;min-height:160px;border:1px solid var(--border-crisp);outline:none;font-family:inherit;font-size:1em;resize:vertical;background:var(--bg-surface-elevated, #1a2332);color:#f8fafc;padding:10px;border-radius:4px;}
 
 /* LOCKBOX */
 .lockbox-row{

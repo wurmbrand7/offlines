@@ -1,8 +1,8 @@
 # [HISTORICAL — NOT CURRENT] SUITE SPECIFICATION
 
 **Product:** OFFLINES / Suite (Historical Reference)
-**Build ID:** `LOCAL-ONLY-2026-09-10-V4` (HISTORICAL — Current Build is V6)
-**Deployment Policy:** `suite-cache-v4` (Network-first navigation HTML with cache fallback)
+**Build ID:** `LOCAL-ONLY-2026-09-10-V7` (HISTORICAL — Current Build is V7)
+**Deployment Policy:** `suite-cache-v7` (Network-first navigation HTML with cache fallback)
 **Architecture:** 100% Standalone Local-First Privacy Operating Suite
 **Status:** Active
 
@@ -10,8 +10,8 @@
 
 ## 1. ARCHITECTURAL DECISION & BUILD FINGERPRINT
 OFFLINES is strictly an offline privacy operating suite.
-- **Build Fingerprint:** `window.SUITE_BUILD_ID = "LOCAL-ONLY-2026-09-10-V4"`, registered in `BUILD_INFO.json` and Diagnostics panel.
-- **Service Worker Cache Policy:** `suite-cache-v4` performs full activation cache-busting to purge legacy sync/hybrid assets and enforces network-first navigation handling.
+- **Build Fingerprint:** `window.SUITE_BUILD_ID = "LOCAL-ONLY-2026-09-10-V7"`, registered in `BUILD_INFO.json` and Diagnostics panel.
+- **Service Worker Cache Policy:** `suite-cache-v7` performs full activation cache-busting to purge legacy sync/hybrid assets and enforces network-first navigation handling.
 - **Website Role:** Asset distribution and application update delivery channel only.
 - **Runtime Environment:** Device local execution via browser, PWA, or standalone HTML entry points.
 - **User Data Boundaries:** User data (documents, spreadsheets, forms, notes, tasks, events, presentations, vault secrets) is stored exclusively on the user's device in IndexedDB (`offlines_suite_db` v2) and `localStorage`.
