@@ -241,7 +241,7 @@ body{
   color:var(--text-workspace, #f1f5f9);
 }
 .vault-row-main{ cursor:pointer; flex:1; }
-.vault-row-sub{ color:#8a7f66; font-size:0.85em; margin-left:8px; font-family:'Courier New',monospace; }
+.vault-row-sub{ color:var(--text-dim,#a0aec0); font-size:0.85em; margin-left:8px; font-family:'Courier New',monospace; }
 .vault-row-actions{ display:flex; gap:10px; }
 .vault-form{
   background:var(--paper-dark);
@@ -706,7 +706,7 @@ button.btn.brass{background:var(--brass);color:#ffffff; font-weight:600;}
 button.btn.brass:hover{background:var(--brass-light); color:#ffffff;}
 button.btn.small{padding:5px 10px;font-size:0.75em;}
 input[type=file]{display:none;}
-textarea,input[type=text],input[type=date],input[type=time],select{
+textarea,input[type=text],input[type=password],input[type=number],input[type=email],input[type=url],input[type=search],input[type=date],input[type=time],select{
   font-family:inherit;
   border:1px solid var(--border-crisp);
   border-radius:4px;
@@ -726,7 +726,7 @@ textarea,input[type=text],input[type=date],input[type=time],select{
   line-height:1.6;
   outline:none;
 }
-.wordcount{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:#8a7f66;margin-top:8px;}
+.wordcount{font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.75em;color:var(--text-dim,#a0aec0);margin-top:8px;}
 
 /* SHEETS */
 table.grid{border-collapse:collapse;width:100%;}
@@ -769,7 +769,7 @@ table.grid th{
   border:1px dashed var(--line);
   border-radius:6px;
   height:420px;
-  background:repeating-linear-gradient(0deg,#fffdf8,#fffdf8 24px,#f2ecd f);
+  background:repeating-linear-gradient(0deg,#fffdf8,#fffdf8 24px,#f2ecdf);
   background:#fffdf8;
   overflow:hidden;
 }
