@@ -1287,6 +1287,90 @@ function renderToday(){
       <input type="text" id="universalSearch" placeholder="Search documents, spreadsheets, notes, tasks, events, vault items..." oninput="universalSearch(this.value)" style="width:100%; box-sizing:border-box; padding:10px 14px; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); color:var(--ink); border-radius:6px; font-size:0.95rem;">
       <div id="universalSearchResults" style="margin-top:12px;"></div>
     </div>
+
+    <!-- APPLICATION SUITE LAUNCHER (11 SUITE APPS) -->
+    <div style="margin-top:24px; background:var(--paper-dark); border:1px solid var(--line); border-radius:8px; padding:16px;">
+      <h3 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:700; color:var(--text-workspace, #f1f5f9); letter-spacing:0.05em;">⚡ PRIVATE WORKSPACE APPLICATIONS (11 SUITE MODULES)</h3>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('docs')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Folio</b>
+            <span class="tag-pill">.fils</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Document &amp; publishing studio</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('sheets')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Grid</b>
+            <span class="tag-pill">.grid</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Spreadsheet, data &amp; analytics</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('forms')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Fill</b>
+            <span class="tag-pill">.fill</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Private offline forms studio</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('notes')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Spot</b>
+            <span class="tag-pill">.spot</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Knowledge &amp; fast notes board</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('tasks')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Docket</b>
+            <span class="tag-pill">.plot</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Tasks &amp; action planning</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('agenda')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Almanac</b>
+            <span class="tag-pill">.agnd</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Calendar &amp; time planner</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('slides')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Glides</b>
+            <span class="tag-pill">.glides</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Visual presentation studio</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('lockbox')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Lockbox</b>
+            <span class="tag-pill">.lbox</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Passwords, TOTP &amp; vaults</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('formula')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Formula</b>
+            <span class="tag-pill">.formu</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Scientific math &amp; unit engine</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('transmute')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Transmute</b>
+            <span class="tag-pill">.xmute</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Format &amp; crypto transformer</div>
+        </div>
+        <div class="today-card" style="cursor:pointer; background:var(--bg-surface-elevated, #1a2332); border:1px solid var(--line); border-radius:6px; padding:12px;" onclick="activateTab('doxera')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#f8fafc; font-size:0.95rem;">Doxera</b>
+            <span class="tag-pill">.ddf</span>
+          </div>
+          <div style="font-size:0.78em; color:var(--text-muted, #94a3b8); margin-top:4px;">Structured docs &amp; knowledge</div>
+        </div>
+      </div>
+    </div>
   `;
   renderPasswordGeneratorStandalone();
 }
@@ -1304,6 +1388,9 @@ function universalSearch(query){
   (loadLocal('slides', {slides:[]}).slides||[]).forEach(s=>{ if((s.text||'').toLowerCase().includes(q)) results.push({tab:'slides', label:'Glides', snippet:(s.text||'').slice(0,60)}); });
   (loadLocal('forms', {fields:[]}).fields||[]).forEach(f=>{ if((f.label||'').toLowerCase().includes(q)) results.push({tab:'forms', label:'Fill', snippet:f.label}); });
   (loadLocal('lockbox', {files:[]}).files||[]).forEach(f=>{ if((f.name||'').toLowerCase().includes(q)) results.push({tab:'lockbox', label:'Lockbox', snippet:f.name}); });
+  (loadLocal('formula', {history:[]}).history||[]).forEach(item=>{ if((item.expr||'').toLowerCase().includes(q) || (item.result||'').toLowerCase().includes(q)) results.push({tab:'formula', label:'Formula', snippet:item.expr + ' = ' + item.result}); });
+  (loadLocal('transmute', {history:[]}).history||[]).forEach(h=>{ if((h.input||'').toLowerCase().includes(q) || (h.output||'').toLowerCase().includes(q)) results.push({tab:'transmute', label:'Transmute', snippet:h.title || (h.input.slice(0,30) + ' -> ' + h.output.slice(0,30))}); });
+  (loadLocal('doxera', {docs:[]}).docs||[]).forEach(d=>{ if((d.title||'').toLowerCase().includes(q) || (d.body||'').toLowerCase().includes(q)) results.push({tab:'doxera', label:'Doxera', snippet:d.title}); });
   el.innerHTML = results.length ? results.map(r=>`<div class="search-result" onclick="activateTab('${r.tab}')"><b>${r.label}</b> — ${r.snippet}</div>`).join('') : '<div class="hint">No matches.</div>';
 }
 
@@ -1317,6 +1404,9 @@ const ALL_MODULES = [
   {id:'agenda', label:'Almanac', ext:'.agnd'},
   {id:'slides', label:'Glides', ext:'.glides'},
   {id:'lockbox', label:'Lockbox', ext:'.lbox'},
+  {id:'formula', label:'Formula', ext:'.formu'},
+  {id:'transmute', label:'Transmute', ext:'.xmute'},
+  {id:'doxera', label:'Doxera', ext:'.ddf'},
 ];
 const modules = SUITE_ONLY ? ALL_MODULES.filter(m=>m.id===SUITE_ONLY) : ALL_MODULES;
 
@@ -1378,6 +1468,9 @@ function activateTab(id){
   if(id==='agenda') renderAgenda();
   if(id==='slides') renderSlides();
   if(id==='lockbox') renderLockbox();
+  if(id==='formula') renderFormula();
+  if(id==='transmute') renderTransmute();
+  if(id==='doxera') renderDoxera();
   if(id==='today') renderToday();
   if(id==='privacy') renderPrivacyCenter();
   if(id==='security') renderSecurityCenter();
@@ -1389,7 +1482,7 @@ function activateTab(id){
 const MODULE_GROUPS = {
   ORGANIZE: ['today','notes','tasks','agenda'],
   SECURE:   ['lockbox','privacy','security'],
-  CREATE:   ['docs','sheets','forms','slides'],
+  CREATE:   ['docs','sheets','forms','slides','formula','transmute','doxera'],
 };
 const EXTRA_TAB_LABELS = { privacy:'Privacy Center', security:'Security Center' };
 function buildSidebar(){
@@ -1483,6 +1576,11 @@ function globalSearch(query){
   }
   if(!wantType || wantType==='file'){
     (loadLocal('lockbox', {files:[]}).files||[]).forEach(f=>{ if((f.name||'').toLowerCase().includes(q)) push('file', {tab:'lockbox', label:'Lockbox reference', snippet:f.name}); });
+  }
+  if(!wantType || wantType==='document'){
+    (loadLocal('formula', {history:[]}).history||[]).forEach(item=>{ if((item.expr||'').toLowerCase().includes(q) || (item.result||'').toLowerCase().includes(q)) push('document', {tab:'formula', label:'Formula', snippet:item.expr + ' = ' + item.result}); });
+    (loadLocal('transmute', {history:[]}).history||[]).forEach(h=>{ if((h.input||'').toLowerCase().includes(q) || (h.output||'').toLowerCase().includes(q)) push('document', {tab:'transmute', label:'Transmute', snippet:h.title || (h.input.slice(0,30) + ' -> ' + h.output.slice(0,30))}); });
+    (loadLocal('doxera', {docs:[]}).docs||[]).forEach(d=>{ if((d.title||'').toLowerCase().includes(q) || (d.body||'').toLowerCase().includes(q)) push('document', {tab:'doxera', label:'Doxera', snippet:d.title}); });
   }
   if((!wantType || wantType==='password' || wantType==='vault') && _vaultItems){
     _vaultItems.forEach(item=>{
@@ -3869,7 +3967,10 @@ function submitFormPreview(){
   d.submissions = d.submissions||[];
   d.submissions.push(resp);
   saveLocal('forms', d);
-  document.getElementById('submissionCount').textContent = d.submissions.length + ' response(s) saved locally';
+  document.querySelectorAll('[data-preview-field]').forEach(inp=>{ inp.value = ''; });
+  const countEl = document.getElementById('submissionCount');
+  if(countEl) countEl.textContent = d.submissions.length + ' response(s) saved locally';
+  showSeal();
 }
 function exportStandaloneForm(){
   const d = getFormsData();
@@ -4907,8 +5008,400 @@ function importLockbox(){
   });
 }
 
+/* ================= FORMULA (.formu) ================= */
+function renderFormula(){
+  const p = document.getElementById('panel-formula');
+  if(!p) return;
+  p.innerHTML = `
+    <h2>Formula</h2>
+    <div class="sub">.formu — Local scientific calculator, expression evaluator &amp; unit converter</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="clearFormulaHistory()">Clear History</button>
+      <button class="btn ghost small" onclick="exportFormulaHistory()">Export .formu</button>
+      <button class="btn ghost small" onclick="importFormulaHistory()">Import .formu</button>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px;">
+      <div>
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Expression / Math Input</label>
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+          <input type="text" id="formulaInput" placeholder="e.g. 25 * 4 + sin(3.14159/2) or 100 kg to lbs" style="flex:1;" onkeydown="if(event.key==='Enter') evaluateFormulaExpr()">
+          <button class="btn sage small" onclick="evaluateFormulaExpr()">Calc</button>
+        </div>
+        <div id="formulaResultDisplay" style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:12px; min-height:48px; font-family:monospace; font-size:1.2em; font-weight:bold; color:#f8fafc;">
+          Result will appear here...
+        </div>
+        <div style="margin-top:12px; display:grid; grid-template-columns: repeat(4, 1fr); gap:6px;">
+          <button class="btn ghost small" onclick="appendFormulaToken('sin(')">sin</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('cos(')">cos</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('tan(')">tan</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('sqrt(')">sqrt</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('log(')">log</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('pi')">π</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('^')">^</button>
+          <button class="btn ghost small" onclick="appendFormulaToken('deg2rad(')">deg2rad</button>
+        </div>
+      </div>
+      <div>
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Calculation History</label>
+        <div id="formulaHistoryList" style="max-height:280px; overflow-y:auto; background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:8px;"></div>
+      </div>
+    </div>
+  `;
+  renderFormulaHistory();
+}
+
+function appendFormulaToken(tok){
+  const inp = document.getElementById('formulaInput');
+  if(!inp) return;
+  inp.value += tok;
+  inp.focus();
+}
+
+function evaluateFormulaExpr(){
+  const inp = document.getElementById('formulaInput');
+  const resEl = document.getElementById('formulaResultDisplay');
+  if(!inp || !resEl) return;
+  const raw = inp.value.trim();
+  if(!raw) return;
+
+  let resultVal = '';
+  try {
+    const convMatch = raw.match(/^([\d.]+)\s*([a-zA-Z]+)\s+to\s+([a-zA-Z]+)$/i);
+    if(convMatch){
+      const val = parseFloat(convMatch[1]);
+      const u1 = convMatch[2].toLowerCase();
+      const u2 = convMatch[3].toLowerCase();
+      resultVal = convertFormulaUnits(val, u1, u2);
+    } else {
+      let expr = raw.replace(/pi/gi, 'Math.PI')
+                    .replace(/e/gi, 'Math.E')
+                    .replace(/sin\(/gi, 'Math.sin(')
+                    .replace(/cos\(/gi, 'Math.cos(')
+                    .replace(/tan\(/gi, 'Math.tan(')
+                    .replace(/sqrt\(/gi, 'Math.sqrt(')
+                    .replace(/log\(/gi, 'Math.log10(')
+                    .replace(/ln\(/gi, 'Math.log(')
+                    .replace(/deg2rad\(([^)]+)\)/gi, '(($1)*Math.PI/180)')
+                    .replace(/\^/g, '**');
+      const calc = Function('"use strict"; return (' + expr + ')')();
+      resultVal = (typeof calc === 'number') ? (Number.isInteger(calc) ? calc.toString() : calc.toFixed(6).replace(/\.?0+$/, '')) : String(calc);
+    }
+  } catch(e) {
+    resultVal = 'Error: Invalid Expression';
+  }
+
+  resEl.textContent = resultVal;
+
+  if(!resultVal.startsWith('Error')){
+    const data = loadLocal('formula', {history:[]});
+    data.history.unshift({ id:Date.now(), expr:raw, result:resultVal, ts:new Date().toLocaleTimeString() });
+    if(data.history.length > 50) data.history.pop();
+    saveLocal('formula', data);
+    renderFormulaHistory();
+  }
+}
+
+function convertFormulaUnits(val, u1, u2){
+  const ratesInMeters = { m:1, km:1000, cm:0.01, mm:0.001, ft:0.3048, in:0.0254, mi:1609.34 };
+  const ratesInKg = { kg:1, g:0.001, mg:0.000001, lbs:0.453592, oz:0.0283495 };
+  if(ratesInMeters[u1] && ratesInMeters[u2]){
+    const meters = val * ratesInMeters[u1];
+    const res = meters / ratesInMeters[u2];
+    return res.toFixed(4) + ' ' + u2;
+  }
+  if(ratesInKg[u1] && ratesInKg[u2]){
+    const kgs = val * ratesInKg[u1];
+    const res = kgs / ratesInKg[u2];
+    return res.toFixed(4) + ' ' + u2;
+  }
+  if(u1==='c' && u2==='f') return ((val * 9/5) + 32).toFixed(2) + ' °F';
+  if(u1==='f' && u2==='c') return (((val - 32) * 5/9)).toFixed(2) + ' °C';
+  return 'Unsupported unit conversion';
+}
+
+function renderFormulaHistory(){
+  const el = document.getElementById('formulaHistoryList');
+  if(!el) return;
+  const data = loadLocal('formula', {history:[]});
+  if(!data.history.length){ el.innerHTML = '<div class="hint">No calculations logged.</div>'; return; }
+  el.innerHTML = data.history.map(item=>`
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border,#334155); padding:6px 0; font-size:0.88em;">
+      <div>
+        <span style="font-family:monospace; font-weight:600; color:#cbd5e1;">${item.expr}</span>
+        <span style="color:var(--text-muted,#94a3b8);"> = </span>
+        <span style="font-family:monospace; font-weight:bold; color:#38bdf8;">${item.result}</span>
+      </div>
+      <span style="font-size:0.75em; color:var(--text-muted,#94a3b8);">${item.ts}</span>
+    </div>
+  `).join('');
+}
+
+function clearFormulaHistory(){
+  saveLocal('formula', {history:[]});
+  renderFormulaHistory();
+}
+function exportFormulaHistory(){
+  const d = loadLocal('formula', {history:[]});
+  download('calculations.formu', JSON.stringify({type:'formu', ...d}, null, 2));
+}
+function importFormulaHistory(){
+  pickFile('.formu', (content)=>{
+    try{
+      const parsed = JSON.parse(content);
+      saveLocal('formula', {history: parsed.history || []});
+      renderFormula();
+    } catch(e){ alert('Could not parse .formu file'); }
+  });
+}
+
+/* ================= TRANSMUTE (.xmute) ================= */
+function renderTransmute(){
+  const p = document.getElementById('panel-transmute');
+  if(!p) return;
+  p.innerHTML = `
+    <h2>Transmute</h2>
+    <div class="sub">.xmute — Offline text, format &amp; cryptographic transformer</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="exportTransmuteHistory()">Export .xmute</button>
+      <button class="btn ghost small" onclick="importTransmuteHistory()">Import .xmute</button>
+      <button class="btn ghost small" onclick="clearTransmuteHistory()">Clear History</button>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px;">
+      <div>
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transformation Mode</label>
+        <select id="xmuteMode" style="width:100%; margin-bottom:8px;" onchange="executeTransmute()">
+          <option value="json-fmt">JSON Prettify &amp; Validate</option>
+          <option value="json-min">JSON Minify</option>
+          <option value="b64-enc">Base64 Encode</option>
+          <option value="b64-dec">Base64 Decode</option>
+          <option value="url-enc">URL Encode</option>
+          <option value="url-dec">URL Decode</option>
+          <option value="hex-enc">Hex Encode</option>
+          <option value="hex-dec">Hex Decode</option>
+          <option value="sha256">SHA-256 Hash</option>
+          <option value="upper">UPPERCASE</option>
+          <option value="lower">lowercase</option>
+        </select>
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Input Data</label>
+        <textarea id="xmuteInput" placeholder="Paste data to transform here..." style="width:100%; height:120px; font-family:monospace; margin-bottom:8px;" oninput="executeTransmute()"></textarea>
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transmuted Output</label>
+        <textarea id="xmuteOutput" readonly placeholder="Result will appear here..." style="width:100%; height:120px; font-family:monospace; background:var(--bg-elevated,#1e293b); margin-bottom:8px;"></textarea>
+        <button class="btn brass small" onclick="saveTransmuteRecord()">Save to Log</button>
+      </div>
+      <div>
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transmute History</label>
+        <div id="xmuteHistoryList" style="max-height:360px; overflow-y:auto; background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:8px;"></div>
+      </div>
+    </div>
+  `;
+  renderTransmuteHistory();
+}
+
+async function executeTransmute(){
+  const inpEl = document.getElementById('xmuteInput');
+  const outEl = document.getElementById('xmuteOutput');
+  const modeEl = document.getElementById('xmuteMode');
+  if(!inpEl || !outEl || !modeEl) return;
+  const val = inpEl.value;
+  const mode = modeEl.value;
+  if(!val){ outEl.value = ''; return; }
+
+  try {
+    if(mode === 'json-fmt'){
+      const obj = JSON.parse(val);
+      outEl.value = JSON.stringify(obj, null, 2);
+    } else if(mode === 'json-min'){
+      const obj = JSON.parse(val);
+      outEl.value = JSON.stringify(obj);
+    } else if(mode === 'b64-enc'){
+      outEl.value = btoa(unescape(encodeURIComponent(val)));
+    } else if(mode === 'b64-dec'){
+      outEl.value = decodeURIComponent(escape(atob(val)));
+    } else if(mode === 'url-enc'){
+      outEl.value = encodeURIComponent(val);
+    } else if(mode === 'url-dec'){
+      outEl.value = decodeURIComponent(val);
+    } else if(mode === 'hex-enc'){
+      outEl.value = Array.from(new TextEncoder().encode(val)).map(b => b.toString(16).padStart(2, '0')).join('');
+    } else if(mode === 'hex-dec'){
+      const clean = val.replace(/\s+/g, '');
+      const bytes = new Uint8Array(clean.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      outEl.value = new TextDecoder().decode(bytes);
+    } else if(mode === 'sha256'){
+      const msgBuffer = new TextEncoder().encode(val);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      outEl.value = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } else if(mode === 'upper'){
+      outEl.value = val.toUpperCase();
+    } else if(mode === 'lower'){
+      outEl.value = val.toLowerCase();
+    }
+  } catch(e) {
+    outEl.value = 'Error processing transformation: ' + e.message;
+  }
+}
+
+function saveTransmuteRecord(){
+  const inp = (document.getElementById('xmuteInput').value || '').trim();
+  const out = (document.getElementById('xmuteOutput').value || '').trim();
+  const mode = document.getElementById('xmuteMode').value;
+  if(!inp || !out || out.startsWith('Error')) return;
+
+  const data = loadLocal('transmute', {history:[]});
+  data.history.unshift({
+    id: Date.now(),
+    mode,
+    input: inp,
+    output: out,
+    ts: new Date().toLocaleTimeString()
+  });
+  if(data.history.length > 30) data.history.pop();
+  saveLocal('transmute', data);
+  renderTransmuteHistory();
+}
+
+function renderTransmuteHistory(){
+  const el = document.getElementById('xmuteHistoryList');
+  if(!el) return;
+  const data = loadLocal('transmute', {history:[]});
+  if(!data.history.length){ el.innerHTML = '<div class="hint">No transform records saved.</div>'; return; }
+  el.innerHTML = data.history.map(item=>`
+    <div style="border-bottom:1px solid var(--border,#334155); padding:8px 0; font-size:0.85em;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+        <span class="tag-pill">${item.mode}</span>
+        <span style="color:var(--text-muted,#94a3b8); font-size:0.8em;">${item.ts}</span>
+      </div>
+      <div style="font-family:monospace; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">In: ${item.input}</div>
+      <div style="font-family:monospace; color:#38bdf8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Out: ${item.output}</div>
+    </div>
+  `).join('');
+}
+
+function clearTransmuteHistory(){
+  saveLocal('transmute', {history:[]});
+  renderTransmuteHistory();
+}
+function exportTransmuteHistory(){
+  const d = loadLocal('transmute', {history:[]});
+  download('transforms.xmute', JSON.stringify({type:'xmute', ...d}, null, 2));
+}
+function importTransmuteHistory(){
+  pickFile('.xmute', (content)=>{
+    try{
+      const parsed = JSON.parse(content);
+      saveLocal('transmute', {history: parsed.history || []});
+      renderTransmute();
+    } catch(e){ alert('Could not parse .xmute file'); }
+  });
+}
+
+/* ================= DOXERA (.ddf) ================= */
+function renderDoxera(){
+  const p = document.getElementById('panel-doxera');
+  if(!p) return;
+  p.innerHTML = `
+    <h2>Doxera</h2>
+    <div class="sub">.ddf — Structured documentation &amp; offline knowledge studio</div>
+    <div class="toolbar">
+      <button class="btn ghost small" onclick="addDoxeraDoc()">+ New Doc</button>
+      <button class="btn sage small" onclick="saveCurrentDoxeraDoc()">Save Active</button>
+      <button class="btn ghost small" onclick="exportDoxeraDocs()">Export .ddf</button>
+      <button class="btn ghost small" onclick="importDoxeraDocs()">Import .ddf</button>
+    </div>
+    <div style="display:grid; grid-template-columns: 240px 1fr; gap:16px; margin-top:12px;">
+      <div style="border-right:1px solid var(--border,#334155); padding-right:12px;">
+        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:6px;">Documentation Index</label>
+        <div id="doxeraDocList" style="max-height:400px; overflow-y:auto;"></div>
+      </div>
+      <div>
+        <input type="text" id="doxeraTitle" placeholder="Document Title" style="width:100%; font-size:1.1em; font-weight:bold; margin-bottom:8px;">
+        <textarea id="doxeraBody" placeholder="Write structured markdown/docs here..." style="width:100%; height:320px; font-family:monospace; line-height:1.5;"></textarea>
+      </div>
+    </div>
+  `;
+  renderDoxeraList();
+}
+
+let _activeDoxeraId = null;
+
+function renderDoxeraList(){
+  const listEl = document.getElementById('doxeraDocList');
+  if(!listEl) return;
+  const data = loadLocal('doxera', {docs:[]});
+  if(!data.docs.length){
+    data.docs.push({ id:Date.now(), title:'Getting Started with Doxera', body:'# Doxera Knowledge Base\n\nWelcome to Doxera, your offline structured documentation system.' });
+    saveLocal('doxera', data);
+  }
+
+  if(!_activeDoxeraId && data.docs.length > 0) _activeDoxeraId = data.docs[0].id;
+
+  listEl.innerHTML = data.docs.map(doc=>`
+    <div class="sidebar-item ${doc.id===_activeDoxeraId?'active':''}" style="margin-bottom:4px; padding:6px 8px; cursor:pointer;" onclick="selectDoxeraDoc(${doc.id})">
+      <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">📄 ${doc.title || 'Untitled'}</span>
+    </div>
+  `).join('');
+
+  const activeDoc = data.docs.find(d=>d.id===_activeDoxeraId);
+  if(activeDoc){
+    const titleEl = document.getElementById('doxeraTitle');
+    const bodyEl = document.getElementById('doxeraBody');
+    if(titleEl) titleEl.value = activeDoc.title || '';
+    if(bodyEl) bodyEl.value = activeDoc.body || '';
+  }
+}
+
+function selectDoxeraDoc(id){
+  saveCurrentDoxeraDoc();
+  _activeDoxeraId = id;
+  renderDoxeraList();
+}
+
+function addDoxeraDoc(){
+  saveCurrentDoxeraDoc();
+  const data = loadLocal('doxera', {docs:[]});
+  const newDoc = { id:Date.now(), title:'New Document', body:'' };
+  data.docs.push(newDoc);
+  _activeDoxeraId = newDoc.id;
+  saveLocal('doxera', data);
+  renderDoxeraList();
+}
+
+function saveCurrentDoxeraDoc(){
+  if(!_activeDoxeraId) return;
+  const titleEl = document.getElementById('doxeraTitle');
+  const bodyEl = document.getElementById('doxeraBody');
+  if(!titleEl || !bodyEl) return;
+
+  const data = loadLocal('doxera', {docs:[]});
+  const doc = data.docs.find(d=>d.id===_activeDoxeraId);
+  if(doc){
+    doc.title = titleEl.value;
+    doc.body = bodyEl.value;
+    saveLocal('doxera', data);
+    renderDoxeraList();
+  }
+}
+
+function exportDoxeraDocs(){
+  saveCurrentDoxeraDoc();
+  const d = loadLocal('doxera', {docs:[]});
+  download('knowledge.ddf', JSON.stringify({type:'ddf', ...d}, null, 2));
+}
+
+function importDoxeraDocs(){
+  pickFile('.ddf', (content)=>{
+    try{
+      const parsed = JSON.parse(content);
+      saveLocal('doxera', {docs: parsed.docs || []});
+      renderDoxera();
+    } catch(e){ alert('Could not parse .ddf file'); }
+  });
+}
+
+
 /* ================= CAPSULE (bundle everything, real encryption) ================= */
-const CAPSULE_KEYS = ['docs','sheets','forms','notes','tasks','agenda','slides','lockbox','mode','modTimes'];
+const CAPSULE_KEYS = ['docs','sheets','forms','notes','tasks','agenda','slides','lockbox','formula','transmute','doxera','mode','modTimes'];
 
 function buildCapsule(){
   const bundle = {type:'capsule', version:1, createdAt:new Date().toISOString(), modules:{}};
@@ -4925,6 +5418,7 @@ function applyCapsule(bundle){
   });
   renderDocs(); renderSheets(); renderForms(); renderNotes();
   renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
+  renderFormula(); renderTransmute(); renderDoxera();
   renderToday();
   mode = loadLocal('mode','offline');
     }
@@ -5810,6 +6304,7 @@ const ITEM_LIST_MODULES = {};
 (async function initApp(){
   renderDocs(); renderSheets(); renderForms(); renderNotes();
   renderTasks(); renderAgenda(); renderSlides(); renderLockbox();
+  renderFormula(); renderTransmute(); renderDoxera();
   if(!SUITE_ONLY){ renderToday(); activateTab('today'); }
   else { activateTab(modules[0].id); }
     })();
