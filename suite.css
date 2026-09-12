@@ -1,5 +1,6 @@
 
 :root{
+  --bg-main:#0c1017;
   --bg-workspace:#0c1017;
   --bg-surface:#141b26;
   --surface-panel:#1a2332;
@@ -256,7 +257,7 @@ body{
 .vault-form label{
   font-family:'Helvetica Neue',Arial,sans-serif;
   font-size:0.78em;
-  color:#6b6250;
+  color:var(--text-muted, #94a3b8);
   display:flex; flex-direction:column; gap:4px;
 }
 .vault-form input, .vault-form textarea{

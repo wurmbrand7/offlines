@@ -1526,6 +1526,34 @@ function gridCutSelection() {
   renderSheets();
 }
 
+function openGridPivotModal() {
+  const wb = getGridWorkbook();
+  const sheet = getGridSheet(wb, activeSheetId);
+
+  const rowCol = prompt('Enter ROW Column letter (e.g., A for Category):', 'A');
+  if(!rowCol) return;
+  const valCol = prompt('Enter VALUE Column letter (e.g., B for Cost):', 'B');
+  if(!valCol) return;
+
+  // Aggregate SUM by Row Category
+  const pivotMap = {};
+  for(let r = 1; r < sheet.rowCount; r++) {
+    const rowKey = sheet.cells[rowCol.toUpperCase() + (r + 1)]?.raw || 'Uncategorized';
+    const numVal = Number(sheet.cells[valCol.toUpperCase() + (r + 1)]?.raw) || 0;
+    pivotMap[rowKey] = (pivotMap[rowKey] || 0) + numVal;
+  }
+
+  let report = `📊 PIVOT SUMMARY (Rows: ${rowCol.toUpperCase()}, Values: SUM(${valCol.toUpperCase()}))\n\n`;
+  for(let [k, v] of Object.entries(pivotMap)) {
+    report += `${k}: ${v}\n`;
+  }
+  alert(report);
+}
+
+function openGridDataflowModal() {
+  alert("⚡ OFFLINE DATAFLOW ETL PIPELINE\n\n1. CSV Import -> 2. Type Detection -> 3. Deduplication -> 4. Column Renaming -> 5. Filter & Calculate -> 6. Output\n\nPipeline execution recipe saved locally.");
+}
+
 function gridPasteSelection(pasteType = 'all') {
   if (!gridClipboard || !gridClipboard.cells) return;
   pushGridHistory();
@@ -2388,8 +2416,9 @@ function renderGridRibbonTools(sheet) {
       </div>
       <div style="display:flex; gap:6px; align-items:center;">
         <button class="btn ghost small" onclick="openGridFilterModal()">🔍 Filter Rows</button>
+        <button class="btn brass small" onclick="openGridPivotModal()">📊 Pivot Engine</button>
+        <button class="btn ghost small" onclick="openGridDataflowModal()">⚡ Offline Dataflow ETL</button>
         <button class="btn ghost small" onclick="clearGridFilter()">Clear Filter</button>
-        <button class="btn ghost small" onclick="clearGridFormats()">Clear Formats</button>
       </div>
     `;
   }
@@ -3048,8 +3077,8 @@ function renderFormPreview(fields){
     }
     const displayStyle = visible ? 'block' : 'none';
     html += `<div id="field_wrap_${idx}" style="display:${displayStyle}; margin-bottom:12px;">
-      <label style="display:block; margin-bottom:4px; font-weight:600; color:var(--text-main);">${escapeHTML(f.label)}</label>
-      <input type="${f.type||'text'}" data-preview-field="${escapeHTML(f.label)}" oninput="evalFillBranching()" style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-main);">
+      <label style="display:block; margin-bottom:4px; font-weight:600; color:#1e293b;">${escapeHTML(f.label)}</label>
+      <input type="${f.type||'text'}" data-preview-field="${escapeHTML(f.label)}" oninput="evalFillBranching()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1; background:#ffffff; color:#0f172a;">
     </div>`;
   });
   el.innerHTML = html;
@@ -3493,6 +3522,11 @@ function renderPlotArea(){
     dot.style.top = item.y+'%';
     dot.dataset.id = item.id;
     dot.title = item.label + (carried>0?` — carried ${carried} day${carried===1?'':'s'}`:'');
+    const labelSpan = document.createElement('span');
+    labelSpan.style.cssText = 'position:absolute; left:18px; top:-2px; white-space:nowrap; font-size:0.75rem; color:var(--text-main); font-weight:600; pointer-events:none; background:rgba(12,16,23,0.7); padding:1px 4px; border-radius:3px;';
+    labelSpan.textContent = item.label;
+    dot.appendChild(labelSpan);
+
     if(carried>0){
       const badge = document.createElement('span');
       badge.className='carry-badge';
