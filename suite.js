@@ -822,7 +822,15 @@ function renderFolioRibbonTools() {
     `;
   }
   if (tab === 'REVIEW') {
+    const docObj = getFolioDocument();
+    const tracking = docObj.document.trackChanges || false;
     return `
+      <button class="btn ${tracking?'brass':'ghost'} small" style="${btnStyle}" onclick="toggleFolioTrackChanges()">${tracking?'🔴 Tracking ON':'⚪ Track Changes'}</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="addFolioTrackedChange('insert')">➕ Track Insertion</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="addFolioTrackedChange('delete')">➖ Track Deletion</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="acceptAllFolioChanges()">✓ Accept All</button>
+      <button class="btn ghost small" style="${btnStyle}" onclick="rejectAllFolioChanges()">✕ Reject All</button>
+      <div style="height:16px; width:1px; background:var(--border-color);"></div>
       <button class="btn ghost small" style="${btnStyle}" onclick="addFolioComment()">💬 Add Comment</button>
       <button class="btn ghost small" style="${btnStyle}" onclick="openFolioFindReplaceModal()">🔍 Find & Replace</button>
     `;
@@ -924,6 +932,89 @@ function deleteFolioTableCol() {
     table.rows[i].deleteCell(-1);
   }
   captureFolioCurrentContent();
+}
+
+function toggleFolioTrackChanges() {
+  const docObj = getFolioDocument();
+  docObj.document.trackChanges = !docObj.document.trackChanges;
+  saveFolioDocument(docObj, true);
+  renderDocs();
+}
+
+function addFolioTrackedChange(type) {
+  const sel = window.getSelection();
+  const text = sel ? sel.toString().trim() : '';
+  if (!text && type === 'delete') {
+    alert('Please select text to mark for deletion.');
+    return;
+  }
+  const changeText = text || prompt('Enter inserted text:');
+  if (!changeText) return;
+
+  const editor = document.getElementById('docsEditor');
+  if (!editor) return;
+
+  const tag = type === 'insert' ? 'ins' : 'del';
+  const color = type === 'insert' ? '#10b981' : '#ef4444';
+  const html = `<${tag} class="folio-change" data-id="chg_${Date.now()}" style="color:${color}; text-decoration:${type==='insert'?'underline':'line-through'}; background:rgba(255,255,255,0.05); padding:0 2px;">${escapeHTML(changeText)}</${tag}>`;
+  document.execCommand('insertHTML', false, html);
+  saveFolioContentFromDOM();
+}
+
+function acceptFolioChange(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  if (el.tagName.toLowerCase() === 'del') {
+    el.remove();
+  } else {
+    const text = el.textContent;
+    el.replaceWith(text);
+  }
+  saveFolioContentFromDOM();
+}
+
+function rejectFolioChange(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  if (el.tagName.toLowerCase() === 'ins') {
+    el.remove();
+  } else {
+    const text = el.textContent;
+    el.replaceWith(text);
+  }
+  saveFolioContentFromDOM();
+}
+
+function acceptAllFolioChanges() {
+  const changes = document.querySelectorAll('.folio-change');
+  changes.forEach(el => {
+    if (el.tagName.toLowerCase() === 'del') {
+      el.remove();
+    } else {
+      el.replaceWith(el.textContent);
+    }
+  });
+  saveFolioContentFromDOM();
+}
+
+function rejectAllFolioChanges() {
+  const changes = document.querySelectorAll('.folio-change');
+  changes.forEach(el => {
+    if (el.tagName.toLowerCase() === 'ins') {
+      el.remove();
+    } else {
+      el.replaceWith(el.textContent);
+    }
+  });
+  saveFolioContentFromDOM();
+}
+
+function saveFolioContentFromDOM() {
+  const editor = document.getElementById('docsEditor');
+  if (!editor) return;
+  const docObj = getFolioDocument();
+  docObj.document.content = editor.innerHTML;
+  saveFolioDocument(docObj, true);
 }
 
 function addFolioComment() {
@@ -1861,15 +1952,16 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     let cleaned = expr.trim();
     if (cleaned.startsWith('=')) cleaned = cleaned.slice(1).trim();
 
-    // Replace range references e.g. SUM(A1:B3)
+    // Replace range references e.g. A1:B3 with 2D array representation
     cleaned = cleaned.replace(/([A-Z]+\d+):([A-Z]+\d+)/g, (m, p1, p2) => {
       const c1 = parseCellCoord(p1);
       const c2 = parseCellCoord(p2);
       if (!c1 || !c2) return '[]';
-      const vals = [];
+      const rows = [];
       const minCol = Math.min(c1.col, c2.col), maxCol = Math.max(c1.col, c2.col);
       const minRow = Math.min(c1.row, c2.row), maxRow = Math.max(c1.row, c2.row);
       for (let r = minRow; r <= maxRow; r++) {
+        const rowVals = [];
         for (let c = minCol; c <= maxCol; c++) {
           const coord = colLetter(c) + (r + 1);
           if (visited.has(coord)) return '#CIRCULAR!';
@@ -1882,10 +1974,11 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
           } else {
             v = isNaN(Number(raw)) ? (raw || 0) : Number(raw);
           }
-          vals.push(typeof v === 'number' ? v : JSON.stringify(v));
+          rowVals.push(typeof v === 'number' ? v : JSON.stringify(v));
         }
+        rows.push('[' + rowVals.join(',') + ']');
       }
-      return '[' + vals.join(',') + ']';
+      return '[' + rows.join(',') + ']';
     });
 
     // Replace single cell references e.g. A1, B2
@@ -1903,16 +1996,17 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     });
 
     // Mathematical & Statistical Helpers
-    const SUM = arr => (Array.isArray(arr) ? arr : [arr]).reduce((a, b) => a + (Number(b) || 0), 0);
-    const AVERAGE = arr => { const a = (Array.isArray(arr) ? arr : [arr]); return a.length ? SUM(a) / a.length : 0; };
-    const MIN = arr => Math.min(...(Array.isArray(arr) ? arr : [arr]).map(Number));
-    const MAX = arr => Math.max(...(Array.isArray(arr) ? arr : [arr]).map(Number));
-    const COUNT = arr => (Array.isArray(arr) ? arr : [arr]).filter(x => typeof x === 'number' && !isNaN(x)).length;
-    const COUNTA = arr => (Array.isArray(arr) ? arr : [arr]).filter(x => x !== '' && x !== null && x !== undefined).length;
-    const COUNTIF = (arr, cond) => (Array.isArray(arr) ? arr : [arr]).filter(x => String(x) === String(cond)).length;
+    const flatten = a => Array.isArray(a) ? a.flat(Infinity) : [a];
+    const SUM = arr => flatten(arr).reduce((a, b) => a + (Number(b) || 0), 0);
+    const AVERAGE = arr => { const a = flatten(arr); return a.length ? SUM(a) / a.length : 0; };
+    const MIN = arr => Math.min(...flatten(arr).map(Number));
+    const MAX = arr => Math.max(...flatten(arr).map(Number));
+    const COUNT = arr => flatten(arr).filter(x => typeof x === 'number' && !isNaN(x)).length;
+    const COUNTA = arr => flatten(arr).filter(x => x !== '' && x !== null && x !== undefined).length;
+    const COUNTIF = (arr, cond) => flatten(arr).filter(x => String(x) === String(cond)).length;
     const SUMIF = (arr, cond, sumArr) => {
-      const a = Array.isArray(arr) ? arr : [arr];
-      const s = sumArr ? (Array.isArray(sumArr) ? sumArr : [sumArr]) : a;
+      const a = flatten(arr);
+      const s = sumArr ? flatten(sumArr) : a;
       return a.reduce((acc, val, idx) => String(val) === String(cond) ? acc + (Number(s[idx]) || 0) : acc, 0);
     };
     const AVERAGEIF = (arr, cond) => {
@@ -2940,7 +3034,41 @@ function renderFieldsList(fields){
 }
 function renderFormPreview(fields){
   const el = document.getElementById('formPreview');
-  el.innerHTML = fields.map(f=>`<label>${f.label}</label><input type="${f.type}" data-preview-field="${f.label}">`).join('');
+  if(!el) return;
+
+  let html = '';
+  fields.forEach((f, idx) => {
+    // Check conditional visibility rule e.g. f.showIfField && f.showIfValue
+    let visible = true;
+    if (f.showIfField && f.showIfValue) {
+      const parentInp = document.querySelector(`[data-preview-field="${f.showIfField}"]`);
+      if (parentInp && parentInp.value !== f.showIfValue) {
+        visible = false;
+      }
+    }
+    const displayStyle = visible ? 'block' : 'none';
+    html += `<div id="field_wrap_${idx}" style="display:${displayStyle}; margin-bottom:12px;">
+      <label style="display:block; margin-bottom:4px; font-weight:600; color:var(--text-main);">${escapeHTML(f.label)}</label>
+      <input type="${f.type||'text'}" data-preview-field="${escapeHTML(f.label)}" oninput="evalFillBranching()" style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-main); color:var(--text-main);">
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function evalFillBranching() {
+  const data = getFormsData();
+  data.fields.forEach((f, idx) => {
+    const wrap = document.getElementById(`field_wrap_${idx}`);
+    if (!wrap) return;
+    if (f.showIfField && f.showIfValue) {
+      const parentInp = document.querySelector(`[data-preview-field="${f.showIfField}"]`);
+      if (parentInp && parentInp.value === f.showIfValue) {
+        wrap.style.display = 'block';
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+  });
 }
 function getFormsData(){ return loadLocal('forms', {fields:[],submissions:[]}); }
 function addField(){
@@ -3042,13 +3170,28 @@ function getNotesData(){ return loadLocal('notes', {items:[
 function renderNotesCanvas(){
   const d = getNotesData();
   const canvas = document.getElementById('notesCanvas');
-  canvas.innerHTML = d.items.map(item=>`
-    <div class="spot-note${item.anchor?' anchored':''}" style="left:${item.x}px; top:${item.y}px;" data-id="${item.id}">
+  if(!canvas) return;
+
+  // Render connector lines between adjacent notes
+  let svgConnectors = '<svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;">';
+  for (let i = 0; i < d.items.length - 1; i++) {
+    const n1 = d.items[i];
+    const n2 = d.items[i + 1];
+    const x1 = n1.x + 75, y1 = n1.y + 45;
+    const x2 = n2.x + 75, y2 = n2.y + 45;
+    svgConnectors += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent-primary,#3b82f6)" stroke-width="2" stroke-dasharray="4,4" opacity="0.6"/>`;
+  }
+  svgConnectors += '</svg>';
+
+  const notesHtml = d.items.map(item=>`
+    <div class="spot-note${item.anchor?' anchored':''}" style="left:${item.x}px; top:${item.y}px; z-index:1;" data-id="${item.id}">
       <span class="del" onclick="deleteSpotNote(${item.id})">✕</span>
       ${item.anchor?`<div class="anchor-tag" title="${item.anchor.replace(/"/g,'&quot;')}">📌 "${item.anchor.slice(0,26)}${item.anchor.length>26?'…':''}" <span style="cursor:pointer;text-decoration:underline;" onclick="findInFolio('${item.anchor.replace(/'/g,"\\'")}')">find</span></div>`:''}
       <textarea onchange="updateSpotText(${item.id}, this.value)">${item.text}</textarea>
     </div>
   `).join('');
+
+  canvas.innerHTML = svgConnectors + notesHtml;
   canvas.querySelectorAll('.spot-note').forEach(el=>{
     el.addEventListener('mousedown', e=>{
       if(e.target.tagName==='TEXTAREA' || e.target.classList.contains('del')) return;
@@ -3300,12 +3443,23 @@ function renderTasks(){
   p.innerHTML = `
     <h2>Docket</h2>
     <div class="sub">.plot — urgent vs. important. Dots you keep avoiding visibly age and pick up a carried-day count.</div>
-    <div class="toolbar">
+    <div class="toolbar" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
       <button class="btn ghost small" onclick="addPlotTask()">+ New task</button>
       <button class="btn sage small" onclick="showSeal()">Save</button>
+
+      <div style="display:flex; border:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
+        <button class="btn ghost small" onclick="switchDocketView('matrix')">Matrix</button>
+        <button class="btn ghost small" onclick="switchDocketView('list')">List</button>
+      </div>
+
+      <input type="text" id="docketQueryInput" placeholder="Filter tasks e.g. urgent, done, today..." oninput="filterDocketTasks(this.value)" style="width:200px; padding:4px 8px; font-size:0.8rem;">
+
       <button class="btn ghost small" onclick="exportTasks()">Export .plot</button>
       <button class="btn ghost small" onclick="importTasks()">Import .plot</button>
     </div>
+
+    <div id="docketListContainer" style="display:none; margin-bottom:12px; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:6px; padding:12px;"></div>
+
     <div id="plotArea">
       <div class="plot-axis-label" style="bottom:6px; left:10px;">Soon</div>
       <div class="plot-axis-label" style="bottom:6px; right:10px;">Later</div>
@@ -3385,6 +3539,56 @@ function toggleTaskDone(id){
   const item = d.items.find(i=>i.id===id);
   if(item) item.done = !item.done;
   saveLocal('tasks', d); renderPlotArea();
+  renderDocketList();
+}
+
+function switchDocketView(view) {
+  const listContainer = document.getElementById('docketListContainer');
+  const matrixArea = document.getElementById('plotArea');
+  if (!listContainer || !matrixArea) return;
+  if (view === 'list') {
+    listContainer.style.display = 'block';
+    matrixArea.style.display = 'none';
+    renderDocketList();
+  } else {
+    listContainer.style.display = 'none';
+    matrixArea.style.display = 'block';
+  }
+}
+
+function renderDocketList() {
+  const listContainer = document.getElementById('docketListContainer');
+  if (!listContainer) return;
+  const data = getTasksData();
+  const query = (document.getElementById('docketQueryInput')?.value || '').toLowerCase().trim();
+
+  let filtered = data.items;
+  if (query) {
+    filtered = filtered.filter(item => {
+      if (query === 'done') return item.done;
+      if (query === 'urgent') return item.y < 40;
+      if (query === 'today') return item.createdDate === todayStr();
+      return item.label.toLowerCase().includes(query);
+    });
+  }
+
+  listContainer.innerHTML = `
+    <h3 style="margin-top:0; font-size:0.9rem; color:var(--text-main);">Tasks List (${filtered.length})</h3>
+    ${filtered.map(item => `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" ${item.done?'checked':''} onchange="toggleTaskDone(${item.id})">
+          <span style="text-decoration:${item.done?'line-through':'none'}; color:${item.done?'var(--text-muted)':'var(--text-main)'}; font-weight:500;">${escapeHTML(item.label)}</span>
+        </div>
+        <span style="font-size:0.75rem; color:var(--text-muted);">${item.createdDate}</span>
+      </div>
+    `).join('')}
+  `;
+}
+
+function filterDocketTasks(q) {
+  renderPlotArea();
+  renderDocketList();
 }
 function exportTasks(){
   const d = getTasksData();
@@ -3814,6 +4018,7 @@ function renderSlides(){
     <div class="toolbar">
       <button class="btn ghost small" onclick="addSlide()">+ New slide</button>
       <button class="btn ghost small" onclick="insertGridEmbed()">📊 Insert Grid range</button>
+      <button class="btn brass small" onclick="startGlidesPresenterMode()">▶ Presenter Mode</button>
       <button class="btn sage small" onclick="showSeal()">Save</button>
       <button class="btn ghost small" onclick="exportSlides()">Export .glides</button>
       <button class="btn ghost small" onclick="importSlides()">Import .glides</button>
@@ -3889,6 +4094,40 @@ function updateSlideText(text){
   d.slides[activeSlideIdx].text = text;
   saveLocal('slides', d); renderFilmstrip();
 }
+function startGlidesPresenterMode() {
+  const d = getSlidesData();
+  if(!d.slides.length) return;
+
+  let presenterIdx = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'glidesPresenterOverlay';
+  overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; color:#fff; z-index:99999; display:flex; flex-direction:column; justify-content:space-between; padding:30px; box-sizing:border-box; font-family:sans-serif;';
+
+  const updatePresenter = () => {
+    const s = d.slides[presenterIdx];
+    overlay.innerHTML = `
+      <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding-bottom:10px;">
+        <span style="font-weight:bold; color:var(--accent-primary,#3b82f6);">GLIDES PRESENTER MODE</span>
+        <span>Slide ${presenterIdx + 1} of ${d.slides.length}</span>
+      </div>
+      <div style="flex:1; display:flex; align-items:center; justify-content:center; font-size:2rem; text-align:center; padding:20px;">
+        ${parseSlideEmbeds(escapeHTML(s.text||''))}
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #333; padding-top:10px;">
+        <button class="btn ghost small" id="prevSlideBtn" style="color:#fff;">◀ Previous</button>
+        <button class="btn brass small" id="exitPresenterBtn">Exit Presentation (Esc)</button>
+        <button class="btn ghost small" id="nextSlideBtn" style="color:#fff;">Next ▶</button>
+      </div>
+    `;
+    overlay.querySelector('#prevSlideBtn').onclick = () => { if(presenterIdx > 0) { presenterIdx--; updatePresenter(); } };
+    overlay.querySelector('#nextSlideBtn').onclick = () => { if(presenterIdx < d.slides.length - 1) { presenterIdx++; updatePresenter(); } };
+    overlay.querySelector('#exitPresenterBtn').onclick = () => { overlay.remove(); };
+  };
+
+  updatePresenter();
+  document.body.appendChild(overlay);
+}
+
 function exportSlides(){
   const d = getSlidesData();
   download('deck.glides', JSON.stringify({type:'glides',...d}, null, 2));
