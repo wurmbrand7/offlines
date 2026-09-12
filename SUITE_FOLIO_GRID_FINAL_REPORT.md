@@ -1,7 +1,7 @@
-# DEPLOYMENT & LOCAL-ONLY VERIFICATION REPORT
+# [HISTORICAL — NOT CURRENT] DEPLOYMENT & LOCAL-ONLY VERIFICATION REPORT
 
-**Product:** OFFLINES — Standalone Local-First Privacy Operating Suite
-**Build ID:** `LOCAL-ONLY-2026-09-10-V4`
+**Product:** OFFLINES — Standalone Local-First Privacy Operating Suite (Historical Reference)
+**Build ID:** `LOCAL-ONLY-2026-09-10-V4` (HISTORICAL — Current Build is V6)
 **Service Worker Cache:** `suite-cache-v4`
 **Date:** September 2026
 **Status:** PASS — ALL LOCAL-ONLY & DEPLOYMENT GATES PASSED

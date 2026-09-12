@@ -55,7 +55,7 @@ def test_grid_exhaustive_suite():
 
             # Test 3: SVG Chart generation
             print("3. Testing SVG Chart generation...")
-            page.click("button:has-text('insert')")
+            page.click("button[onclick=\"setGridRibbonTab('insert')\"]")
             page.wait_for_timeout(200)
             page.click("button:has-text('Bar Chart')")
             page.wait_for_timeout(300)
@@ -85,8 +85,8 @@ def test_grid_exhaustive_suite():
 
             # Test 5: Save & reload persistence
             print("5. Testing workbook persistence on page reload...")
-            page.click("button:has-text('start')")
-            page.click("button:has-text('Save')")
+            page.click("button[onclick=\"setGridRibbonTab('start')\"]")
+            page.click("#panel-sheets button:has-text('Save')")
             page.wait_for_timeout(500)
 
             page.reload()

@@ -1,7 +1,7 @@
-# SUITE CURRENT SPECIFICATION
+# [HISTORICAL — NOT CURRENT] SUITE SPECIFICATION
 
-**Product:** OFFLINES / Suite
-**Build ID:** `LOCAL-ONLY-2026-09-10-V4`
+**Product:** OFFLINES / Suite (Historical Reference)
+**Build ID:** `LOCAL-ONLY-2026-09-10-V4` (HISTORICAL — Current Build is V6)
 **Deployment Policy:** `suite-cache-v4` (Network-first navigation HTML with cache fallback)
 **Architecture:** 100% Standalone Local-First Privacy Operating Suite
 **Status:** Active
