@@ -2115,7 +2115,7 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     };
 
     // Security Sanitization check
-    if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process)\b/i.test(cleaned) || /[;=\{\}\\\`]|--|\/\*/.test(cleaned)) {
+    if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process|this)\b/i.test(cleaned) || /[;=\{\}\\\`]|--|\/\*/.test(cleaned)) {
       return '#SECURITY_ERROR!';
     }
 
@@ -4372,6 +4372,10 @@ function evaluateFormulaExpr(){
                     .replace(/ln\(/gi, 'Math.log(')
                     .replace(/deg2rad\(([^)]+)\)/gi, '(($1)*Math.PI/180)')
                     .replace(/\^/g, '**');
+      if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process)\b/i.test(expr) || /[;=\{\}\\\`]|--|\/\*/.test(expr)) {
+        resEl.textContent = 'Error: Security Constraint';
+        return;
+      }
       const calc = Function('"use strict"; return (' + expr + ')')();
       resultVal = (typeof calc === 'number') ? (Number.isInteger(calc) ? calc.toString() : calc.toFixed(6).replace(/\.?0+$/, '')) : String(calc);
     }
