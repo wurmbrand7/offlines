@@ -2114,6 +2114,11 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
       return idx >= 0 ? idx + 1 : '#N/A';
     };
 
+    // Security Sanitization check
+    if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process)\b/i.test(cleaned) || /[;=\{\}\\\`]|--|\/\*/.test(cleaned)) {
+      return '#SECURITY_ERROR!';
+    }
+
     // Context execution
     const fn = new Function('SUM','AVERAGE','MIN','MAX','COUNT','COUNTA','COUNTIF','SUMIF','AVERAGEIF','ROUND','ROUNDUP','ROUNDDOWN','ABS','SQRT','POWER','MOD','PRODUCT','IF','IFS','AND','OR','NOT','IFERROR','CONCAT','CONCATENATE','TEXTJOIN','SUBSTITUTE','REPLACE','TODAY','NOW','DATE','YEAR','MONTH','DAY','UPPER','LOWER','LEN','TRIM','LEFT','RIGHT','MID','VLOOKUP','HLOOKUP','XLOOKUP','INDEX','MATCH', 'return (' + cleaned + ');');
     const res = fn(SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, COUNTIF, SUMIF, AVERAGEIF, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, PRODUCT, IF, IFS, AND, OR, NOT, IFERROR, CONCAT, CONCATENATE, TEXTJOIN, SUBSTITUTE, REPLACE, TODAY, NOW, DATE, YEAR, MONTH, DAY, UPPER, LOWER, LEN, TRIM, LEFT, RIGHT, MID, VLOOKUP, HLOOKUP, XLOOKUP, INDEX, MATCH);
