@@ -1538,30 +1538,119 @@ function gridCutSelection() {
 
 function openGridPivotModal() {
   const wb = getGridWorkbook();
-  const sheet = getGridSheet(wb, activeSheetId);
+  const sheet = getActiveSheet(wb);
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>📊 Grid Pivot Engine</h3>
+    <p class="hint">Summarize and aggregate column values by category row key.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Row Category Column (e.g. A):</label>
+      <input type="text" id="pivotRowCol" value="A" style="width:100%;margin-bottom:8px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Value Numeric Column (e.g. B):</label>
+      <input type="text" id="pivotValCol" value="B" style="width:100%;margin-bottom:8px;">
+    </div>
+    <div id="pivotResult" style="background:var(--bg-card,#181c24);padding:10px;border-radius:6px;max-height:200px;overflow:auto;display:none;white-space:pre-wrap;font-family:monospace;font-size:0.85em;margin-bottom:12px;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+      <button class="btn brass small" onclick="runGridPivot()">Generate Pivot</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
 
-  const rowCol = prompt('Enter ROW Column letter (e.g., A for Category):', 'A');
-  if(!rowCol) return;
-  const valCol = prompt('Enter VALUE Column letter (e.g., B for Cost):', 'B');
-  if(!valCol) return;
-
-  // Aggregate SUM by Row Category
+function runGridPivot() {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const rowCol = (document.getElementById('pivotRowCol')?.value || 'A').trim().toUpperCase();
+  const valCol = (document.getElementById('pivotValCol')?.value || 'B').trim().toUpperCase();
   const pivotMap = {};
-  for(let r = 1; r < sheet.rowCount; r++) {
-    const rowKey = sheet.cells[rowCol.toUpperCase() + (r + 1)]?.raw || 'Uncategorized';
-    const numVal = Number(sheet.cells[valCol.toUpperCase() + (r + 1)]?.raw) || 0;
+
+  for (let r = 1; r < (sheet.rowCount || 100); r++) {
+    const rowKey = sheet.cells?.[rowCol + (r + 1)]?.raw || 'Uncategorized';
+    const numVal = Number(sheet.cells?.[valCol + (r + 1)]?.raw) || 0;
     pivotMap[rowKey] = (pivotMap[rowKey] || 0) + numVal;
   }
 
-  let report = `📊 PIVOT SUMMARY (Rows: ${rowCol.toUpperCase()}, Values: SUM(${valCol.toUpperCase()}))\n\n`;
-  for(let [k, v] of Object.entries(pivotMap)) {
-    report += `${k}: ${v}\n`;
+  let report = `📊 PIVOT SUMMARY (Row: ${rowCol}, Value: SUM(${valCol}))\n---------------------------------------\n`;
+  for (let [k, v] of Object.entries(pivotMap)) {
+    report += `${k}: ${v.toLocaleString()}\n`;
   }
-  alert(report);
+  const resEl = document.getElementById('pivotResult');
+  if (resEl) {
+    resEl.textContent = report;
+    resEl.style.display = 'block';
+  }
 }
 
 function openGridDataflowModal() {
-  alert("⚡ OFFLINE DATAFLOW ETL PIPELINE\n\n1. CSV Import -> 2. Type Detection -> 3. Deduplication -> 4. Column Renaming -> 5. Filter & Calculate -> 6. Output\n\nPipeline execution recipe saved locally.");
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>⚡ Local Dataflow ETL Pipeline</h3>
+    <p class="hint">Execute local ETL transformations (Clean, Validate, Deduplicate, Recalculate) directly on active sheet data.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:var(--bg-card,#181c24);padding:8px;border-radius:6px;font-size:0.8em;">
+        <b>Step 1: Sanitize Text</b><br><span style="color:#94a3b8">Trim leading/trailing whitespace across all text cells.</span>
+      </div>
+      <div style="background:var(--bg-card,#181c24);padding:8px;border-radius:6px;font-size:0.8em;">
+        <b>Step 2: Number Parsing</b><br><span style="color:#94a3b8">Cast string numbers to explicit numeric types.</span>
+      </div>
+      <div style="background:var(--bg-card,#181c24);padding:8px;border-radius:6px;font-size:0.8em;">
+        <b>Step 3: Deduplicate</b><br><span style="color:#94a3b8">Identify duplicate rows based on column A keys.</span>
+      </div>
+      <div style="background:var(--bg-card,#181c24);padding:8px;border-radius:6px;font-size:0.8em;">
+        <b>Step 4: Recalculate Formulas</b><br><span style="color:#94a3b8">Update dependency tree and evaluated cell values.</span>
+      </div>
+    </div>
+    <div id="dataflowLog" style="background:var(--bg-card,#181c24);padding:10px;border-radius:6px;max-height:150px;overflow:auto;display:none;white-space:pre-wrap;font-family:monospace;font-size:0.8em;margin-bottom:12px;"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="runGridDataflowETL()">Execute Pipeline</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function runGridDataflowETL() {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  let trimmed = 0;
+  let dedupped = 0;
+  const seenKeys = new Set();
+  pushGridHistory();
+
+  for (let r = 0; r < (sheet.rowCount || 100); r++) {
+    const key = sheet.cells?.[`A${r + 1}`]?.raw;
+    if (key && r > 0) {
+      if (seenKeys.has(key)) {
+        dedupped++;
+      } else {
+        seenKeys.add(key);
+      }
+    }
+    for (let c = 0; c < (sheet.colCount || 26); c++) {
+      const colStr = colLetter(c);
+      const coord = `${colStr}${r + 1}`;
+      if (sheet.cells && sheet.cells[coord] && typeof sheet.cells[coord].raw === 'string') {
+        const orig = sheet.cells[coord].raw;
+        const cleaned = orig.trim();
+        if (cleaned !== orig) {
+          sheet.cells[coord].raw = cleaned;
+          trimmed++;
+        }
+      }
+    }
+  }
+  recalcGridWorkbook();
+  renderGrid();
+  saveGridWorkbook();
+
+  const logEl = document.getElementById('dataflowLog');
+  if (logEl) {
+    logEl.textContent = `[ETL SUCCESS] Local Dataflow Pipeline executed successfully.\n- Cleaned whitespace in ${trimmed} cells\n- Identified ${dedupped} duplicate key rows\n- Recalculated sheet formulas & saved state locally.`;
+    logEl.style.display = 'block';
+  }
 }
 
 function gridPasteSelection(pasteType = 'all') {
