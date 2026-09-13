@@ -75,7 +75,7 @@ function loadLocal(key, fallback){
     return raw ? JSON.parse(raw) : fallback;
   }catch(e){ return fallback; }
 }
-const MODULE_KEYS_TRACKED = ['docs','sheets','forms','notes','tasks','agenda','slides','lockbox'];
+const MODULE_KEYS_TRACKED = ['docs','sheets','forms','notes','tasks','agenda','slides','lockbox','formula','transmute','doxera'];
 function saveLocal(key, value){
   localStorage.setItem(KEY_PREFIX+key, JSON.stringify(value));
   if(MODULE_KEYS_TRACKED.includes(key)){
@@ -1371,7 +1371,17 @@ function exportDocs(){
 }
 function importDocs(){
   pickFile('.fils', (content)=>{
-    try{ const parsed = JSON.parse(content); saveLocal('docs', {html:parsed.html||''}); renderDocs(); }
+    try{
+      const parsed = JSON.parse(content);
+      if(parsed && parsed.document) {
+        saveFolioDocument(parsed, true);
+      } else if(parsed && parsed.html) {
+        const docObj = getFolioDocument();
+        docObj.document.content = parsed.html;
+        saveFolioDocument(docObj, true);
+      }
+      renderDocs();
+    }
     catch(e){ alert('Could not read that .fils file'); }
   });
 }
@@ -5516,7 +5526,7 @@ function openCapsuleModal(kind){
   if(kind==='export'){
     modal.innerHTML = `
       <h3>Export Capsule</h3>
-      <p>Bundles all 8 modules — Folio, Grid, Fill, Spot, Docket, Almanac, Glides, and Lockbox — into one file, locked with a passphrase you choose.</p>
+      <p>Bundles all 11 applications — Folio, Grid, Fill, Spot, Docket, Almanac, Glides, Lockbox, Formula, Transmute, and Doxera — into one file, locked with a passphrase you choose.</p>
       <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace, #f1f5f9);">Set a passphrase</label>
       <input type="text" id="capsulePass" placeholder="Choose a passphrase" style="width:100%;margin-bottom:6px;">
       <p style="color:#a8563f;font-size:0.75em;">This uses your browser's built-in encryption (AES-GCM, key derived with PBKDF2). There's no account or server involved, which also means: if you lose this passphrase, nobody — including us — can recover the file. Write it down somewhere safe.</p>

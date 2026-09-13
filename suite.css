@@ -873,7 +873,7 @@ table.grid th{
 .tag-pill{
   background:var(--sage);color:#fff;font-size:0.7em;padding:2px 8px;border-radius:10px;margin-left:6px;
 }
-.used-in{color:#8a7f66;font-size:0.78em;font-style:italic;}
+.used-in{color:var(--text-muted, #94a3b8);font-size:0.78em;font-style:italic;}
 
 /* Seal animation */
 .seal-overlay{
