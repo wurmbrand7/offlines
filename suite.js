@@ -5044,7 +5044,7 @@ function renderXmuteConvert(){
             <input type="file" id="xmuteFileInput" style="display:none;" onchange="handleXmuteFileSelect(this)">
             <div style="font-size:2rem; margin-bottom:8px;">📁</div>
             <div style="font-weight:600; font-size:0.95rem; color:var(--text-workspace);">Drop a local file here or click to browse</div>
-            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Supports CSV, JSON, TXT, MD, HTML, Images, PDF, DOCX, XLSX (100% Offline)</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Supports CSV, JSON, JSONL, TXT, MD, HTML, Base64, Hex, SHA-256 (100% Offline)</div>
           </div>
         ` : `
           <div class="xmute-file-card">
@@ -5347,7 +5347,13 @@ async function executeTransmute(){
   const inpEl = document.getElementById('xmuteInput');
   const outEl = document.getElementById('xmuteOutput');
   const modeEl = document.getElementById('xmuteMode');
+  const extraParamsEl = document.getElementById('xmuteExtraParams');
   if(!inpEl || !outEl || !modeEl) return;
+
+  if(extraParamsEl){
+    extraParamsEl.style.display = (modeEl.value === 'regex' || modeEl.value === 'jsonpath') ? 'block' : 'none';
+  }
+
   const val = inpEl.value;
   const mode = modeEl.value;
   if(!val){ outEl.value = ''; return; }
@@ -5382,6 +5388,27 @@ async function executeTransmute(){
       outEl.value = val.toUpperCase();
     } else if(mode === 'lower'){
       outEl.value = val.toLowerCase();
+    } else if(mode === 'regex'){
+      const p1 = document.getElementById('xmuteParam1')?.value || '';
+      const p2 = document.getElementById('xmuteParam2')?.value || '';
+      if(!p1) { outEl.value = val; return; }
+      const re = new RegExp(p1, 'g');
+      outEl.value = val.replace(re, p2);
+    } else if(mode === 'jsonpath'){
+      const path = (document.getElementById('xmuteParam1')?.value || '').trim();
+      const obj = JSON.parse(val);
+      if(!path) { outEl.value = JSON.stringify(obj, null, 2); return; }
+      const keys = path.split('.').filter(Boolean);
+      let curr = obj;
+      for(const k of keys){
+        if(curr && typeof curr === 'object' && k in curr){
+          curr = curr[k];
+        } else {
+          curr = undefined;
+          break;
+        }
+      }
+      outEl.value = curr !== undefined ? (typeof curr === 'object' ? JSON.stringify(curr, null, 2) : String(curr)) : 'Key path not found';
     }
   } catch(e) {
     outEl.value = 'Error processing transformation: ' + e.message;
