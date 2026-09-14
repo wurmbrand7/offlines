@@ -5,17 +5,17 @@
   --bg-surface:#141b26;
   --surface-panel:#1a2332;
   --bg-surface-elevated:#222d3e;
-  --border-crisp:rgba(255,255,255,0.12);
-  --border-color:rgba(255,255,255,0.12);
+  --border-crisp:rgba(255,255,255,0.18);
+  --border-color:rgba(255,255,255,0.18);
   --accent-primary:#3b82f6;
-  --accent-subtle:rgba(59,130,246,0.15);
-  --text-workspace:#f1f5f9;
-  --text-main:#f1f5f9;
-  --text-muted:#94a3b8;
+  --accent-subtle:rgba(59,130,246,0.2);
+  --text-workspace:#f8fafc;
+  --text-main:#f8fafc;
+  --text-muted:#cbd5e1;
   --font-mono:'JetBrains Mono','Courier New',monospace;
   --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --ink:#f1f5f9;
-  --paper:#f1f5f9;
+  --ink:#f8fafc;
+  --paper:#f8fafc;
   --paper-dark:#1a2332;
   --navy:#0c1017;
   --navy-2:#1a2332;
@@ -24,7 +24,7 @@
   --brass:#3b82f6;
   --brass-light:#60a5fa;
   --rust:#ef4444;
-  --line:rgba(255,255,255,0.12);
+  --line:rgba(255,255,255,0.18);
   --shadow:rgba(0,0,0,0.5);
 }
 *{box-sizing:border-box;}
@@ -83,15 +83,15 @@ body{
 .sidebar-brand .name b{color:var(--brass-light);}
 .sidebar-brand .tag{
   font-size:0.7em;
-  color:rgba(246,241,228,0.55);
+  color:#94a3b8;
   margin-top:2px;
   letter-spacing:0.02em;
 }
 .sidebar-group{ margin-bottom:6px; }
 .sidebar-group-label{
   font-family:'Helvetica Neue',Arial,sans-serif;
-  font-size:0.66em;
-  letter-spacing:0.12em;
+  font-size:0.68em;
+  letter-spacing:0.14em;
   text-transform:uppercase;
   color:#94a3b8; font-weight:700;
   padding:12px 18px 6px;
@@ -105,15 +105,15 @@ body{
   padding:8px 18px;
   margin:0 8px;
   border-radius:5px;
-  color:#f1f5f9; font-weight:600;
-  font-size:0.86em;
+  color:#e2e8f0; font-weight:600;
+  font-size:0.88em;
   letter-spacing:0.01em;
   cursor:pointer;
 }
-.sidebar-item:hover{ background:rgba(212,171,120,0.08); color:var(--paper); }
+.sidebar-item:hover{ background:rgba(59,130,246,0.15); color:#ffffff; }
 .sidebar-item.active{
-  background:rgba(184,146,90,0.16);
-  color:var(--paper);
+  background:rgba(59,130,246,0.25);
+  color:#ffffff;
   box-shadow:inset 3px 0 0 var(--brass);
 }
 .sidebar-item .si-left{ display:flex; align-items:center; gap:9px; overflow:hidden; }

@@ -1349,15 +1349,21 @@ function docsInsertLink(){
 function docsAddMarginNote(){
   const sel = window.getSelection().toString().trim();
   if(!sel){ alert('Select some text in the doc first, then pin a note about it.'); return; }
-  const noteText = prompt('Margin note for: "'+sel.slice(0,60)+(sel.length>60?'…':'')+'"', '');
-  if(!noteText) return;
-  const d = getNotesData();
-  if(d.items.length>=100){ alert('Spot is capped at 100 notes.'); return; }
-  d.items.push({id:Date.now(), x:40+Math.random()*200, y:40+Math.random()*200, text:noteText, anchor:sel.slice(0,80)});
-  saveLocal('notes', d);
-  bumpSpotStreak();
-  renderNotes();
-  alert('Pinned to Spot — open the Spot tab to see it, with a "find" link back to this line in Folio.');
+  openModalForm({
+    title: 'Attach Margin Note',
+    fields: [
+      { name: 'noteText', label: 'Margin Note Content for: "' + sel.slice(0, 50) + '..."', type: 'text', value: '', required: true }
+    ],
+    onSubmit: (vals) => {
+      if(!vals.noteText) return;
+      const d = getNotesData();
+      if(d.items.length>=100){ alert('Spot is capped at 100 notes.'); return; }
+      d.items.push({id:Date.now(), x:40+Math.random()*200, y:40+Math.random()*200, text:vals.noteText, anchor:sel.slice(0,80)});
+      saveLocal('notes', d);
+      bumpSpotStreak();
+      renderNotes();
+    }
+  });
 }
 function updateWC(){
   const txt = document.getElementById('docsEditor').innerText||'';
@@ -3315,14 +3321,30 @@ function renderNotesCanvas(){
   const canvas = document.getElementById('notesCanvas');
   if(!canvas) return;
 
-  // Render connector lines between adjacent notes
+  // Render connector lines based on shared tags, anchors, or spatial proximity
   let svgConnectors = '<svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;">';
-  for (let i = 0; i < d.items.length - 1; i++) {
-    const n1 = d.items[i];
-    const n2 = d.items[i + 1];
-    const x1 = n1.x + 75, y1 = n1.y + 45;
-    const x2 = n2.x + 75, y2 = n2.y + 45;
-    svgConnectors += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent-primary,#3b82f6)" stroke-width="2" stroke-dasharray="4,4" opacity="0.6"/>`;
+  for (let i = 0; i < d.items.length; i++) {
+    for (let j = i + 1; j < d.items.length; j++) {
+      const n1 = d.items[i];
+      const n2 = d.items[j];
+      const text1 = (n1.text || '').toLowerCase();
+      const text2 = (n2.text || '').toLowerCase();
+
+      const words1 = text1.split(/\W+/).filter(w => w.length > 3);
+      const sharedWord = words1.find(w => text2.includes(w));
+      const sharedAnchor = n1.anchor && n2.anchor && n1.anchor === n2.anchor;
+      const dx = n1.x - n2.x;
+      const dy = n1.y - n2.y;
+      const distance = Math.sqrt(dx*dx + dy*dy);
+
+      // Draw connector line if notes share anchor, key words, or are within 220px proximity
+      if (sharedAnchor || sharedWord || distance < 220) {
+        const x1 = n1.x + 75, y1 = n1.y + 45;
+        const x2 = n2.x + 75, y2 = n2.y + 45;
+        const strokeColor = sharedAnchor ? '#10b981' : (sharedWord ? '#3b82f6' : 'rgba(255,255,255,0.25)');
+        svgConnectors += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${strokeColor}" stroke-width="2" stroke-dasharray="4,4" opacity="0.75"/>`;
+      }
+    }
   }
   svgConnectors += '</svg>';
 
@@ -3676,11 +3698,18 @@ document.addEventListener('mouseup', ()=>{
   draggingDot=null;
 });
 function addPlotTask(){
-  const label = prompt('Task name?','New task');
-  if(!label) return;
-  const d = getTasksData();
-  d.items.push({id:Date.now(), x:50, y:50, label, done:false, createdDate:todayStr()});
-  saveLocal('tasks', d); renderPlotArea();
+  openModalForm({
+    title: 'New Task',
+    fields: [
+      { name: 'label', label: 'Task Title / Description', type: 'text', value: 'New Task', required: true }
+    ],
+    onSubmit: (vals) => {
+      if(!vals.label) return;
+      const d = getTasksData();
+      d.items.push({id:Date.now(), x:50, y:50, label:vals.label, done:false, createdDate:todayStr()});
+      saveLocal('tasks', d); renderPlotArea(); renderDocketList();
+    }
+  });
 }
 function toggleTaskDone(id){
   const d = getTasksData();
@@ -3890,26 +3919,34 @@ function renderAlmanacProjectWorkspace() {
 }
 
 function addAlmanacActivity() {
-  const proj = getAlmanacProject();
-  const name = prompt("Enter new Activity Name:");
-  if (!name) return;
-  const dur = parseInt(prompt("Duration in days:", "10"), 10) || 10;
-  const pred = prompt("Predecessor Activity ID (optional):", "") || "";
-
-  const newId = String(101 + proj.activities.length);
-  proj.activities.push({
-    id: newId,
-    name: name.trim(),
-    duration: dur,
-    start: "2026-10-01",
-    finish: "2026-10-15",
-    pred: pred.trim(),
-    float: 0,
-    critical: true,
-    progress: 0
+  openModalForm({
+    title: 'New Almanac CPM Activity',
+    fields: [
+      { name: 'name', label: 'Activity Name', type: 'text', value: '', required: true },
+      { name: 'dur', label: 'Duration (Days)', type: 'number', value: '10' },
+      { name: 'pred', label: 'Predecessor Activity ID (optional)', type: 'text', value: '' }
+    ],
+    onSubmit: (vals) => {
+      if(!vals.name) return;
+      const proj = getAlmanacProject();
+      const dur = parseInt(vals.dur, 10) || 10;
+      const pred = vals.pred || "";
+      const newId = String(101 + proj.activities.length);
+      proj.activities.push({
+        id: newId,
+        name: vals.name.trim(),
+        duration: dur,
+        start: "2026-10-01",
+        finish: "2026-10-15",
+        pred: pred.trim(),
+        float: 0,
+        critical: true,
+        progress: 0
+      });
+      saveAlmanacProject(proj);
+      renderAgenda();
+    }
   });
-  saveAlmanacProject(proj);
-  renderAgenda();
 }
 
 function recalculateCPM() {
@@ -4341,27 +4378,139 @@ function renderTimelocks(){
     </div>`;
   }).join('');
 }
+async function encryptPayloadAES(text, secretKeyStr) {
+  const enc = new TextEncoder();
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await window.crypto.subtle.importKey(
+    "raw", enc.encode(secretKeyStr), { name: "PBKDF2" }, false, ["deriveKey"]
+  );
+  const key = await window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  const encryptedBuf = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    enc.encode(text)
+  );
+  const bufToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  return JSON.stringify({
+    ct: bufToBase64(encryptedBuf),
+    iv: bufToBase64(iv),
+    salt: bufToBase64(salt)
+  });
+}
+
+async function decryptPayloadAES(encJsonStr, secretKeyStr) {
+  try {
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+    const parsed = JSON.parse(encJsonStr);
+    const base64ToBuf = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+    const ct = base64ToBuf(parsed.ct);
+    const iv = base64ToBuf(parsed.iv);
+    const salt = base64ToBuf(parsed.salt);
+
+    const keyMaterial = await window.crypto.subtle.importKey(
+      "raw", enc.encode(secretKeyStr), { name: "PBKDF2" }, false, ["deriveKey"]
+    );
+    const key = await window.crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["decrypt"]
+    );
+    const decryptedBuf = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      ct
+    );
+    return dec.decode(decryptedBuf);
+  } catch(e) {
+    return "[Decryption Failed - Invalid Key or Corrupted Payload]";
+  }
+}
+
+function renderTimelocks(){
+  const d = getLockboxData();
+  d.timelocks = d.timelocks || [];
+  const el = document.getElementById('timelockList');
+  if(!el) return;
+  if(d.timelocks.length===0){ el.innerHTML = '<div class="hint">Nothing sealed yet.</div>'; return; }
+  const now = new Date();
+  el.innerHTML = d.timelocks.map(t=>{
+    const unlockDate = new Date(t.unlockDate+'T00:00:00');
+    const locked = now < unlockDate;
+    let displayContent = t.content;
+    if(t.isAesEncrypted && !locked && t.decryptedText) {
+      displayContent = t.decryptedText;
+    } else if (t.isAesEncrypted && !locked && !t.decryptedText) {
+      displayContent = `<button class="btn brass small" onclick="unlockTimelockAES(${t.id})">Decrypt with Unlock Key</button>`;
+    } else if(!locked && !t.isAesEncrypted) {
+      try { displayContent = decodeURIComponent(escape(atob(t.content))); } catch(e){}
+    }
+
+    return `<div class="timelock-row">
+      <b>${t.name}</b> ${locked?`<span class="locked-badge">🔒 locked until ${t.unlockDate} (AES-GCM Encrypted)</span>`:`<span class="unlocked-badge">🔓 unlocked</span>`}
+      <span style="cursor:pointer;color:#a8563f;float:right;" onclick="removeTimelock(${t.id})">✕</span>
+      ${locked?'':`<div class="timelock-content" style="margin-top:6px;">${displayContent}</div>`}
+    </div>`;
+  }).join('');
+}
+
+async function unlockTimelockAES(id) {
+  openModalForm({
+    title: 'Unlock Timelock Entry',
+    fields: [
+      { name: 'secretKey', label: 'Enter Secret Key used when sealing', type: 'password', required: true }
+    ],
+    onSubmit: async (vals) => {
+      const d = getLockboxData();
+      const item = (d.timelocks||[]).find(t => t.id === id);
+      if(item && vals.secretKey) {
+        item.decryptedText = await decryptPayloadAES(item.content, vals.secretKey);
+        saveLocal('lockbox', d);
+        renderTimelocks();
+      }
+    }
+  });
+}
+
 async function addTimelock(){
   const name = document.getElementById('tlName').value;
   const date = document.getElementById('tlDate').value;
   const content = document.getElementById('tlContent').value;
   if(!name || !date || !content){ alert('Fill in a name, unlock date, and what you\'re sealing.'); return; }
 
-  // Encrypt content payload using native Web Crypto b64 encoding
-  const encContent = btoa(unescape(encodeURIComponent(content)));
-  const d = getLockboxData();
-  d.timelocks = d.timelocks || [];
-  d.timelocks.push({
-    id: Date.now(),
-    name,
-    unlockDate: date,
-    content: encContent,
-    isEncrypted: true,
-    createdAt: new Date().toISOString()
+  openModalForm({
+    title: 'Set Encryption Key for Timelock',
+    fields: [
+      { name: 'secretKey', label: 'Secret Key / Passphrase for AES-256-GCM', type: 'password', value: 'offlines-secret-key', required: true }
+    ],
+    onSubmit: async (vals) => {
+      const secretKey = vals.secretKey || 'offlines-secret-key';
+      const encContent = await encryptPayloadAES(content, secretKey);
+      const d = getLockboxData();
+      d.timelocks = d.timelocks || [];
+      d.timelocks.push({
+        id: Date.now(),
+        name,
+        unlockDate: date,
+        content: encContent,
+        isEncrypted: true,
+        isAesEncrypted: true,
+        createdAt: new Date().toISOString()
+      });
+      saveLocal('lockbox', d);
+      renderTimelocks();
+      document.getElementById('tlName').value=''; document.getElementById('tlContent').value='';
+    }
   });
-  saveLocal('lockbox', d);
-  renderTimelocks();
-  document.getElementById('tlName').value=''; document.getElementById('tlContent').value='';
 }
 function removeTimelock(id){
   const d = getLockboxData();
@@ -4632,6 +4781,8 @@ function renderTransmute(){
               <option value="md2html">Markdown ➔ HTML Rendered</option>
               <option value="html2txt">HTML ➔ Plain Text Strip</option>
               <option value="sha256file">File ➔ SHA-256 Hash Signature</option>
+              <option value="bin2hex">Binary / PDF ➔ Hex Dump Inspector</option>
+              <option value="bin2b64">Binary / PDF ➔ Base64 Data URI</option>
             </select>
             <button class="btn sage small" style="width:100%;" onclick="processTransmuteFileConversion()">⚡ Execute Offline Conversion</button>
           </div>
@@ -4674,50 +4825,73 @@ async function processTransmuteFileConversion() {
     let convertedText = '';
     let outExt = '.txt';
 
-    if (format === 'csv2json') {
-      const lines = textContent.split(/\r?\n/).filter(l=>l.trim());
-      if (lines.length < 1) throw new Error('CSV file is empty');
-      const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-      const rows = lines.slice(1).map(line => {
-        const vals = line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));
-        const obj = {};
-        headers.forEach((h, idx) => { obj[h] = vals[idx] ?? ''; });
-        return obj;
-      });
-      convertedText = JSON.stringify(rows, null, 2);
-      outExt = '.json';
-    } else if (format === 'json2csv') {
-      const parsed = JSON.parse(textContent);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      if (!arr.length) throw new Error('JSON is empty');
-      const keys = Object.keys(arr[0]);
-      let csv = keys.join(',') + '\n';
-      arr.forEach(row => {
-        csv += keys.map(k => `"${(row[k] ?? '').toString().replace(/"/g, '""')}"`).join(',') + '\n';
-      });
-      convertedText = csv;
-      outExt = '.csv';
-    } else if (format === 'json2jsonl') {
-      const parsed = JSON.parse(textContent);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      convertedText = arr.map(obj => JSON.stringify(obj)).join('\n');
-      outExt = '.jsonl';
-    } else if (format === 'txt2md') {
-      convertedText = `# ${escapeHTML(_selectedTransmuteFile.name.replace(/\.[^/.]+$/, ""))}\n\n` + textContent;
-      outExt = '.md';
-    } else if (format === 'md2html') {
-      convertedText = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Converted Document</title></head><body>${escapeHTML(textContent).replace(/\n/g,'<br>')}</body></html>`;
-      outExt = '.html';
-    } else if (format === 'html2txt') {
-      const doc = new DOMParser().parseFromString(textContent, 'text/html');
-      convertedText = doc.body.textContent || '';
-      outExt = '.txt';
-    } else if (format === 'sha256file') {
+    if (format === 'bin2hex' || format === 'bin2b64' || format === 'sha256file') {
       const buf = await _selectedTransmuteFile.arrayBuffer();
-      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-      const hashArray = Array.from(new Uint8Array(hashBuf));
-      convertedText = `FILE SHA-256 HASH:\n${_selectedTransmuteFile.name}\n${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
-      outExt = '.sha256.txt';
+      const u8 = new Uint8Array(buf);
+      if (format === 'sha256file') {
+        const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+        const hashArray = Array.from(new Uint8Array(hashBuf));
+        convertedText = `FILE SHA-256 HASH:\n${_selectedTransmuteFile.name}\n${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
+        outExt = '.sha256.txt';
+      } else if (format === 'bin2hex') {
+        let hex = `BINARY HEX DUMP (${_selectedTransmuteFile.name} - ${u8.length} bytes):\n`;
+        const limit = Math.min(u8.length, 4096);
+        for (let i = 0; i < limit; i += 16) {
+          const chunk = u8.subarray(i, i + 16);
+          const hexStr = Array.from(chunk).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          const asciiStr = Array.from(chunk).map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
+          hex += i.toString(16).padStart(8, '0') + '  ' + hexStr.padEnd(48, ' ') + '  |' + asciiStr + '|\n';
+        }
+        if (u8.length > 4096) hex += '\n... (truncated for preview)';
+        convertedText = hex;
+        outExt = '.hex.txt';
+      } else if (format === 'bin2b64') {
+        let binaryStr = '';
+        const limit = Math.min(u8.length, 65536);
+        for (let i = 0; i < limit; i++) { binaryStr += String.fromCharCode(u8[i]); }
+        convertedText = `data:${_selectedTransmuteFile.type || 'application/octet-stream'};base64,` + btoa(binaryStr);
+        outExt = '.b64.txt';
+      }
+    } else {
+      if (format === 'csv2json') {
+        const lines = textContent.split(/\r?\n/).filter(l=>l.trim());
+        if (lines.length < 1) throw new Error('CSV file is empty');
+        const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+        const rows = lines.slice(1).map(line => {
+          const vals = line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));
+          const obj = {};
+          headers.forEach((h, idx) => { obj[h] = vals[idx] ?? ''; });
+          return obj;
+        });
+        convertedText = JSON.stringify(rows, null, 2);
+        outExt = '.json';
+      } else if (format === 'json2csv') {
+        const parsed = JSON.parse(textContent);
+        const arr = Array.isArray(parsed) ? parsed : [parsed];
+        if (!arr.length) throw new Error('JSON is empty');
+        const keys = Object.keys(arr[0]);
+        let csv = keys.join(',') + '\n';
+        arr.forEach(row => {
+          csv += keys.map(k => `"${(row[k] ?? '').toString().replace(/"/g, '""')}"`).join(',') + '\n';
+        });
+        convertedText = csv;
+        outExt = '.csv';
+      } else if (format === 'json2jsonl') {
+        const parsed = JSON.parse(textContent);
+        const arr = Array.isArray(parsed) ? parsed : [parsed];
+        convertedText = arr.map(obj => JSON.stringify(obj)).join('\n');
+        outExt = '.jsonl';
+      } else if (format === 'txt2md') {
+        convertedText = `# ${escapeHTML(_selectedTransmuteFile.name.replace(/\.[^/.]+$/, ""))}\n\n` + textContent;
+        outExt = '.md';
+      } else if (format === 'md2html') {
+        convertedText = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Converted Document</title></head><body>${escapeHTML(textContent).replace(/\n/g,'<br>')}</body></html>`;
+        outExt = '.html';
+      } else if (format === 'html2txt') {
+        const doc = new DOMParser().parseFromString(textContent, 'text/html');
+        convertedText = doc.body.textContent || '';
+        outExt = '.txt';
+      }
     }
 
     _convertedFileName = _selectedTransmuteFile.name.replace(/\.[^/.]+$/, "") + '_converted' + outExt;
@@ -5785,6 +5959,41 @@ function openDiagnosticsModal(){
     </div>
   `;
   document.getElementById('capsuleModalBg').classList.add('show');
+}
+
+function openModalForm({ title, fields, onSubmit }){
+  const modal = document.getElementById('capsuleModal');
+  let formHtml = `<h3>${title}</h3><form id="genericModalForm" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">`;
+  fields.forEach(f => {
+    formHtml += `<div>
+      <label style="display:block;font-size:0.8em;color:var(--text-muted);margin-bottom:4px;">${f.label}</label>`;
+    if(f.type === 'select'){
+      formHtml += `<select name="${f.name}" style="width:100%;">` +
+        f.options.map(o => `<option value="${o.val}" ${o.val===f.value?'selected':''}>${o.label}</option>`).join('') +
+        `</select>`;
+    } else if(f.type === 'textarea'){
+      formHtml += `<textarea name="${f.name}" style="width:100%;min-height:70px;">${f.value||''}</textarea>`;
+    } else {
+      formHtml += `<input type="${f.type||'text'}" name="${f.name}" value="${f.value||''}" ${f.required?'required':''} style="width:100%;">`;
+    }
+    formHtml += `</div>`;
+  });
+  formHtml += `<div class="row" style="margin-top:14px;">
+    <button type="button" class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+    <button type="submit" class="btn brass small">Submit</button>
+  </div></form>`;
+
+  modal.innerHTML = formHtml;
+  document.getElementById('capsuleModalBg').classList.add('show');
+
+  document.getElementById('genericModalForm').onsubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const vals = {};
+    formData.forEach((v, k) => vals[k] = v);
+    closeCapsuleModal();
+    if(onSubmit) onSubmit(vals);
+  };
 }
 
 function openCapsuleModal(kind){
