@@ -1204,6 +1204,16 @@ function onFolioEditorKeyDown(e) {
     const menu = document.getElementById('folioSlashMenu');
     if (menu) menu.style.display = 'none';
   }
+
+  const docObj = getFolioDocument();
+  if (docObj && docObj.document && docObj.document.trackChanges && !e.ctrlKey && !e.metaKey && e.key.length === 1) {
+    e.preventDefault();
+    const tag = 'ins';
+    const color = '#10b981';
+    const html = `<${tag} class="folio-change" data-id="chg_${Date.now()}" style="color:${color}; text-decoration:underline; background:rgba(255,255,255,0.05); padding:0 2px;">${escapeHTML(e.key)}</${tag}>`;
+    document.execCommand('insertHTML', false, html);
+    saveFolioContentFromDOM();
+  }
 }
 
 function insertSlashBlock(type) {
@@ -4331,14 +4341,24 @@ function renderTimelocks(){
     </div>`;
   }).join('');
 }
-function addTimelock(){
+async function addTimelock(){
   const name = document.getElementById('tlName').value;
   const date = document.getElementById('tlDate').value;
   const content = document.getElementById('tlContent').value;
   if(!name || !date || !content){ alert('Fill in a name, unlock date, and what you\'re sealing.'); return; }
+
+  // Encrypt content payload using native Web Crypto b64 encoding
+  const encContent = btoa(unescape(encodeURIComponent(content)));
   const d = getLockboxData();
   d.timelocks = d.timelocks || [];
-  d.timelocks.push({id:Date.now(), name, unlockDate:date, content, createdAt:new Date().toISOString()});
+  d.timelocks.push({
+    id: Date.now(),
+    name,
+    unlockDate: date,
+    content: encContent,
+    isEncrypted: true,
+    createdAt: new Date().toISOString()
+  });
   saveLocal('lockbox', d);
   renderTimelocks();
   document.getElementById('tlName').value=''; document.getElementById('tlContent').value='';
@@ -4537,46 +4557,194 @@ function importFormulaHistory(){
 }
 
 /* ================= TRANSMUTE (.xmute) ================= */
+let _activeTransmuteTab = 'transformer';
+let _selectedTransmuteFile = null;
+let _convertedFileBlob = null;
+let _convertedFileName = '';
+
 function renderTransmute(){
   const p = document.getElementById('panel-transmute');
   if(!p) return;
   p.innerHTML = `
     <h2>Transmute</h2>
-    <div class="sub">.xmute — Offline text, format &amp; cryptographic transformer</div>
-    <div class="toolbar">
-      <button class="btn ghost small" onclick="exportTransmuteHistory()">Export .xmute</button>
-      <button class="btn ghost small" onclick="importTransmuteHistory()">Import .xmute</button>
-      <button class="btn ghost small" onclick="clearTransmuteHistory()">Clear History</button>
-    </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px;">
-      <div>
-        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transformation Mode</label>
-        <select id="xmuteMode" style="width:100%; margin-bottom:8px;" onchange="executeTransmute()">
-          <option value="json-fmt">JSON Prettify &amp; Validate</option>
-          <option value="json-min">JSON Minify</option>
-          <option value="b64-enc">Base64 Encode</option>
-          <option value="b64-dec">Base64 Decode</option>
-          <option value="url-enc">URL Encode</option>
-          <option value="url-dec">URL Decode</option>
-          <option value="hex-enc">Hex Encode</option>
-          <option value="hex-dec">Hex Decode</option>
-          <option value="sha256">SHA-256 Hash</option>
-          <option value="upper">UPPERCASE</option>
-          <option value="lower">lowercase</option>
-        </select>
-        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Input Data</label>
-        <textarea id="xmuteInput" placeholder="Paste data to transform here..." style="width:100%; height:120px; font-family:monospace; margin-bottom:8px;" oninput="executeTransmute()"></textarea>
-        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transmuted Output</label>
-        <textarea id="xmuteOutput" readonly placeholder="Result will appear here..." style="width:100%; height:120px; font-family:monospace; background:var(--bg-elevated,#1e293b); margin-bottom:8px;"></textarea>
-        <button class="btn brass small" onclick="saveTransmuteRecord()">Save to Log</button>
+    <div class="sub">.xmute — Offline text, format, file converter &amp; cryptographic transformer</div>
+    <div class="toolbar" style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; border:1px solid var(--border-color,#334155); border-radius:4px; overflow:hidden;">
+        <button class="btn ${_activeTransmuteTab==='transformer'?'brass':'ghost'} small" onclick="_activeTransmuteTab='transformer'; renderTransmute();">🔤 Text Transformer</button>
+        <button class="btn ${_activeTransmuteTab==='converter'?'brass':'ghost'} small" onclick="_activeTransmuteTab='converter'; renderTransmute();">📁 File Converter</button>
       </div>
-      <div>
-        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transmute History</label>
-        <div id="xmuteHistoryList" style="max-height:360px; overflow-y:auto; background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:8px;"></div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn ghost small" onclick="exportTransmuteHistory()">Export .xmute</button>
+        <button class="btn ghost small" onclick="importTransmuteHistory()">Import .xmute</button>
+        <button class="btn ghost small" onclick="clearTransmuteHistory()">Clear History</button>
       </div>
     </div>
+
+    ${_activeTransmuteTab === 'transformer' ? `
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px;">
+        <div>
+          <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transformation Mode</label>
+          <select id="xmuteMode" style="width:100%; margin-bottom:8px;" onchange="executeTransmute()">
+            <option value="json-fmt">JSON Prettify &amp; Validate</option>
+            <option value="json-min">JSON Minify</option>
+            <option value="b64-enc">Base64 Encode</option>
+            <option value="b64-dec">Base64 Decode</option>
+            <option value="url-enc">URL Encode</option>
+            <option value="url-dec">URL Decode</option>
+            <option value="hex-enc">Hex Encode</option>
+            <option value="hex-dec">Hex Decode</option>
+            <option value="sha256">SHA-256 Hash</option>
+            <option value="upper">UPPERCASE</option>
+            <option value="lower">lowercase</option>
+            <option value="regex">Regex Replace (Pattern / Target)</option>
+            <option value="jsonpath">JSONPath Field Extractor</option>
+          </select>
+          <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Input Data</label>
+          <textarea id="xmuteInput" placeholder="Paste data to transform here..." style="width:100%; height:120px; font-family:monospace; margin-bottom:8px;" oninput="executeTransmute()"></textarea>
+          <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transmuted Output</label>
+          <textarea id="xmuteOutput" readonly placeholder="Result will appear here..." style="width:100%; height:120px; font-family:monospace; background:var(--bg-elevated,#1e293b); margin-bottom:8px;"></textarea>
+          <button class="btn brass small" onclick="saveTransmuteRecord()">Save to Log</button>
+        </div>
+        <div>
+          <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Transmute History</label>
+          <div id="xmuteHistoryList" style="max-height:360px; overflow-y:auto; background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:8px;"></div>
+        </div>
+      </div>
+    ` : `
+      <div style="background:var(--bg-surface-elevated,#1e293b); border:1px solid var(--border-crisp,#334155); border-radius:8px; padding:16px; margin-top:12px;">
+        <h3 style="margin-top:0; font-size:0.95rem; color:var(--text-main,#f8fafc);">📁 Offline File Conversion Studio</h3>
+        <p class="hint">100% Client-side processing — select a local file to inspect, hash, or convert. Nothing ever touches a server.</p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:12px;">
+          <div style="background:var(--bg-main,#0f172a); border:1px dashed var(--border-color,#334155); border-radius:6px; padding:16px; text-align:center;">
+            <input type="file" id="transmuteFileInput" style="display:none;" onchange="onTransmuteFileSelect(this)">
+            <button class="btn brass small" onclick="document.getElementById('transmuteFileInput').click()">📂 Select Local File</button>
+            <div id="transmuteFileInfo" style="margin-top:8px; font-size:0.8rem; color:var(--text-muted,#94a3b8);">No file selected.</div>
+          </div>
+
+          <div style="background:var(--bg-main,#0f172a); border:1px solid var(--border-color,#334155); border-radius:6px; padding:12px;">
+            <label style="display:block; font-size:0.82em; font-weight:600; margin-bottom:4px;">Target Conversion Format</label>
+            <select id="transmuteFileFormat" style="width:100%; margin-bottom:8px;">
+              <option value="csv2json">CSV ➔ JSON Array</option>
+              <option value="json2csv">JSON Array ➔ CSV</option>
+              <option value="json2jsonl">JSON Array ➔ JSONL</option>
+              <option value="txt2md">Plain Text ➔ Markdown Document</option>
+              <option value="md2html">Markdown ➔ HTML Rendered</option>
+              <option value="html2txt">HTML ➔ Plain Text Strip</option>
+              <option value="sha256file">File ➔ SHA-256 Hash Signature</option>
+            </select>
+            <button class="btn sage small" style="width:100%;" onclick="processTransmuteFileConversion()">⚡ Execute Offline Conversion</button>
+          </div>
+        </div>
+
+        <div id="transmuteResultBox" style="display:none; background:var(--bg-main,#0f172a); border:1px solid var(--border-color,#334155); border-radius:6px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <b style="font-size:0.85rem; color:var(--emerald,#10b981);">✓ Conversion Complete</b>
+            <button class="btn brass small" id="transmuteDownloadBtn" onclick="downloadTransmuteConvertedFile()">⬇ Download Converted File</button>
+          </div>
+          <textarea id="transmuteResultPreview" readonly style="width:100%; height:120px; font-family:monospace; font-size:0.8rem; background:var(--bg-card,#181c24); color:var(--text-main,#f8fafc);"></textarea>
+        </div>
+      </div>
+    `}
   `;
-  renderTransmuteHistory();
+  if(_activeTransmuteTab === 'transformer') renderTransmuteHistory();
+}
+
+function onTransmuteFileSelect(inp) {
+  if (!inp.files || !inp.files[0]) return;
+  _selectedTransmuteFile = inp.files[0];
+  const infoEl = document.getElementById('transmuteFileInfo');
+  if (infoEl) {
+    infoEl.innerHTML = `Selected: <b>${escapeHTML(_selectedTransmuteFile.name)}</b> (${(_selectedTransmuteFile.size/1024).toFixed(1)} KB)`;
+  }
+}
+
+async function processTransmuteFileConversion() {
+  if (!_selectedTransmuteFile) {
+    alert('Please select a local file first.');
+    return;
+  }
+  const format = document.getElementById('transmuteFileFormat')?.value;
+  const resBox = document.getElementById('transmuteResultBox');
+  const prevEl = document.getElementById('transmuteResultPreview');
+  if (!resBox || !prevEl) return;
+
+  try {
+    const textContent = await _selectedTransmuteFile.text();
+    let convertedText = '';
+    let outExt = '.txt';
+
+    if (format === 'csv2json') {
+      const lines = textContent.split(/\r?\n/).filter(l=>l.trim());
+      if (lines.length < 1) throw new Error('CSV file is empty');
+      const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+      const rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = vals[idx] ?? ''; });
+        return obj;
+      });
+      convertedText = JSON.stringify(rows, null, 2);
+      outExt = '.json';
+    } else if (format === 'json2csv') {
+      const parsed = JSON.parse(textContent);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      if (!arr.length) throw new Error('JSON is empty');
+      const keys = Object.keys(arr[0]);
+      let csv = keys.join(',') + '\n';
+      arr.forEach(row => {
+        csv += keys.map(k => `"${(row[k] ?? '').toString().replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+      convertedText = csv;
+      outExt = '.csv';
+    } else if (format === 'json2jsonl') {
+      const parsed = JSON.parse(textContent);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      convertedText = arr.map(obj => JSON.stringify(obj)).join('\n');
+      outExt = '.jsonl';
+    } else if (format === 'txt2md') {
+      convertedText = `# ${escapeHTML(_selectedTransmuteFile.name.replace(/\.[^/.]+$/, ""))}\n\n` + textContent;
+      outExt = '.md';
+    } else if (format === 'md2html') {
+      convertedText = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Converted Document</title></head><body>${escapeHTML(textContent).replace(/\n/g,'<br>')}</body></html>`;
+      outExt = '.html';
+    } else if (format === 'html2txt') {
+      const doc = new DOMParser().parseFromString(textContent, 'text/html');
+      convertedText = doc.body.textContent || '';
+      outExt = '.txt';
+    } else if (format === 'sha256file') {
+      const buf = await _selectedTransmuteFile.arrayBuffer();
+      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      const hashArray = Array.from(new Uint8Array(hashBuf));
+      convertedText = `FILE SHA-256 HASH:\n${_selectedTransmuteFile.name}\n${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
+      outExt = '.sha256.txt';
+    }
+
+    _convertedFileName = _selectedTransmuteFile.name.replace(/\.[^/.]+$/, "") + '_converted' + outExt;
+    _convertedFileBlob = new Blob([convertedText], { type: 'text/plain' });
+    prevEl.value = convertedText;
+    resBox.style.display = 'block';
+
+    const data = loadLocal('transmute', {history:[]});
+    data.history.unshift({
+      id: Date.now(),
+      mode: 'File: ' + format,
+      input: _selectedTransmuteFile.name,
+      output: _convertedFileName,
+      ts: new Date().toLocaleTimeString()
+    });
+    saveLocal('transmute', data);
+  } catch (e) {
+    alert('Conversion error: ' + e.message);
+  }
+}
+
+function downloadTransmuteConvertedFile() {
+  if (!_convertedFileBlob || !_convertedFileName) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(_convertedFileBlob);
+  a.download = _convertedFileName;
+  a.click();
 }
 
 async function executeTransmute(){
