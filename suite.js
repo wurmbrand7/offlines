@@ -4811,7 +4811,62 @@ function renderXmuteTransform(){
   `;
 }
 
+async function applySingleTransformStep(inputVal, mode, param1 = '', param2 = '') {
+  if (mode === 'json-fmt') {
+    return JSON.stringify(JSON.parse(inputVal), null, 2);
+  } else if (mode === 'json-min') {
+    return JSON.stringify(JSON.parse(inputVal));
+  } else if (mode === 'b64-enc') {
+    return btoa(unescape(encodeURIComponent(inputVal)));
+  } else if (mode === 'b64-dec') {
+    return decodeURIComponent(escape(atob(inputVal)));
+  } else if (mode === 'url-enc') {
+    return encodeURIComponent(inputVal);
+  } else if (mode === 'url-dec') {
+    return decodeURIComponent(inputVal);
+  } else if (mode === 'hex-enc') {
+    return Array.from(new TextEncoder().encode(inputVal)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } else if (mode === 'hex-dec') {
+    const clean = inputVal.replace(/\s+/g, '');
+    const bytes = new Uint8Array(clean.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    return new TextDecoder().decode(bytes);
+  } else if (mode === 'sha256') {
+    const msgBuffer = new TextEncoder().encode(inputVal);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } else if (mode === 'upper') {
+    return inputVal.toUpperCase();
+  } else if (mode === 'lower') {
+    return inputVal.toLowerCase();
+  } else if (mode === 'regex') {
+    if (!param1) return inputVal;
+    const re = new RegExp(param1, 'g');
+    return inputVal.replace(re, param2 || '');
+  } else if (mode === 'jsonpath') {
+    const obj = JSON.parse(inputVal);
+    if (!param1) return JSON.stringify(obj, null, 2);
+    const keys = param1.split('.').filter(Boolean);
+    let curr = obj;
+    for (const k of keys) {
+      if (curr && typeof curr === 'object' && k in curr) {
+        curr = curr[k];
+      } else {
+        curr = undefined;
+        break;
+      }
+    }
+    return curr !== undefined ? (typeof curr === 'object' ? JSON.stringify(curr, null, 2) : String(curr)) : 'Key path not found';
+  }
+  return inputVal;
+}
+
 function renderXmutePipelines(){
+  const savedPipelines = loadLocal('xmute_saved_pipelines', [
+    { name: 'Base64 Decode + JSON Prettify', steps: [{ mode: 'b64-dec' }, { mode: 'json-fmt' }] },
+    { name: 'Minify JSON + SHA-256 Hash', steps: [{ mode: 'json-min' }, { mode: 'sha256' }] },
+    { name: 'Lowercase + Base64 Encode', steps: [{ mode: 'lower' }, { mode: 'b64-enc' }] }
+  ]);
+
   return `
     <div style="background:var(--bg-surface); border:1px solid var(--border-crisp); border-radius:8px; padding:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -4819,7 +4874,22 @@ function renderXmutePipelines(){
           <h3 style="margin:0; font-size:1.1rem; color:var(--text-workspace);">🔀 Multi-Step Transformation Pipeline</h3>
           <p style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">Chain multiple transformations together into a repeatable local pipeline.</p>
         </div>
-        <button class="btn brass small" onclick="addXmutePipelineStep()">+ Add Step</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn brass small" onclick="addXmutePipelineStep()">+ Add Step</button>
+          <button class="btn ghost small" onclick="importXmutePipelineRecipe()">📥 Import Recipe (.xmute)</button>
+        </div>
+      </div>
+
+      <!-- Saved Pipelines Preset Bar -->
+      <div style="background:var(--surface-panel); border:1px solid var(--border-crisp); border-radius:6px; padding:10px; margin-bottom:16px;">
+        <div style="font-size:0.78rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase;">Saved Pipeline Recipes</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          ${savedPipelines.map((p, idx) => `
+            <button class="btn ghost small" style="font-size:0.75rem;" onclick="loadXmuteSavedPipeline(${idx})">
+              ⚡ ${escapeHTML(p.name)}
+            </button>
+          `).join('')}
+        </div>
       </div>
 
       <!-- Steps List -->
@@ -4840,7 +4910,8 @@ function renderXmutePipelines(){
 
       <div style="display:flex; gap:10px; margin-top:14px;">
         <button class="btn sage" onclick="runXmutePipeline()">▶ Run Pipeline</button>
-        <button class="btn ghost" onclick="saveXmutePipelineRecipe()">💾 Save Recipe (.xmute)</button>
+        <button class="btn ghost" onclick="promptSaveXmutePipeline()">💾 Save Current Recipe</button>
+        <button class="btn ghost" onclick="saveXmutePipelineRecipe()">⬇ Export Recipe (.xmute)</button>
         <button class="btn ghost" onclick="_xmutePipelineSteps=[]; renderTransmute();">Clear</button>
       </div>
     </div>
@@ -4848,17 +4919,23 @@ function renderXmutePipelines(){
 }
 
 function renderPipelineStepsList(){
-  if(!_xmutePipelineSteps.length) return '<div class="hint">No steps added yet. Click "+ Add Step" to build a pipeline.</div>';
+  if(!_xmutePipelineSteps.length) return '<div class="hint">No steps added yet. Click "+ Add Step" or load a recipe above to build a pipeline.</div>';
   return _xmutePipelineSteps.map((s, idx) => `
     <div class="xmute-pipeline-step">
       <div style="display:flex; align-items:center; gap:8px; flex:1;">
         <b style="color:var(--accent-primary);">Step ${idx+1}:</b>
         <select onchange="_xmutePipelineSteps[${idx}].mode=this.value;" style="padding:4px 8px; font-size:0.8rem;">
-          <option value="b64-dec" ${s.mode==='b64-dec'?'selected':''}>Base64 Decode</option>
           <option value="json-fmt" ${s.mode==='json-fmt'?'selected':''}>JSON Prettify</option>
+          <option value="json-min" ${s.mode==='json-min'?'selected':''}>JSON Minify</option>
+          <option value="b64-enc" ${s.mode==='b64-enc'?'selected':''}>Base64 Encode</option>
+          <option value="b64-dec" ${s.mode==='b64-dec'?'selected':''}>Base64 Decode</option>
+          <option value="url-enc" ${s.mode==='url-enc'?'selected':''}>URL Encode</option>
+          <option value="url-dec" ${s.mode==='url-dec'?'selected':''}>URL Decode</option>
+          <option value="hex-enc" ${s.mode==='hex-enc'?'selected':''}>Hex Encode</option>
+          <option value="hex-dec" ${s.mode==='hex-dec'?'selected':''}>Hex Decode</option>
+          <option value="sha256" ${s.mode==='sha256'?'selected':''}>SHA-256 Hash</option>
           <option value="upper" ${s.mode==='upper'?'selected':''}>UPPERCASE</option>
           <option value="lower" ${s.mode==='lower'?'selected':''}>lowercase</option>
-          <option value="sha256" ${s.mode==='sha256'?'selected':''}>SHA-256 Hash</option>
         </select>
       </div>
       <div style="display:flex; gap:6px;">
@@ -4868,6 +4945,51 @@ function renderPipelineStepsList(){
       </div>
     </div>
   `).join('');
+}
+
+function loadXmuteSavedPipeline(idx) {
+  const saved = loadLocal('xmute_saved_pipelines', [
+    { name: 'Base64 Decode + JSON Prettify', steps: [{ mode: 'b64-dec' }, { mode: 'json-fmt' }] },
+    { name: 'Minify JSON + SHA-256 Hash', steps: [{ mode: 'json-min' }, { mode: 'sha256' }] },
+    { name: 'Lowercase + Base64 Encode', steps: [{ mode: 'lower' }, { mode: 'b64-enc' }] }
+  ]);
+  if (saved[idx] && saved[idx].steps) {
+    _xmutePipelineSteps = JSON.parse(JSON.stringify(saved[idx].steps));
+    renderTransmute();
+  }
+}
+
+function promptSaveXmutePipeline() {
+  if (!_xmutePipelineSteps.length) {
+    alert('Pipeline has no steps to save.');
+    return;
+  }
+  const name = prompt('Name for this pipeline recipe:');
+  if (!name) return;
+  const saved = loadLocal('xmute_saved_pipelines', [
+    { name: 'Base64 Decode + JSON Prettify', steps: [{ mode: 'b64-dec' }, { mode: 'json-fmt' }] },
+    { name: 'Minify JSON + SHA-256 Hash', steps: [{ mode: 'json-min' }, { mode: 'sha256' }] },
+    { name: 'Lowercase + Base64 Encode', steps: [{ mode: 'lower' }, { mode: 'b64-enc' }] }
+  ]);
+  saved.push({ name: name.trim(), steps: _xmutePipelineSteps });
+  saveLocal('xmute_saved_pipelines', saved);
+  renderTransmute();
+}
+
+function importXmutePipelineRecipe() {
+  pickFile('.xmute', (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.steps && Array.isArray(parsed.steps)) {
+        _xmutePipelineSteps = parsed.steps;
+        renderTransmute();
+      } else {
+        alert('File does not contain valid pipeline steps.');
+      }
+    } catch(e) {
+      alert('Could not parse pipeline file.');
+    }
+  });
 }
 
 function addXmutePipelineStep(){
@@ -4898,14 +5020,7 @@ async function runXmutePipeline(){
   try {
     for(let i=0; i<_xmutePipelineSteps.length; i++){
       const step = _xmutePipelineSteps[i];
-      if(step.mode === 'json-fmt') curr = JSON.stringify(JSON.parse(curr), null, 2);
-      else if(step.mode === 'b64-dec') curr = decodeURIComponent(escape(atob(curr)));
-      else if(step.mode === 'upper') curr = curr.toUpperCase();
-      else if(step.mode === 'lower') curr = curr.toLowerCase();
-      else if(step.mode === 'sha256') {
-        const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(curr));
-        curr = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-      }
+      curr = await applySingleTransformStep(curr, step.mode, step.param1, step.param2);
     }
     outEl.value = curr;
   } catch(e) {
@@ -4917,16 +5032,63 @@ function saveXmutePipelineRecipe(){
   download('pipeline.xmute', JSON.stringify({ type:'xmute_pipeline', steps: _xmutePipelineSteps }, null, 2));
 }
 
+function validateXmuteOutput(targetFormat, text, blob, sourceFile) {
+  if (!blob || blob.size === 0) throw new Error('Converted Blob is empty (0 bytes).');
+
+  if (['png', 'jpeg', 'webp'].includes(targetFormat)) {
+    if (blob.size < 50) throw new Error('Generated image Blob is invalid or corrupt.');
+    return { valid: true, details: `Valid Image (${(blob.size/1024).toFixed(1)} KB)` };
+  }
+
+  if (targetFormat === 'json') {
+    const parsed = JSON.parse(text);
+    if (parsed === null || typeof parsed !== 'object') throw new Error('Output is not valid JSON.');
+    const count = Array.isArray(parsed) ? parsed.length + ' items' : Object.keys(parsed).length + ' keys';
+    return { valid: true, details: `Valid JSON (${count})` };
+  }
+
+  if (targetFormat === 'jsonl') {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) throw new Error('No valid JSON lines in output.');
+    lines.forEach((l, i) => {
+      try { JSON.parse(l); } catch(e) { throw new Error(`JSONL line ${i+1} invalid.`); }
+    });
+    return { valid: true, details: `Valid JSONL (${lines.length} lines)` };
+  }
+
+  if (targetFormat === 'csv' || targetFormat === 'tsv') {
+    const parsed = parseCSV(text, targetFormat === 'tsv' ? '\t' : ',');
+    if (!parsed.matrix.length) throw new Error('Tabular output matrix is empty.');
+    return { valid: true, details: `Valid Table (${parsed.matrix.length} rows × ${parsed.matrix[0].length} cols)` };
+  }
+
+  if (targetFormat === 'html') {
+    if (!text.includes('<!DOCTYPE html>') && !text.includes('<table') && !text.includes('<body')) throw new Error('HTML output missing document tags.');
+    return { valid: true, details: 'Valid HTML5 Markup' };
+  }
+
+  return { valid: true, details: `Valid File (${(blob.size/1024).toFixed(1)} KB)` };
+}
+
 function renderXmuteBatch(){
   return `
     <div style="background:var(--bg-surface); border:1px solid var(--border-crisp); border-radius:8px; padding:20px;">
-      <h3 style="margin-top:0; font-size:1.1rem; color:var(--text-workspace);">📦 Batch File Conversion Queue</h3>
-      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px;">Batch process multiple local files simultaneously with zero server upload.</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <h3 style="margin:0; font-size:1.1rem; color:var(--text-workspace);">📦 Batch File Conversion Queue</h3>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">Batch process multiple local files sequentially with zero server upload.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn brass small" ${_xmuteBatchFiles.length?'':'disabled'} onclick="processXmuteBatch()">▶ Run Batch Conversion</button>
+          <button class="btn ghost small" onclick="_xmuteBatchFiles=[]; renderTransmute();">Clear Queue</button>
+        </div>
+      </div>
 
-      <div class="xmute-dropzone" onclick="document.getElementById('xmuteBatchInput').click()">
+      <div class="xmute-dropzone" onclick="document.getElementById('xmuteBatchInput').click()" style="padding:20px; margin-bottom:16px;">
         <input type="file" id="xmuteBatchInput" multiple style="display:none;" onchange="handleXmuteBatchSelect(this)">
         <div style="font-size:1.8rem; margin-bottom:6px;">📦</div>
-        <div style="font-weight:600; font-size:0.9rem;">Select Multiple Local Files</div>
+        <div style="font-weight:600; font-size:0.9rem;">Select Multiple Local Files to Queue</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Queue multiple CSV, JSON, TXT, MD, HTML, or Image files</div>
       </div>
 
       <div id="xmuteBatchQueueList" style="margin-top:16px;">
@@ -4939,22 +5101,76 @@ function renderXmuteBatch(){
 function handleXmuteBatchSelect(inp){
   if(!inp.files) return;
   for(let i=0; i<inp.files.length; i++){
-    _xmuteBatchFiles.push({ file: inp.files[i], status: 'Ready', target: 'json' });
+    _xmuteBatchFiles.push({ file: inp.files[i], status: 'Ready', target: 'json', result: null });
   }
   renderTransmute();
 }
 
 function renderXmuteBatchQueueList(){
-  if(!_xmuteBatchFiles.length) return '<div class="hint">Queue is empty. Select files above.</div>';
+  if(!_xmuteBatchFiles.length) return '<div style="color:var(--text-muted); font-size:0.85rem; padding:12px; text-align:center;">Queue is empty. Select files above to begin batch conversion.</div>';
   return _xmuteBatchFiles.map((b, idx) => `
-    <div class="xmute-pipeline-step">
+    <div style="background:var(--surface-panel); border:1px solid var(--border-crisp); border-radius:6px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
       <div>
-        <b>${escapeHTML(b.file.name)}</b> (${(b.file.size/1024).toFixed(1)} KB)
-        <span style="font-size:0.75rem; color:var(--sage); margin-left:8px;">${b.status}</span>
+        <b style="font-size:0.88rem; color:var(--text-workspace);">${escapeHTML(b.file.name)}</b>
+        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:6px;">(${(b.file.size/1024).toFixed(1)} KB)</span>
+        <span style="font-size:0.75rem; font-weight:600; color:${b.status.startsWith('Completed')?'var(--sage)':(b.status.startsWith('Failed')?'#ef4444':'#60a5fa')}; margin-left:12px;">
+          ${escapeHTML(b.status)}
+        </span>
       </div>
-      <button class="btn ghost small" style="color:#ef4444;" onclick="_xmuteBatchFiles.splice(${idx},1); renderTransmute();">✕</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label style="font-size:0.75rem; color:var(--text-muted);">Target:</label>
+        <select style="font-size:0.75rem; padding:2px 6px;" onchange="_xmuteBatchFiles[${idx}].target = this.value;">
+          <option value="json" ${b.target==='json'?'selected':''}>JSON</option>
+          <option value="csv" ${b.target==='csv'?'selected':''}>CSV</option>
+          <option value="jsonl" ${b.target==='jsonl'?'selected':''}>JSONL</option>
+          <option value="md" ${b.target==='md'?'selected':''}>Markdown</option>
+          <option value="html" ${b.target==='html'?'selected':''}>HTML</option>
+          <option value="txt" ${b.target==='txt'?'selected':''}>Text</option>
+          <option value="sha256" ${b.target==='sha256'?'selected':''}>SHA-256</option>
+          <option value="hex" ${b.target==='hex'?'selected':''}>Hex</option>
+          <option value="b64" ${b.target==='b64'?'selected':''}>Base64</option>
+        </select>
+        ${b.result ? `
+          <button class="btn sage small" onclick="downloadXmuteBatchItem(${idx})">⬇ Download</button>
+        ` : ''}
+        <button class="btn ghost small" style="color:#ef4444;" onclick="_xmuteBatchFiles.splice(${idx},1); renderTransmute();">✕</button>
+      </div>
     </div>
   `).join('');
+}
+
+async function processXmuteBatch() {
+  if (!_xmuteBatchFiles.length) return;
+
+  for (let i = 0; i < _xmuteBatchFiles.length; i++) {
+    const b = _xmuteBatchFiles[i];
+    b.status = 'Converting...';
+    renderTransmute();
+    try {
+      _xmuteActiveFile = b.file;
+      _xmuteTargetFormat = b.target;
+      await processXmuteConversion();
+      if (_xmuteConvertedResult) {
+        b.result = _xmuteConvertedResult;
+        b.status = 'Completed (' + (_xmuteConvertedResult.validationDetails || 'OK') + ')';
+      } else {
+        b.status = 'Failed: Conversion returned empty result.';
+      }
+    } catch(e) {
+      b.status = 'Failed: ' + e.message;
+    }
+    renderTransmute();
+  }
+}
+
+function downloadXmuteBatchItem(idx) {
+  const item = _xmuteBatchFiles[idx];
+  if (!item || !item.result || !item.result.blob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(item.result.blob);
+  a.download = item.result.filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 function renderXmuteHistoryPage(){
@@ -5101,7 +5317,7 @@ function renderXmuteConvert(){
         </div>
 
         <label style="display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">Output Result Preview</label>
-        <textarea id="xmutePreviewArea" readonly style="width:100%; height:220px; font-family:var(--font-mono); font-size:0.78rem; background:var(--bg-main); color:var(--text-workspace); border:1px solid var(--border-crisp); border-radius:4px; padding:8px; resize:none;" placeholder="Converted preview output will appear here...">${_xmuteConvertedResult ? escapeHTML(_xmuteConvertedResult.text) : ''}</textarea>
+        ${renderXmutePreviewBody()}
 
         <div style="margin-top:12px; padding:10px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); border-radius:6px; font-size:0.75rem; color:#93c5fd;">
           🔒 Strictly 0 Server Calls. All processing occurs locally via Web APIs.
@@ -5111,28 +5327,157 @@ function renderXmuteConvert(){
   `;
 }
 
-function renderFormatCards(){
-  const formats = [
-    { id: 'json', label: 'JSON Array', ext: '.json', desc: 'Structured AST', localSupported: true },
-    { id: 'csv', label: 'CSV Table', ext: '.csv', desc: 'Tabular Spreadsheet', localSupported: true },
-    { id: 'jsonl', label: 'JSONL', ext: '.jsonl', desc: 'Line Delimited', localSupported: true },
-    { id: 'md', label: 'Markdown', ext: '.md', desc: 'Formatted Text', localSupported: true },
-    { id: 'html', label: 'HTML5', ext: '.html', desc: 'Web Document', localSupported: true },
-    { id: 'txt', label: 'Plain Text', ext: '.txt', desc: 'Raw Text Strip', localSupported: true },
-    { id: 'sha256', label: 'SHA-256', ext: '.sha256', desc: 'Hash Digest', localSupported: true },
-    { id: 'hex', label: 'Hex Dump', ext: '.hex', desc: 'Binary Inspection', localSupported: true },
-    { id: 'b64', label: 'Base64 Data', ext: '.b64', desc: 'URI Encoding', localSupported: true },
-    { id: 'docx', label: 'Word (.docx)', ext: '.docx', desc: 'Local Engine Required', localSupported: false },
-    { id: 'xlsx', label: 'Excel (.xlsx)', ext: '.xlsx', desc: 'Local Engine Required', localSupported: false },
-    { id: 'pdf', label: 'PDF Document', ext: '.pdf', desc: 'Local Engine Required', localSupported: false }
+function renderXmutePreviewBody() {
+  if (!_xmuteConvertedResult) {
+    return `<textarea id="xmutePreviewArea" readonly style="width:100%; height:220px; font-family:var(--font-mono); font-size:0.78rem; background:var(--bg-main); color:var(--text-workspace); border:1px solid var(--border-crisp); border-radius:4px; padding:8px; resize:none;" placeholder="Converted preview output will appear here..."></textarea>`;
+  }
+
+  const badge = `<div style="font-size:0.75rem; color:var(--sage); font-weight:600; margin-bottom:6px;">✓ Output Validated (${escapeHTML(_xmuteConvertedResult.validationDetails || 'OK')})</div>`;
+
+  if (['png', 'jpeg', 'webp'].includes(_xmuteTargetFormat) && _xmuteConvertedResult.blob) {
+    const imgUrl = URL.createObjectURL(_xmuteConvertedResult.blob);
+    return `
+      ${badge}
+      <div style="text-align:center; padding:10px; background:var(--bg-main); border:1px solid var(--border-crisp); border-radius:4px; margin-bottom:8px;">
+        <img src="${imgUrl}" style="max-width:100%; max-height:160px; border-radius:4px;" alt="Converted Image Preview">
+      </div>
+      <textarea id="xmutePreviewArea" readonly style="width:100%; height:60px; font-family:var(--font-mono); font-size:0.75rem; background:var(--bg-main); color:var(--text-muted); border:1px solid var(--border-crisp); border-radius:4px; padding:6px; resize:none;">${escapeHTML(_xmuteConvertedResult.text)}</textarea>
+    `;
+  }
+
+  if ((_xmuteTargetFormat === 'csv' || _xmuteTargetFormat === 'tsv') && _xmuteConvertedResult.text) {
+    const parsed = parseCSV(_xmuteConvertedResult.text, _xmuteTargetFormat === 'tsv' ? '\t' : ',');
+    const rows = parsed.matrix.slice(0, 5);
+    let tableHtml = '<table style="width:100%; border-collapse:collapse; font-size:0.72rem; color:var(--text-workspace);">';
+    if (rows.length > 0) {
+      tableHtml += '<thead><tr style="background:var(--surface-panel);">' + rows[0].map(h => `<th style="border:1px solid var(--border-crisp); padding:4px;">${escapeHTML(h)}</th>`).join('') + '</tr></thead><tbody>';
+      rows.slice(1).forEach(r => {
+        tableHtml += '<tr>' + r.map(c => `<td style="border:1px solid var(--border-crisp); padding:4px;">${escapeHTML(c)}</td>`).join('') + '</tr>';
+      });
+      tableHtml += '</tbody>';
+    }
+    tableHtml += '</table>';
+
+    return `
+      ${badge}
+      <div style="max-height:110px; overflow:auto; background:var(--bg-main); border:1px solid var(--border-crisp); border-radius:4px; padding:4px; margin-bottom:8px;">
+        ${tableHtml}
+      </div>
+      <textarea id="xmutePreviewArea" readonly style="width:100%; height:100px; font-family:var(--font-mono); font-size:0.75rem; background:var(--bg-main); color:var(--text-workspace); border:1px solid var(--border-crisp); border-radius:4px; padding:6px; resize:none;">${escapeHTML(_xmuteConvertedResult.text)}</textarea>
+    `;
+  }
+
+  return `
+    ${badge}
+    <textarea id="xmutePreviewArea" readonly style="width:100%; height:200px; font-family:var(--font-mono); font-size:0.78rem; background:var(--bg-main); color:var(--text-workspace); border:1px solid var(--border-crisp); border-radius:4px; padding:8px; resize:none;">${escapeHTML(_xmuteConvertedResult.text)}</textarea>
+  `;
+}
+
+function getAvailableXmuteFormats(file) {
+  if (!file) {
+    return [
+      { id: 'json', label: 'JSON Array', ext: '.json', mime: 'application/json', localSupported: true },
+      { id: 'csv', label: 'CSV Table', ext: '.csv', mime: 'text/csv', localSupported: true },
+      { id: 'jsonl', label: 'JSON Lines', ext: '.jsonl', mime: 'application/x-jsonlines', localSupported: true },
+      { id: 'md', label: 'Markdown', ext: '.md', mime: 'text/markdown', localSupported: true },
+      { id: 'html', label: 'HTML5', ext: '.html', mime: 'text/html', localSupported: true },
+      { id: 'txt', label: 'Plain Text', ext: '.txt', mime: 'text/plain', localSupported: true },
+      { id: 'sha256', label: 'SHA-256', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+      { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+      { id: 'b64', label: 'Base64 Data', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
+    ];
+  }
+
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const isImage = ['png', 'jpg', 'jpeg', 'webp'].includes(ext) || (_xmuteAnalysis?.structure === 'Raster Image');
+  const isTabular = ['csv', 'tsv'].includes(ext);
+  const isJson = ext === 'json';
+  const isJsonl = ext === 'jsonl';
+  const isText = ['txt', 'md', 'html'].includes(ext);
+
+  if (isImage) {
+    return [
+      { id: 'png', label: 'PNG Image', ext: '.png', mime: 'image/png', localSupported: true },
+      { id: 'jpeg', label: 'JPEG Image', ext: '.jpg', mime: 'image/jpeg', localSupported: true },
+      { id: 'webp', label: 'WebP Image', ext: '.webp', mime: 'image/webp', localSupported: true },
+      { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true },
+      { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+      { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true }
+    ];
+  }
+
+  if (isTabular) {
+    return [
+      { id: 'json', label: 'JSON Array', ext: '.json', mime: 'application/json', localSupported: true },
+      { id: 'jsonl', label: 'JSON Lines', ext: '.jsonl', mime: 'application/x-jsonlines', localSupported: true },
+      { id: 'tsv', label: 'TSV Table', ext: '.tsv', mime: 'text/tab-separated-values', localSupported: true },
+      { id: 'csv', label: 'CSV Table', ext: '.csv', mime: 'text/csv', localSupported: true },
+      { id: 'txt', label: 'Plain Text', ext: '.txt', mime: 'text/plain', localSupported: true },
+      { id: 'html', label: 'HTML Table', ext: '.html', mime: 'text/html', localSupported: true },
+      { id: 'md', label: 'Markdown Table', ext: '.md', mime: 'text/markdown', localSupported: true },
+      { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+      { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+      { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
+    ];
+  }
+
+  if (isJson) {
+    return [
+      { id: 'csv', label: 'CSV Table', ext: '.csv', mime: 'text/csv', localSupported: true },
+      { id: 'jsonl', label: 'JSON Lines', ext: '.jsonl', mime: 'application/x-jsonlines', localSupported: true },
+      { id: 'tsv', label: 'TSV Table', ext: '.tsv', mime: 'text/tab-separated-values', localSupported: true },
+      { id: 'txt', label: 'Formatted JSON Text', ext: '.txt', mime: 'text/plain', localSupported: true },
+      { id: 'html', label: 'HTML View', ext: '.html', mime: 'text/html', localSupported: true },
+      { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+      { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+      { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
+    ];
+  }
+
+  if (isJsonl) {
+    return [
+      { id: 'json', label: 'JSON Array', ext: '.json', mime: 'application/json', localSupported: true },
+      { id: 'csv', label: 'CSV Table', ext: '.csv', mime: 'text/csv', localSupported: true },
+      { id: 'tsv', label: 'TSV Table', ext: '.tsv', mime: 'text/tab-separated-values', localSupported: true },
+      { id: 'txt', label: 'Plain Text', ext: '.txt', mime: 'text/plain', localSupported: true },
+      { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+      { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+      { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
+    ];
+  }
+
+  if (isText) {
+    return [
+      { id: 'md', label: 'Markdown', ext: '.md', mime: 'text/markdown', localSupported: true },
+      { id: 'html', label: 'HTML5', ext: '.html', mime: 'text/html', localSupported: true },
+      { id: 'txt', label: 'Plain Text', ext: '.txt', mime: 'text/plain', localSupported: true },
+      { id: 'json', label: 'JSON String', ext: '.json', mime: 'application/json', localSupported: true },
+      { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+      { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+      { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
+    ];
+  }
+
+  // Binary / Document files
+  return [
+    { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+    { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+    { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
   ];
+}
+
+function renderFormatCards(){
+  const formats = getAvailableXmuteFormats(_xmuteActiveFile);
+  if (formats.length > 0 && !formats.some(f => f.id === _xmuteTargetFormat)) {
+    _xmuteTargetFormat = formats[0].id;
+  }
 
   return formats.map(f => `
     <div class="xmute-format-card ${f.id===_xmuteTargetFormat?'selected':''} ${!f.localSupported?'disabled':''}" onclick="${f.localSupported?`selectXmuteFormat('${f.id}')`:''}">
       <div style="font-weight:700; font-size:0.85rem; color:var(--text-workspace);">${f.label}</div>
       <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${f.ext}</div>
       <div style="font-size:0.68rem; color:${f.localSupported?'var(--sage)':'#ef4444'}; margin-top:4px;">
-        ${f.localSupported ? '✓ Local Available' : '⚠ Local Mode Pending'}
+        ${f.localSupported ? '✓ Local Available' : '⚠ Local Engine Required'}
       </div>
     </div>
   `).join('');
@@ -5164,57 +5509,167 @@ async function setXmuteActiveFile(file) {
   renderTransmute();
 }
 
+function parseCSV(text, delimiter) {
+  if (text.startsWith('\uFEFF')) text = text.slice(1);
+  if (!delimiter) {
+    const firstLine = text.split(/\r?\n/)[0] || '';
+    const commas = (firstLine.match(/,/g) || []).length;
+    const tabs = (firstLine.match(/\t/g) || []).length;
+    const semicolons = (firstLine.match(/;/g) || []).length;
+    if (tabs > commas && tabs > semicolons) delimiter = '\t';
+    else if (semicolons > commas && semicolons > tabs) delimiter = ';';
+    else delimiter = ',';
+  }
+  let p = 0, row = [''], matrix = [row], inQuotes = false;
+  while (p < text.length) {
+    const c = text[p];
+    const next = text[p + 1];
+    if (inQuotes) {
+      if (c === '"' && next === '"') {
+        row[row.length - 1] += '"';
+        p += 2;
+        continue;
+      } else if (c === '"') {
+        inQuotes = false;
+        p++;
+        continue;
+      } else {
+        row[row.length - 1] += c;
+        p++;
+        continue;
+      }
+    }
+    if (c === '"') {
+      inQuotes = true;
+      p++;
+      continue;
+    }
+    if (c === delimiter) {
+      row.push('');
+      p++;
+      continue;
+    }
+    if (c === '\r' && next === '\n') {
+      p += 2;
+      row = [''];
+      matrix.push(row);
+      continue;
+    }
+    if (c === '\n' || c === '\r') {
+      p++;
+      row = [''];
+      matrix.push(row);
+      continue;
+    }
+    row[row.length - 1] += c;
+    p++;
+  }
+  if (matrix.length > 1 && matrix[matrix.length - 1].length === 1 && matrix[matrix.length - 1][0] === '') {
+    matrix.pop();
+  }
+  return { matrix, delimiter };
+}
+
+async function detectXmuteFileType(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  let detectedFormat = ext.toUpperCase();
+  let magicName = '';
+  let mismatchWarning = null;
+
+  try {
+    const buf = await file.slice(0, 16).arrayBuffer();
+    const u8 = new Uint8Array(buf);
+    const hex = Array.from(u8).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (hex.startsWith('25504446')) magicName = 'PDF';
+    else if (hex.startsWith('89504e47')) magicName = 'PNG';
+    else if (hex.startsWith('ffd8ff')) magicName = 'JPEG';
+    else if (hex.startsWith('52494646') && hex.slice(16, 24) === '57454250') magicName = 'WEBP';
+    else if (hex.startsWith('504b0304')) magicName = 'ZIP';
+
+    if (magicName && magicName !== 'ZIP') {
+      if (ext !== magicName.toLowerCase()) {
+        mismatchWarning = `Filename says .${ext}, but signature detects ${magicName}`;
+      }
+      detectedFormat = magicName;
+    }
+  } catch(e) {
+    console.warn('Magic byte detection skipped:', e);
+  }
+
+  return { ext, detectedFormat, magicName, mismatchWarning };
+}
+
 async function analyzeXmuteFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
+  const detection = await detectXmuteFileType(file);
+  const ext = detection.ext;
   let analysis = {
-    format: ext.toUpperCase(),
-    structure: 'Binary / Generic',
-    lines: 0,
-    fieldsCount: 'N/A'
+    format: detection.detectedFormat,
+    structure: 'Binary / Generic File',
+    lines: (file.size / 1024).toFixed(1) + ' KB',
+    fieldsCount: 'N/A',
+    mismatchWarning: detection.mismatchWarning,
+    parsedData: null
   };
 
   try {
-    if (['csv', 'json', 'jsonl', 'txt', 'md', 'html', 'tsv'].includes(ext)) {
+    if (['png', 'jpg', 'jpeg', 'webp'].includes(ext) || ['PNG', 'JPEG', 'WEBP'].includes(detection.detectedFormat)) {
+      analysis.structure = 'Raster Image';
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise((resolve) => {
+        img.onload = () => {
+          analysis.fieldsCount = `${img.width} × ${img.height} px`;
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.src = url;
+      });
+    } else if (['csv', 'tsv', 'json', 'jsonl', 'txt', 'md', 'html'].includes(ext)) {
       const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      analysis.lines = lines.length;
+      const rawLines = text.split(/\r?\n/);
+      analysis.lines = rawLines.length + ' lines';
 
       if (ext === 'csv' || ext === 'tsv') {
-        analysis.structure = 'Tabular Spreadsheet';
-        const delim = ext === 'tsv' ? '\t' : ',';
-        const headers = lines[0] ? lines[0].split(delim) : [];
-        analysis.fieldsCount = headers.length + ' columns';
+        analysis.structure = 'Tabular Dataset';
+        const parsed = parseCSV(text, ext === 'tsv' ? '\t' : null);
+        const headers = parsed.matrix[0] || [];
+        analysis.fieldsCount = `${parsed.matrix.length} rows × ${headers.length} cols`;
+        analysis.parsedData = { matrix: parsed.matrix, delimiter: parsed.delimiter };
       } else if (ext === 'json') {
         analysis.structure = 'Structured JSON';
         try {
           const parsed = JSON.parse(text);
+          analysis.parsedData = parsed;
           if (Array.isArray(parsed)) {
-            analysis.fieldsCount = parsed.length + ' items';
+            analysis.fieldsCount = parsed.length + ' items (Array)';
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            analysis.fieldsCount = Object.keys(parsed).length + ' keys (Object)';
           } else {
-            analysis.fieldsCount = Object.keys(parsed).length + ' keys';
+            analysis.fieldsCount = typeof parsed;
           }
         } catch(e) {
           analysis.structure = 'Invalid JSON';
+          analysis.fieldsCount = 'Parse Error';
         }
       } else if (ext === 'jsonl') {
         analysis.structure = 'JSON Lines';
-        analysis.fieldsCount = lines.length + ' JSON rows';
-      } else if (ext === 'md' || ext === 'txt' || ext === 'html') {
-        analysis.structure = 'Text Document';
-        analysis.fieldsCount = text.length + ' characters';
+        let valid = 0, invalid = 0;
+        rawLines.filter(l => l.trim()).forEach(line => {
+          try { JSON.parse(line); valid++; } catch(e) { invalid++; }
+        });
+        analysis.fieldsCount = `${valid} valid, ${invalid} invalid rows`;
+      } else if (['txt', 'md', 'html'].includes(ext)) {
+        analysis.structure = ext === 'html' ? 'HTML Markup' : (ext === 'md' ? 'Markdown Text' : 'Plain Text');
+        analysis.fieldsCount = text.length.toLocaleString() + ' characters';
       }
-    } else {
-      const buf = await file.arrayBuffer();
-      const u8 = new Uint8Array(buf.slice(0, 8));
-      const magicHex = Array.from(u8).map(b => b.toString(16).padStart(2, '0')).join('');
-      if (magicHex.startsWith('25504446')) {
-        analysis.format = 'PDF';
-        analysis.structure = 'Portable Document Format';
-      } else if (magicHex.startsWith('504b0304')) {
-        analysis.format = ext.toUpperCase();
-        analysis.structure = 'Zip Package (Office/Archive)';
-      }
-      analysis.lines = file.size + ' bytes';
+    } else if (detection.magicName === 'PDF') {
+      analysis.structure = 'PDF Document (Local Mode)';
+      analysis.fieldsCount = 'Binary Document';
+    } else if (detection.magicName === 'ZIP') {
+      analysis.structure = ext.toUpperCase() + ' Zip Package';
+      analysis.fieldsCount = 'Package Container';
     }
   } catch(e) {
     console.error('File analysis error:', e);
@@ -5230,84 +5685,185 @@ async function processXmuteConversion() {
   }
 
   try {
+    const formats = getAvailableXmuteFormats(_xmuteActiveFile);
+    const targetMeta = formats.find(f => f.id === _xmuteTargetFormat) || { ext: '.' + _xmuteTargetFormat, mime: 'text/plain' };
+    let mimeType = targetMeta.mime || 'text/plain';
+    let outExt = targetMeta.ext || ('.' + _xmuteTargetFormat);
     let convertedText = '';
-    let outExt = '.' + _xmuteTargetFormat;
-    const textContent = await _xmuteActiveFile.text();
+    let resultBlob = null;
 
-    if (_xmuteTargetFormat === 'json') {
-      if (_xmuteAnalysis?.format === 'CSV' || _xmuteActiveFile.name.endsWith('.csv')) {
-        const lines = textContent.split(/\r?\n/).filter(l=>l.trim());
-        if (!lines.length) throw new Error('CSV file is empty');
-        const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-        const rows = lines.slice(1).map(line => {
-          const vals = line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));
-          const obj = {};
-          headers.forEach((h, idx) => { obj[h] = vals[idx] ?? ''; });
-          return obj;
-        });
-        convertedText = JSON.stringify(rows, null, 2);
-      } else {
-        const parsed = JSON.parse(textContent);
-        convertedText = JSON.stringify(parsed, null, 2);
+    const ext = (_xmuteActiveFile.name.split('.').pop() || '').toLowerCase();
+
+    // Image conversion using Canvas API
+    if (['png', 'jpeg', 'webp'].includes(_xmuteTargetFormat)) {
+      if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext) && _xmuteAnalysis?.structure !== 'Raster Image') {
+        throw new Error(`Cannot convert binary/text file ${_xmuteActiveFile.name} directly to raster image.`);
       }
-    } else if (_xmuteTargetFormat === 'csv') {
-      const parsed = JSON.parse(textContent);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      if (!arr.length) throw new Error('JSON is empty');
-      const keys = Object.keys(arr[0]);
-      let csv = keys.join(',') + '\n';
-      arr.forEach(row => {
-        csv += keys.map(k => `"${(row[k] ?? '').toString().replace(/"/g, '""')}"`).join(',') + '\n';
+      const imgUrl = URL.createObjectURL(_xmuteActiveFile);
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Failed to load image for conversion'));
+        img.src = imgUrl;
       });
-      convertedText = csv;
-    } else if (_xmuteTargetFormat === 'jsonl') {
-      const parsed = JSON.parse(textContent);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      convertedText = arr.map(obj => JSON.stringify(obj)).join('\n');
-    } else if (_xmuteTargetFormat === 'md') {
-      convertedText = `# ${escapeHTML(_xmuteActiveFile.name.replace(/\.[^/.]+$/, ""))}\n\n` + textContent;
-    } else if (_xmuteTargetFormat === 'html') {
-      convertedText = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Converted Document</title></head><body>${escapeHTML(textContent).replace(/\n/g,'<br>')}</body></html>`;
-    } else if (_xmuteTargetFormat === 'txt') {
-      const doc = new DOMParser().parseFromString(textContent, 'text/html');
-      convertedText = doc.body.textContent || textContent;
-    } else if (_xmuteTargetFormat === 'sha256') {
-      const buf = await _xmuteActiveFile.arrayBuffer();
-      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-      const hashArray = Array.from(new Uint8Array(hashBuf));
-      convertedText = `FILE SHA-256 HASH:\n${_xmuteActiveFile.name}\n${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
-      outExt = '.sha256.txt';
-    } else if (_xmuteTargetFormat === 'hex') {
-      const buf = await _xmuteActiveFile.arrayBuffer();
-      const u8 = new Uint8Array(buf);
-      let hex = `BINARY HEX DUMP (${_xmuteActiveFile.name} - ${u8.length} bytes):\n`;
-      const limit = Math.min(u8.length, 4096);
-      for (let i = 0; i < limit; i += 16) {
-        const chunk = u8.subarray(i, i + 16);
-        const hexStr = Array.from(chunk).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        const asciiStr = Array.from(chunk).map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
-        hex += i.toString(16).padStart(8, '0') + '  ' + hexStr.padEnd(48, ' ') + '  |' + asciiStr + '|\n';
-      }
-      if (u8.length > 4096) hex += '\n... (truncated for preview)';
-      convertedText = hex;
-      outExt = '.hex.txt';
-    } else if (_xmuteTargetFormat === 'b64') {
-      const buf = await _xmuteActiveFile.arrayBuffer();
-      const u8 = new Uint8Array(buf);
-      let binaryStr = '';
-      const limit = Math.min(u8.length, 65536);
-      for (let i = 0; i < limit; i++) { binaryStr += String.fromCharCode(u8[i]); }
-      convertedText = `data:${_xmuteActiveFile.type || 'application/octet-stream'};base64,` + btoa(binaryStr);
-      outExt = '.b64.txt';
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(imgUrl);
+
+      mimeType = _xmuteTargetFormat === 'png' ? 'image/png' : (_xmuteTargetFormat === 'jpeg' ? 'image/jpeg' : 'image/webp');
+      resultBlob = await new Promise((resolve) => canvas.toBlob(resolve, mimeType, 0.92));
+      convertedText = `[BINARY IMAGE DATA: ${_xmuteTargetFormat.toUpperCase()} (${(resultBlob.size/1024).toFixed(1)} KB) - ${img.width}x${img.height} px]`;
     } else {
-      throw new Error(`Conversion format '${_xmuteTargetFormat}' is not available in Local Mode yet.`);
+      // Text / Structured Data / Hash / Hex / B64
+      const textContent = await _xmuteActiveFile.text();
+
+      if (_xmuteTargetFormat === 'json') {
+        if (ext === 'csv' || ext === 'tsv' || _xmuteAnalysis?.structure === 'Tabular Dataset') {
+          const parsed = parseCSV(textContent, ext === 'tsv' ? '\t' : null);
+          const matrix = parsed.matrix;
+          if (!matrix.length) throw new Error('CSV dataset is empty');
+          const headers = matrix[0].map(h => h.trim());
+          const rows = matrix.slice(1).filter(r => r.some(v => v !== '')).map(r => {
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h || `col_${idx+1}`] = r[idx] ?? ''; });
+            return obj;
+          });
+          convertedText = JSON.stringify(rows, null, 2);
+        } else if (ext === 'jsonl') {
+          const lines = textContent.split(/\r?\n/).filter(l => l.trim());
+          const arr = lines.map((l, i) => {
+            try { return JSON.parse(l); } catch(e) { throw new Error(`Invalid JSON on line ${i+1}`); }
+          });
+          convertedText = JSON.stringify(arr, null, 2);
+        } else {
+          try {
+            const parsed = JSON.parse(textContent);
+            convertedText = JSON.stringify(parsed, null, 2);
+          } catch(e) {
+            convertedText = JSON.stringify({ filename: _xmuteActiveFile.name, content: textContent }, null, 2);
+          }
+        }
+      } else if (_xmuteTargetFormat === 'csv' || _xmuteTargetFormat === 'tsv') {
+        const delim = _xmuteTargetFormat === 'tsv' ? '\t' : ',';
+        if (ext === 'json' || ext === 'jsonl') {
+          let arr = [];
+          if (ext === 'jsonl') {
+            arr = textContent.split(/\r?\n/).filter(l => l.trim()).map(l => JSON.parse(l));
+          } else {
+            const parsed = JSON.parse(textContent);
+            arr = Array.isArray(parsed) ? parsed : [parsed];
+          }
+          if (!arr.length) throw new Error('JSON object array is empty');
+          const keys = Array.from(new Set(arr.flatMap(obj => typeof obj === 'object' && obj !== null ? Object.keys(obj) : ['value'])));
+          let csvStr = keys.map(k => `"${k.replace(/"/g, '""')}"`).join(delim) + '\n';
+          arr.forEach(row => {
+            if (typeof row !== 'object' || row === null) {
+              csvStr += `"${String(row).replace(/"/g, '""')}"\n`;
+            } else {
+              csvStr += keys.map(k => `"${String(row[k] ?? '').replace(/"/g, '""')}"`).join(delim) + '\n';
+            }
+          });
+          convertedText = csvStr;
+        } else if (ext === 'csv' || ext === 'tsv') {
+          const parsed = parseCSV(textContent, ext === 'tsv' ? '\t' : ',');
+          convertedText = parsed.matrix.map(r => r.map(v => `"${v.replace(/"/g, '""')}"`).join(delim)).join('\n');
+        } else {
+          convertedText = `value\n"${textContent.replace(/"/g, '""')}"`;
+        }
+      } else if (_xmuteTargetFormat === 'jsonl') {
+        let arr = [];
+        if (ext === 'csv' || ext === 'tsv') {
+          const parsed = parseCSV(textContent, ext === 'tsv' ? '\t' : null);
+          const headers = parsed.matrix[0] || [];
+          arr = parsed.matrix.slice(1).filter(r => r.some(v => v !== '')).map(r => {
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h || `col_${idx+1}`] = r[idx] ?? ''; });
+            return obj;
+          });
+        } else {
+          const parsed = JSON.parse(textContent);
+          arr = Array.isArray(parsed) ? parsed : [parsed];
+        }
+        convertedText = arr.map(item => JSON.stringify(item)).join('\n');
+      } else if (_xmuteTargetFormat === 'md') {
+        if (ext === 'csv' || ext === 'tsv') {
+          const parsed = parseCSV(textContent, ext === 'tsv' ? '\t' : null);
+          const m = parsed.matrix;
+          if (m.length) {
+            convertedText = '| ' + m[0].join(' | ') + ' |\n';
+            convertedText += '| ' + m[0].map(() => '---').join(' | ') + ' |\n';
+            m.slice(1).forEach(row => { convertedText += '| ' + row.join(' | ') + ' |\n'; });
+          }
+        } else {
+          convertedText = `# ${_xmuteActiveFile.name.replace(/\.[^/.]+$/, "")}\n\n` + textContent;
+        }
+      } else if (_xmuteTargetFormat === 'html') {
+        if (ext === 'csv' || ext === 'tsv') {
+          const parsed = parseCSV(textContent, ext === 'tsv' ? '\t' : null);
+          const m = parsed.matrix;
+          let tableHtml = '<table border="1" style="border-collapse:collapse;">';
+          if (m.length) {
+            tableHtml += '<thead><tr>' + m[0].map(h => `<th>${escapeHTML(h)}</th>`).join('') + '</tr></thead><tbody>';
+            m.slice(1).forEach(row => {
+              tableHtml += '<tr>' + row.map(c => `<td>${escapeHTML(c)}</td>`).join('') + '</tr>';
+            });
+            tableHtml += '</tbody>';
+          }
+          tableHtml += '</table>';
+          convertedText = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tabular Conversion</title></head><body>${tableHtml}</body></html>`;
+        } else {
+          convertedText = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Converted Document</title></head><body>${escapeHTML(textContent).replace(/\n/g,'<br>')}</body></html>`;
+        }
+      } else if (_xmuteTargetFormat === 'txt') {
+        if (ext === 'html') {
+          const doc = new DOMParser().parseFromString(textContent, 'text/html');
+          convertedText = doc.body.textContent || textContent;
+        } else {
+          convertedText = textContent;
+        }
+      } else if (_xmuteTargetFormat === 'sha256') {
+        const buf = await _xmuteActiveFile.arrayBuffer();
+        const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+        const hashArray = Array.from(new Uint8Array(hashBuf));
+        convertedText = `FILE SHA-256 HASH:\nFilename: ${_xmuteActiveFile.name}\nHash: ${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
+      } else if (_xmuteTargetFormat === 'hex') {
+        const buf = await _xmuteActiveFile.arrayBuffer();
+        const u8 = new Uint8Array(buf);
+        let hex = `BINARY HEX DUMP (${_xmuteActiveFile.name} - ${u8.length} bytes):\n`;
+        const limit = Math.min(u8.length, 4096);
+        for (let i = 0; i < limit; i += 16) {
+          const chunk = u8.subarray(i, i + 16);
+          const hexStr = Array.from(chunk).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          const asciiStr = Array.from(chunk).map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
+          hex += i.toString(16).padStart(8, '0') + '  ' + hexStr.padEnd(48, ' ') + '  |' + asciiStr + '|\n';
+        }
+        if (u8.length > 4096) hex += '\n... (truncated for preview)';
+        convertedText = hex;
+      } else if (_xmuteTargetFormat === 'b64') {
+        const buf = await _xmuteActiveFile.arrayBuffer();
+        const u8 = new Uint8Array(buf);
+        let binaryStr = '';
+        for (let i = 0; i < u8.length; i++) { binaryStr += String.fromCharCode(u8[i]); }
+        convertedText = `data:${_xmuteActiveFile.type || 'application/octet-stream'};base64,` + btoa(binaryStr);
+      } else {
+        throw new Error(`Conversion format '${_xmuteTargetFormat}' is not available in Local Mode yet.`);
+      }
+
+      resultBlob = new Blob([convertedText], { type: mimeType });
     }
+
+    const validation = validateXmuteOutput(_xmuteTargetFormat, convertedText, resultBlob, _xmuteActiveFile);
 
     const outFilename = _xmuteActiveFile.name.replace(/\.[^/.]+$/, "") + '_converted' + outExt;
     _xmuteConvertedResult = {
       filename: outFilename,
       text: convertedText,
-      blob: new Blob([convertedText], { type: 'text/plain' })
+      blob: resultBlob,
+      mimeType: mimeType,
+      validationDetails: validation.details
     };
 
     saveXmuteHistoryRecord({
@@ -5324,8 +5880,12 @@ async function processXmuteConversion() {
 }
 
 function downloadXmuteConvertedResult(){
-  if (!_xmuteConvertedResult) return;
-  download(_xmuteConvertedResult.filename, _xmuteConvertedResult.text);
+  if (!_xmuteConvertedResult || !_xmuteConvertedResult.blob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(_xmuteConvertedResult.blob);
+  a.download = _xmuteConvertedResult.filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 function saveXmuteHistoryRecord(record){
