@@ -964,3 +964,25 @@ table.grid th{
 
 .xmute-preview-panel{ background:var(--surface-panel); border:1px solid var(--border-crisp); border-radius:8px; padding:16px; width:340px; flex:0 0 340px; }
 .xmute-pipeline-step{ background:var(--surface-panel); border:1px solid var(--border-crisp); border-radius:6px; padding:10px 14px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+
+/* Grid Command Ribbon Professional Styling */
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  padding-right: 12px;
+  margin-right: 4px;
+}
+.ribbon-group:last-child {
+  border-right: none;
+  padding-right: 0;
+  margin-right: 0;
+}
+.ribbon-group-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 700;
+}

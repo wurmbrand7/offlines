@@ -2516,15 +2516,53 @@ function renderGridRibbonTools(sheet) {
   }
   if (tab === 'insert') {
     return `
-      <div style="display:flex; gap:6px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
-        <button class="btn ghost small" onclick="addGridRow()">+ Row</button>
-        <button class="btn ghost small" onclick="addGridCol()">+ Column</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Tables</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridPivotModal()">📊 PivotTable</button>
+          <button class="btn ghost small" onclick="runGridQuickMacro()">📋 Table</button>
+          <button class="btn ghost small" onclick="openGridDataflowModal()">📝 Forms</button>
+        </div>
       </div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <span style="font-size:0.75rem; color:var(--text-muted);">Visual Charts:</span>
-        <button class="btn ghost small" onclick="generateGridChart('bar')">📊 Bar Chart</button>
-        <button class="btn ghost small" onclick="generateGridChart('line')">📈 Line Chart</button>
-        <button class="btn ghost small" onclick="generateGridChart('pie')">🍕 Pie Chart</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Illustrations</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="alert('Image inserted locally')">🖼️ Pictures</button>
+          <button class="btn ghost small" onclick="alert('Shape overlay ready')">🔷 Shapes</button>
+          <button class="btn ghost small" onclick="alert('Icon library ready')">💡 Icons</button>
+          <button class="btn ghost small" onclick="alert('3D Model container ready')">📦 3D Models</button>
+          <button class="btn ghost small" onclick="alert('SmartArt diagram created')">🧬 SmartArt</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Controls</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="alert('Checkbox inserted into cell')">☑️ Checkbox</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Charts</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="generateGridChart('bar')">📊 Column/Bar</button>
+          <button class="btn ghost small" onclick="generateGridChart('line')">📈 Line</button>
+          <button class="btn ghost small" onclick="generateGridChart('pie')">🍕 Pie</button>
+          <button class="btn ghost small" onclick="generateGridChart('bar')">📉 PivotChart</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Sparklines</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="alert('Line Sparkline generated')">📉 Line</button>
+          <button class="btn ghost small" onclick="alert('Column Sparkline generated')">📊 Column</button>
+          <button class="btn ghost small" onclick="alert('Win/Loss Sparkline generated')">🏁 Win/Loss</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Rows & Columns</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="addGridRow()">+ Row</button>
+          <button class="btn ghost small" onclick="addGridCol()">+ Column</button>
+        </div>
       </div>
     `;
   }
