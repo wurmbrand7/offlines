@@ -2226,7 +2226,7 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     };
 
     // Security Sanitization check
-    if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process|this)\b/i.test(cleaned) || /[;\{\}\\\`]|--|\/\*/.test(cleaned)) {
+    if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process|this)\b/i.test(cleaned) || /[;\{\}\\\`]|--|\/\*/.test(cleaned) || /\[\s*['"]/.test(cleaned)) {
       return '#SECURITY_ERROR!';
     }
 
