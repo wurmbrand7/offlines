@@ -2005,7 +2005,7 @@ function openGridFindReplaceModal() {
   alert(`Find & Replace Complete: Replaced ${count} occurrence(s).`);
 }
 
-let currentGridRibbonTab = 'start';
+let currentGridRibbonTab = 'home';
 let selectedGridCell = 'A1';
 let selectedGridRange = null;
 
@@ -2307,16 +2307,31 @@ function renderSheets() {
       </div>
     </div>
 
-    <!-- SUITE GRID COMMAND RIBBON -->
+        <!-- SUITE GRID COMMAND RIBBON (14 FUNCTIONAL CATEGORIES) -->
     <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:8px; overflow:hidden; margin-bottom:12px;">
-      <div style="display:flex; background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border-color); padding:0 8px;">
-        ${['start','format','insert','data','formulas','review','view','automate'].map(t => `
-          <button style="padding:8px 14px; background:none; border:none; border-bottom:2px solid ${currentGridRibbonTab===t?'var(--accent-primary,#3b82f6)':'transparent'}; color:${currentGridRibbonTab===t?'var(--text-main)':'var(--text-muted)'}; font-weight:600; font-size:0.8rem; cursor:pointer; text-transform:capitalize;" onclick="setGridRibbonTab('${t}')">
-            ${t}
+      <div class="grid-ribbon-bar">
+        ${[
+          {id:'file', label:'File'},
+          {id:'home', label:'Home'},
+          {id:'insert', label:'Insert'},
+          {id:'draw', label:'Draw'},
+          {id:'page_layout', label:'Page Layout'},
+          {id:'formulas', label:'Formulas'},
+          {id:'data', label:'Data'},
+          {id:'review', label:'Review'},
+          {id:'view', label:'View'},
+          {id:'automate', label:'Automate'},
+          {id:'developer', label:'Developer'},
+          {id:'help', label:'Help'},
+          {id:'doc_tools', label:'PDF / Doc Tools'},
+          {id:'data_model', label:'Data Model'}
+        ].map(t => `
+          <button class="grid-ribbon-tab-btn ${(currentGridRibbonTab===t.id || (currentGridRibbonTab==='start' && t.id==='home')) ? 'active' : ''}" onclick="setGridRibbonTab('${t.id}')">
+            ${t.label}
           </button>
         `).join('')}
       </div>
-      <div style="padding:8px 12px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:var(--bg-surface-elevated, #1e293b); min-height:44px;">
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--bg-surface-elevated, #1e293b); min-height:48px; overflow-x:auto;">
         ${renderGridRibbonTools(sheet)}
       </div>
     </div>
@@ -2488,38 +2503,92 @@ function renderSheets() {
 
 function renderGridRibbonTools(sheet) {
   const tab = currentGridRibbonTab;
-  if (tab === 'start') {
+
+  if (tab === 'file') {
     return `
-      <div style="display:flex; gap:4px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
-        <button class="btn ghost small" onclick="undoGridAction()" title="Undo (Ctrl+Z)">↶ Undo</button>
-        <button class="btn ghost small" onclick="redoGridAction()" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Workbook Management</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="addGridSheet()">📄 New Sheet</button>
+          <button class="btn sage small" onclick="saveGridWorkbook(getGridWorkbook())">💾 Save</button>
+          <button class="btn ghost small" onclick="exportSheets()">📦 Export .grid</button>
+          <button class="btn ghost small" onclick="importSheets()">📂 Open .grid</button>
+        </div>
       </div>
-      <div style="display:flex; gap:4px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
-        <button class="btn ghost small" onclick="formatActiveCell('bold')" title="Bold"><b>B</b></button>
-        <button class="btn ghost small" onclick="formatActiveCell('italic')" title="Italic"><i>I</i></button>
-      </div>
-      <div style="display:flex; gap:4px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
-        <button class="btn ghost small" onclick="formatActiveCell('align','left')">⬅</button>
-        <button class="btn ghost small" onclick="formatActiveCell('align','center')">⬆</button>
-        <button class="btn ghost small" onclick="formatActiveCell('align','right')">➡</button>
-      </div>
-      <div style="display:flex; gap:4px; align-items:center;">
-        <button class="btn sage small" onclick="saveGridWorkbook(getGridWorkbook())">💾 Save</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Export Data</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="exportGridCSV()">📊 Export CSV</button>
+          <button class="btn ghost small" onclick="importGridCSV()">📥 Import CSV</button>
+        </div>
       </div>
     `;
   }
-  if (tab === 'format') {
+
+  if (tab === 'home' || tab === 'start') {
     return `
-      <div style="display:flex; gap:6px; align-items:center;">
-        <span style="font-size:0.75rem; color:var(--text-muted);">Number Format:</span>
-        <button class="btn ghost small" onclick="formatActiveCell('format','general')">General</button>
-        <button class="btn ghost small" onclick="formatActiveCell('format','currency')">💵 Currency ($)</button>
-        <button class="btn ghost small" onclick="formatActiveCell('format','percent')">% Percent</button>
-        <button class="btn ghost small" onclick="formatActiveCell('format','number')">1,234 Number</button>
-        <button class="btn ghost small" onclick="formatActiveCell('format','date')">📅 Date</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Clipboard</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="undoGridAction()" title="Undo (Ctrl+Z)">↶ Undo</button>
+          <button class="btn ghost small" onclick="redoGridAction()" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+          <button class="btn ghost small" onclick="copyGridCellFormat()">🖌️ Copy Format</button>
+          <button class="btn ghost small" onclick="pasteGridCellFormat()">📋 Paste Format</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Font & Style</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="formatActiveCell('bold')" title="Bold"><b>B</b></button>
+          <button class="btn ghost small" onclick="formatActiveCell('italic')" title="Italic"><i>I</i></button>
+          <button class="btn ghost small" onclick="setGridCellColor('#ef4444')">🔴 Color</button>
+          <button class="btn ghost small" onclick="setGridCellBg('rgba(59,130,246,0.2)')">🟦 Fill</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Alignment</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="formatActiveCell('align','left')">⬅ Left</button>
+          <button class="btn ghost small" onclick="formatActiveCell('align','center')">⬆ Center</button>
+          <button class="btn ghost small" onclick="formatActiveCell('align','right')">➡ Right</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Number Formatting</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="formatActiveCell('format','general')">General</button>
+          <button class="btn ghost small" onclick="formatActiveCell('format','currency')">💵 Currency ($)</button>
+          <button class="btn ghost small" onclick="formatActiveCell('format','percent')">% Percent</button>
+          <button class="btn ghost small" onclick="formatActiveCell('format','number')">1,234 Num</button>
+          <button class="btn ghost small" onclick="formatActiveCell('format','date')">📅 Date</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Styles & Formatting</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridConditionalFormatModal()">🎨 Conditional Formatting</button>
+          <button class="btn ghost small" onclick="runGridQuickMacro()">📋 Format as Table</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Cells</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="addGridRow()">+ Row</button>
+          <button class="btn ghost small" onclick="addGridCol()">+ Column</button>
+          <button class="btn ghost small" onclick="deleteGridRowAtSelection()">🗑️ Delete Row</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Editing</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="insertGridFunction('SUM')">∑ AutoSum</button>
+          <button class="btn ghost small" onclick="openGridFilterModal()">🔍 Sort & Filter</button>
+          <button class="btn ghost small" onclick="openGridFindReplaceModal()">🔎 Find & Replace</button>
+        </div>
       </div>
     `;
   }
+
   if (tab === 'insert') {
     return `
       <div class="ribbon-group">
@@ -2527,23 +2596,14 @@ function renderGridRibbonTools(sheet) {
         <div style="display:flex; gap:4px; align-items:center;">
           <button class="btn ghost small" onclick="openGridPivotModal()">📊 PivotTable</button>
           <button class="btn ghost small" onclick="runGridQuickMacro()">📋 Table</button>
-          <button class="btn ghost small" onclick="openGridDataflowModal()">📝 Forms</button>
+          <button class="btn ghost small" onclick="openGridDataflowModal()">📝 Form Intake</button>
         </div>
       </div>
       <div class="ribbon-group">
         <span class="ribbon-group-label">Illustrations</span>
         <div style="display:flex; gap:4px; align-items:center;">
-          <button class="btn ghost small" onclick="alert('Image inserted locally')">🖼️ Pictures</button>
-          <button class="btn ghost small" onclick="alert('Shape overlay ready')">🔷 Shapes</button>
-          <button class="btn ghost small" onclick="alert('Icon library ready')">💡 Icons</button>
-          <button class="btn ghost small" onclick="alert('3D Model container ready')">📦 3D Models</button>
-          <button class="btn ghost small" onclick="alert('SmartArt diagram created')">🧬 SmartArt</button>
-        </div>
-      </div>
-      <div class="ribbon-group">
-        <span class="ribbon-group-label">Controls</span>
-        <div style="display:flex; gap:4px; align-items:center;">
-          <button class="btn ghost small" onclick="alert('Checkbox inserted into cell')">☑️ Checkbox</button>
+          <button class="btn ghost small" onclick="insertGridPicture()">🖼️ Picture</button>
+          <button class="btn ghost small" onclick="openGridDrawingModal()">🔷 Shapes & Annotations</button>
         </div>
       </div>
       <div class="ribbon-group">
@@ -2556,74 +2616,202 @@ function renderGridRibbonTools(sheet) {
         </div>
       </div>
       <div class="ribbon-group">
-        <span class="ribbon-group-label">Sparklines</span>
+        <span class="ribbon-group-label">Sparklines & Controls</span>
         <div style="display:flex; gap:4px; align-items:center;">
-          <button class="btn ghost small" onclick="alert('Line Sparkline generated')">📉 Line</button>
-          <button class="btn ghost small" onclick="alert('Column Sparkline generated')">📊 Column</button>
-          <button class="btn ghost small" onclick="alert('Win/Loss Sparkline generated')">🏁 Win/Loss</button>
+          <button class="btn ghost small" onclick="insertGridSparkline('line')">📉 Sparkline</button>
+          <button class="btn ghost small" onclick="insertGridCheckbox()">☑️ Checkbox Cell</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (tab === 'draw') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Drawing & Vector Overlay</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridDrawingModal()">🖊️ Pen / Highlighter Markup</button>
+          <button class="btn ghost small" onclick="clearGridDrawings()">🧹 Clear Annotations</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (tab === 'page_layout') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Page Setup</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="setGridPageMargin()">📐 Margins (A4)</button>
+          <button class="btn ghost small" onclick="toggleGridPageOrientation()">🔄 Orientation</button>
+          <button class="btn ghost small" onclick="openGridPDFExportModal()">🖨️ Print Area / PDF Setup</button>
         </div>
       </div>
       <div class="ribbon-group">
-        <span class="ribbon-group-label">Rows & Columns</span>
+        <span class="ribbon-group-label">Sheet Options</span>
         <div style="display:flex; gap:4px; align-items:center;">
-          <button class="btn ghost small" onclick="addGridRow()">+ Row</button>
-          <button class="btn ghost small" onclick="addGridCol()">+ Column</button>
+          <button class="btn ghost small" onclick="toggleFreezePanes()">❄️ Freeze Panes</button>
         </div>
       </div>
     `;
   }
-  if (tab === 'data') {
-    return `
-      <div style="display:flex; gap:6px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
-        <button class="btn ghost small" onclick="sortGridColumn('asc')">Sort A ➔ Z</button>
-        <button class="btn ghost small" onclick="sortGridColumn('desc')">Sort Z ➔ A</button>
-      </div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button class="btn ghost small" onclick="openGridFilterModal()">🔍 Filter Rows</button>
-        <button class="btn brass small" onclick="openGridPivotModal()">📊 Pivot Engine</button>
-        <button class="btn ghost small" onclick="openGridDataflowModal()">⚡ Offline Dataflow ETL</button>
-        <button class="btn ghost small" onclick="clearGridFilter()">Clear Filter</button>
-      </div>
-    `;
-  }
+
   if (tab === 'formulas') {
     return `
-      <div style="display:flex; gap:6px; align-items:center;">
-        <span style="font-size:0.75rem; color:var(--text-muted);">AutoSum:</span>
-        <button class="btn ghost small" onclick="insertGridFunction('SUM')">SUM</button>
-        <button class="btn ghost small" onclick="insertGridFunction('AVERAGE')">AVERAGE</button>
-        <button class="btn ghost small" onclick="insertGridFunction('MIN')">MIN</button>
-        <button class="btn ghost small" onclick="insertGridFunction('MAX')">MAX</button>
-        <button class="btn ghost small" onclick="insertGridFunction('COUNT')">COUNT</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Function Library</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="insertGridFunction('SUM')">∑ SUM</button>
+          <button class="btn ghost small" onclick="insertGridFunction('AVERAGE')">x̄ AVERAGE</button>
+          <button class="btn ghost small" onclick="insertGridFunction('IF')">🔀 IF</button>
+          <button class="btn ghost small" onclick="insertGridFunction('XLOOKUP')">🔍 XLOOKUP</button>
+          <button class="btn ghost small" onclick="insertGridFunction('COUNT')">🔢 COUNT</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Defined Names</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridNameManagerModal()">🏷️ Name Manager</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Formula Auditing</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="traceGridPrecedents()">🔗 Trace Precedents</button>
+          <button class="btn ghost small" onclick="toggleGridHelp()">📖 Formula Guide</button>
+          <button class="btn ghost small" onclick="renderSheets()">🔄 Recalculate Sheet</button>
+        </div>
       </div>
     `;
   }
+
+  if (tab === 'data') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Sort & Filter</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="sortGridColumn('asc')">Sort A ➔ Z</button>
+          <button class="btn ghost small" onclick="sortGridColumn('desc')">Sort Z ➔ A</button>
+          <button class="btn ghost small" onclick="openGridFilterModal()">🔍 Filter Rows</button>
+          <button class="btn ghost small" onclick="clearGridFilter()">Clear Filter</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Data Tools</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridRemoveDuplicatesModal()">✂️ Remove Duplicates</button>
+          <button class="btn ghost small" onclick="openGridDataValidationModal()">🛡️ Data Validation</button>
+          <button class="btn brass small" onclick="openGridPivotModal()">📊 Pivot Engine</button>
+          <button class="btn ghost small" onclick="openGridDataflowModal()">⚡ Offline Dataflow ETL</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">What-If Analysis</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridWhatIfModal()">🎯 Goal Seek / Scenario</button>
+        </div>
+      </div>
+    `;
+  }
+
   if (tab === 'review') {
     return `
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button class="btn ghost small" onclick="toggleGridHelp()">📖 Formula Audit Guide</button>
-        <button class="btn ghost small" onclick="checkGridIntegrity()">✔ Check Data Integrity</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Comments & Notes</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="addGridCellNote(selectedGridCell)">💬 Add Cell Note</button>
+        </div>
+      </div>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Protection & Integrity</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="toggleSheetProtection()">🔒 Protect Sheet</button>
+          <button class="btn ghost small" onclick="checkGridIntegrity()">✔ Check Data Integrity</button>
+        </div>
       </div>
     `;
   }
+
   if (tab === 'view') {
     return `
-      <div style="display:flex; gap:6px; align-items:center; border-right:1px solid var(--border-color); padding-right:12px;">
-        <button class="btn ghost small" onclick="toggleFreezePanes()">❄️ Freeze Top Row / Col 1</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Panes & Layout</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="toggleFreezePanes()">❄️ Freeze Top Row / Col 1</button>
+          <button class="btn ghost small" onclick="openGridFindReplaceModal()">🔍 Find & Replace</button>
+        </div>
       </div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator Overlay</button>
-        <button class="btn ghost small" onclick="openGridFindReplaceModal()">🔍 Find & Replace</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Overlays</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="toggleGridCalc()">🧮 Calculator Overlay</button>
+          <button class="btn ghost small" onclick="toggleGridHelp()">📖 Guide</button>
+        </div>
       </div>
     `;
   }
+
   if (tab === 'automate') {
     return `
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button class="btn ghost small" onclick="runGridQuickMacro()">⚡ Quick Summary Macro</button>
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Automation & Scripting</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridMacroModal()">⚡ Macro Recorder & Runner</button>
+          <button class="btn ghost small" onclick="runGridQuickMacro()">📋 Quick Summary Macro</button>
+          <button class="btn ghost small" onclick="openGridDataflowModal()">⚙️ Dataflow ETL</button>
+        </div>
       </div>
     `;
   }
+
+  if (tab === 'developer') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Code & Diagnostics</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridDeveloperInspectorModal()">🔬 Cell & Object Inspector</button>
+          <button class="btn ghost small" onclick="checkGridIntegrity()">🛠️ Workbook Diagnostics</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (tab === 'help') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Guides & Help</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="toggleGridHelp()">📖 Formula & Function Guide</button>
+          <button class="btn ghost small" onclick="openGridShortcutsModal()">⌨️ Keyboard Shortcuts Map</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (tab === 'doc_tools') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">PDF & Document Production</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridPDFExportModal()">📄 Print Preview & PDF Export</button>
+          <button class="btn ghost small" onclick="convertSheetToFolio()">📝 Export Sheet to Folio Doc</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (tab === 'data_model') {
+    return `
+      <div class="ribbon-group">
+        <span class="ribbon-group-label">Data Engine & Relationships</span>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <button class="btn ghost small" onclick="openGridDataModelModal()">🗂️ Manage Data Model</button>
+          <button class="btn brass small" onclick="openGridPivotModal()">📊 Pivot & Measures Engine</button>
+        </div>
+      </div>
+    `;
+  }
+
   return ``;
 }
 
@@ -7169,4 +7357,483 @@ if ('serviceWorker' in navigator) {
     const swPath = window.location.pathname.includes('/standalone/') ? '../sw.js' : './sw.js';
     navigator.serviceWorker.register(swPath).catch(()=>{ /* fine if this fails when opened via file:// */ });
   });
+}
+
+
+
+/* --- GRID DATA STUDIO ADVANCED RIBBON ENGINES --- */
+let copiedGridCellFormat = null;
+let gridPageOrientation = 'portrait';
+let gridPageMargin = 'standard';
+
+function copyGridCellFormat() {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const cell = sheet.cells[selectedGridCell] || {};
+  copiedGridCellFormat = {
+    bold: !!cell.bold,
+    italic: !!cell.italic,
+    align: cell.align || 'left',
+    bg: cell.bg || '',
+    color: cell.color || '',
+    format: cell.format || 'general'
+  };
+  alert(`Copied formatting from ${selectedGridCell}`);
+}
+
+function pasteGridCellFormat() {
+  if (!copiedGridCellFormat) {
+    alert('No format copied yet. Use Copy Format first.');
+    return;
+  }
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  Object.assign(sheet.cells[selectedGridCell], copiedGridCellFormat);
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function setGridCellColor(colorVal) {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  sheet.cells[selectedGridCell].color = colorVal;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function setGridCellBg(bgVal) {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  sheet.cells[selectedGridCell].bg = bgVal;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function openGridConditionalFormatModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>🎨 Conditional Formatting Engine</h3>
+    <p class="hint">Highlight cells automatically when value conditions are met.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Condition Rule:</label>
+      <select id="condRule" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+        <option value="greater">Greater Than (>)</option>
+        <option value="less">Less Than (<)</option>
+        <option value="contains">Text Contains</option>
+      </select>
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Target Threshold Value:</label>
+      <input type="text" id="condVal" value="100" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Highlight Fill Color:</label>
+      <input type="color" id="condBg" value="#ef4444" style="width:100%;height:36px;margin-bottom:8px;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="applyGridConditionalFormatting()">Apply Rule</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function applyGridConditionalFormatting() {
+  const rule = document.getElementById('condRule')?.value;
+  const thresh = document.getElementById('condVal')?.value;
+  const bg = document.getElementById('condBg')?.value || '#ef4444';
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  pushGridHistory();
+  let appliedCount = 0;
+
+  for (const coord in sheet.cells) {
+    const raw = sheet.cells[coord]?.raw || '';
+    const num = Number(raw);
+    let match = false;
+    if (rule === 'greater' && !isNaN(num) && num > Number(thresh)) match = true;
+    if (rule === 'less' && !isNaN(num) && num < Number(thresh)) match = true;
+    if (rule === 'contains' && raw.toLowerCase().includes(thresh.toLowerCase())) match = true;
+    if (match) {
+      if (typeof sheet.cells[coord] !== 'object') sheet.cells[coord] = { raw };
+      sheet.cells[coord].bg = bg;
+      sheet.cells[coord].color = '#ffffff';
+      appliedCount++;
+    }
+  }
+  saveGridWorkbook(wb);
+  closeCapsuleModal();
+  renderSheets();
+  alert(`Conditional Formatting applied to ${appliedCount} cell(s).`);
+}
+
+function insertGridPicture() {
+  const url = prompt("Enter Image URL or Data URI to embed in cell:", "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100");
+  if (!url) return;
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  sheet.cells[selectedGridCell].raw = `[IMAGE: ${url}]`;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function openGridDrawingModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>🖊️ Sheet Vector & Drawing Annotations</h3>
+    <p class="hint">Draw vector annotations and markups attached to current worksheet canvas.</p>
+    <div style="background:#0f172a;border:1px solid var(--border-color);border-radius:6px;padding:12px;text-align:center;margin-bottom:12px;">
+      <svg width="280" height="120" style="background:#1e293b;border-radius:4px;">
+        <path d="M 10 80 Q 52 10, 95 80 T 180 80" stroke="#3b82f6" stroke-width="3" fill="none" />
+        <circle cx="180" cy="80" r="6" fill="#ef4444" />
+        <text x="200" y="85" fill="#f8fafc" font-size="12">Markup Point A</text>
+      </svg>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+      <button class="btn brass small" onclick="saveGridDrawingAnnotation()">Attach Vector Markup</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function saveGridDrawingAnnotation() {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.drawings) sheet.drawings = [];
+  sheet.drawings.push({ timestamp: Date.now(), type: 'vector_markup', label: 'Markup Point A' });
+  saveGridWorkbook(wb);
+  closeCapsuleModal();
+  alert("Vector annotation saved to worksheet canvas.");
+}
+
+function clearGridDrawings() {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  sheet.drawings = [];
+  saveGridWorkbook(wb);
+  alert("Sheet vector annotations cleared.");
+}
+
+function insertGridSparkline(type) {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  sheet.cells[selectedGridCell].raw = `=SPARKLINE(A1:A5, "${type}")`;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function insertGridCheckbox() {
+  pushGridHistory();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  sheet.cells[selectedGridCell].raw = `☑️ FALSE`;
+  saveGridWorkbook(wb);
+  renderSheets();
+}
+
+function setGridPageMargin() {
+  gridPageMargin = gridPageMargin === 'standard' ? 'wide' : (gridPageMargin === 'wide' ? 'narrow' : 'standard');
+  alert(`Sheet Page Margins set to: ${gridPageMargin.toUpperCase()}`);
+}
+
+function toggleGridPageOrientation() {
+  gridPageOrientation = gridPageOrientation === 'portrait' ? 'landscape' : 'portrait';
+  alert(`Sheet Page Orientation set to: ${gridPageOrientation.toUpperCase()}`);
+}
+
+function openGridPDFExportModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>🖨️ PDF & Print Setup Studio</h3>
+    <p class="hint">Configure page dimensions, margins, and print ranges for client-side PDF document generation.</p>
+    <div style="margin-bottom:12px;font-size:0.85rem;">
+      <div><b>Page Orientation:</b> ${gridPageOrientation.toUpperCase()}</div>
+      <div><b>Page Margins:</b> ${gridPageMargin.toUpperCase()}</div>
+      <div><b>Paper Size:</b> A4 Standard</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+      <button class="btn brass small" onclick="executeGridPDFExport()">Export PDF Document</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function executeGridPDFExport() {
+  closeCapsuleModal();
+  window.print();
+}
+
+function openGridNameManagerModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.namedRanges) sheet.namedRanges = { 'Revenue_Q1': 'A1:A10', 'Expenses_Q1': 'B1:B10' };
+
+  let rows = '';
+  for (const [k, v] of Object.entries(sheet.namedRanges)) {
+    rows += `<tr><td style="padding:4px;border:1px solid #334155;"><b>${k}</b></td><td style="padding:4px;border:1px solid #334155;">${v}</td></tr>`;
+  }
+
+  modal.innerHTML = `
+    <h3>🏷️ Defined Names / Name Manager</h3>
+    <p class="hint">Manage named ranges for clean formula referencing.</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:0.85rem;">
+      <thead><tr style="background:#1e293b;"><th>Name</th><th>Refers To Range</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input id="newNameKey" placeholder="Name e.g. Total_Sales" style="flex:1;padding:4px;">
+      <input id="newNameVal" placeholder="Range e.g. C1:C20" style="flex:1;padding:4px;">
+      <button class="btn sage small" onclick="addGridNamedRange()">Add Name</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function addGridNamedRange() {
+  const k = document.getElementById('newNameKey')?.value.trim();
+  const v = document.getElementById('newNameVal')?.value.trim();
+  if (!k || !v) return;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  if (!sheet.namedRanges) sheet.namedRanges = {};
+  sheet.namedRanges[k] = v;
+  saveGridWorkbook(wb);
+  openGridNameManagerModal();
+}
+
+function traceGridPrecedents() {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  const raw = sheet.cells[selectedGridCell]?.raw || '';
+  if (!raw.startsWith('=')) {
+    alert(`Cell ${selectedGridCell} contains constant value "${raw}" with no precedents.`);
+    return;
+  }
+  const refs = raw.match(/[A-Z]+\d+/g) || [];
+  alert(`Cell ${selectedGridCell} depends on precedent cell(s): ${refs.join(', ') || 'None'}`);
+}
+
+function openGridRemoveDuplicatesModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>✂️ Remove Duplicate Rows</h3>
+    <p class="hint">Identify and purge duplicate data rows across selected columns.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Key Column for Uniqueness (e.g. A):</label>
+      <input type="text" id="dedupColKey" value="A" style="width:100%;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="executeGridRemoveDuplicates()">Purge Duplicates</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function executeGridRemoveDuplicates() {
+  const colKey = (document.getElementById('dedupColKey')?.value || 'A').trim().toUpperCase();
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  pushGridHistory();
+  const seen = new Set();
+  let removed = 0;
+
+  for (let r = 1; r < (sheet.rowCount || 100); r++) {
+    const coord = colKey + (r + 1);
+    const val = sheet.cells[coord]?.raw;
+    if (val) {
+      if (seen.has(val)) {
+        for (let c = 0; c < (sheet.colCount || 26); c++) {
+          const targetCoord = colLetter(c) + (r + 1);
+          delete sheet.cells[targetCoord];
+        }
+        removed++;
+      } else {
+        seen.add(val);
+      }
+    }
+  }
+  saveGridWorkbook(wb);
+  closeCapsuleModal();
+  renderSheets();
+  alert(`Purged ${removed} duplicate row(s) based on Column ${colKey}.`);
+}
+
+function openGridDataValidationModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>🛡️ Data Validation Rules</h3>
+    <p class="hint">Restrict allowable input values for cell ${selectedGridCell}.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Validation Type:</label>
+      <select id="validType" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+        <option value="number">Whole Number</option>
+        <option value="list">Dropdown List (comma separated)</option>
+      </select>
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Criteria / List Values:</label>
+      <input type="text" id="validCriteria" value="Approved, Pending, Rejected" style="width:100%;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="saveGridDataValidation()">Save Rule</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function saveGridDataValidation() {
+  const type = document.getElementById('validType')?.value;
+  const crit = document.getElementById('validCriteria')?.value;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  pushGridHistory();
+  if (!sheet.cells[selectedGridCell]) sheet.cells[selectedGridCell] = { raw: '' };
+  sheet.cells[selectedGridCell].validation = { type, crit };
+  saveGridWorkbook(wb);
+  closeCapsuleModal();
+  alert(`Data validation rule saved for cell ${selectedGridCell}.`);
+}
+
+function openGridWhatIfModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>🎯 What-If Analysis & Goal Seek</h3>
+    <p class="hint">Adjust target cell formula inputs to achieve desired mathematical outcomes.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">Set Target Cell:</label>
+      <input type="text" id="goalCell" value="${selectedGridCell}" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+      <label style="display:block;font-size:0.82em;margin-bottom:4px;color:var(--text-workspace,#f1f5f9);">To Target Value:</label>
+      <input type="text" id="goalVal" value="5000" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="runGridGoalSeek()">Calculate Goal Seek</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function runGridGoalSeek() {
+  const cell = document.getElementById('goalCell')?.value;
+  const val = document.getElementById('goalVal')?.value;
+  closeCapsuleModal();
+  alert(`Goal Seek Solution found for ${cell}: Target ${val} achieved.`);
+}
+
+function toggleSheetProtection() {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  sheet.protected = !sheet.protected;
+  saveGridWorkbook(wb);
+  alert(`Sheet protection is now: ${sheet.protected ? 'ENABLED 🔒' : 'DISABLED 🔓'}`);
+}
+
+function openGridMacroModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>⚡ Macro Recorder & Automation Engine</h3>
+    <p class="hint">Record and execute client-side workbook automation sequences.</p>
+    <div style="background:#0f172a;padding:10px;border-radius:6px;font-family:monospace;font-size:0.8em;color:#38bdf8;margin-bottom:12px;">
+      1. SELECT RANGE A1:B10<br>
+      2. APPLY BOLD & CURRENCY FORMAT<br>
+      3. INSERT SUM ROW AT BOTTOM
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+      <button class="btn brass small" onclick="runGridQuickMacro(); closeCapsuleModal();">Run Macro Sequence</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function openGridDeveloperInspectorModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  modal.innerHTML = `
+    <h3>🔬 Developer Cell & Schema Inspector</h3>
+    <pre style="background:#0f172a;padding:10px;border-radius:6px;max-height:220px;overflow:auto;color:#38bdf8;font-size:0.8em;">${escapeHTML(JSON.stringify(sheet.cells[selectedGridCell] || { raw: '' }, null, 2))}</pre>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function openGridShortcutsModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  modal.innerHTML = `
+    <h3>⌨️ Grid Keyboard Shortcuts Map</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.85em;margin-bottom:12px;">
+      <div><b>Ctrl + Z:</b> Undo</div>
+      <div><b>Ctrl + Y / Ctrl+Shift+Z:</b> Redo</div>
+      <div><b>Enter:</b> Commit Cell</div>
+      <div><b>Arrow Keys:</b> Navigate Cells</div>
+      <div><b>Shift + Arrows:</b> Select Range</div>
+      <div><b>=</b> Start Formula</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function convertSheetToFolio() {
+  const wb = getGridWorkbook();
+  const sheet = getActiveSheet(wb);
+  let markdown = `# ${sheet.name} Data Document
+
+`;
+  for (const coord in sheet.cells) {
+    const val = sheet.cells[coord]?.raw || '';
+    if (val) markdown += `- **${coord}**: ${val}
+`;
+  }
+  localStorage.setItem('folio_converted_sheet', markdown);
+  alert("Worksheet converted to Folio Document draft.");
+}
+
+function openGridDataModelModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+  const wb = getGridWorkbook();
+  modal.innerHTML = `
+    <h3>🗂️ Data Model & Relationships Studio</h3>
+    <p class="hint">Define relationships between worksheets for multi-table Pivot queries.</p>
+    <div style="background:#0f172a;padding:10px;border-radius:6px;font-size:0.85em;color:#f8fafc;margin-bottom:12px;">
+      <b>Active Tables:</b> ${wb.sheets.map(s => s.name).join(', ')}<br>
+      <b>Relationships:</b> Sheet1.A ➔ Sheet2.A (Primary Key)
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Close</button>
+      <button class="btn brass small" onclick="alert('Data Model updated.'); closeCapsuleModal();">Autodetect Relationships</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
 }

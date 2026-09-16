@@ -986,3 +986,33 @@ table.grid th{
   color: var(--text-muted, #94a3b8);
   font-weight: 700;
 }
+
+.grid-ribbon-bar {
+  display: flex;
+  overflow-x: auto;
+  background: rgba(0,0,0,0.25);
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  padding: 0 4px;
+  scrollbar-width: thin;
+}
+.grid-ribbon-tab-btn {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.grid-ribbon-tab-btn:hover {
+  color: var(--text-main, #f8fafc);
+  background: rgba(255,255,255,0.03);
+}
+.grid-ribbon-tab-btn.active {
+  border-bottom-color: var(--accent-primary, #3b82f6);
+  color: var(--text-main, #f8fafc);
+  font-weight: 700;
+}
