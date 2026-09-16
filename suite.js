@@ -6845,14 +6845,56 @@ function renderPrivacyCenter(){
 }
 
 function computePasswordHealth(){
-  if(!_vaultItems || !_vaultItems.length) return 100;
-  const pwItems = _vaultItems.filter(i=>['logins','wifi'].includes(i.category) && i.fields.password);
-  if(!pwItems.length) return 100;
+  if(!_vaultItems || !_vaultItems.length) return null;
+  const pwItems = _vaultItems.filter(i=>['logins','wifi'].includes(i.category) && i.fields && i.fields.password);
+  if(!pwItems.length) return null;
+
   let strong = 0;
-  pwItems.forEach(item=>{
-    if((item.fields.password||'').length >= 12) strong++;
+  let weak = 0;
+  let reused = 0;
+  let old = 0;
+  let missing2fa = 0;
+
+  const seenPasswords = new Map();
+  const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+
+  pwItems.forEach(item => {
+    const pw = item.fields.password || '';
+    if (pw.length >= 12 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)) {
+      strong++;
+    } else {
+      weak++;
+    }
+
+    seenPasswords.set(pw, (seenPasswords.get(pw) || 0) + 1);
+
+    if (item.updatedAt && item.updatedAt < ninetyDaysAgo) {
+      old++;
+    }
+
+    if (!item.fields.totpSecret) {
+      missing2fa++;
+    }
   });
-  return Math.round((strong / pwItems.length) * 100);
+
+  seenPasswords.forEach((count) => {
+    if (count > 1) {
+      reused += count;
+    }
+  });
+
+  const total = pwItems.length;
+  const score = Math.round((strong / total) * 100);
+
+  return {
+    score,
+    total,
+    strong,
+    weak,
+    reused,
+    old,
+    missing2fa
+  };
 }
 
 function renderSecurityCenter(){
