@@ -2139,13 +2139,13 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     });
 
     // Mathematical & Statistical Helpers
-    const flatten = a => Array.isArray(a) ? a.flat(Infinity) : [a];
-    const SUM = arr => flatten(arr).reduce((a, b) => a + (Number(b) || 0), 0);
-    const AVERAGE = arr => { const a = flatten(arr); return a.length ? SUM(a) / a.length : 0; };
-    const MIN = arr => Math.min(...flatten(arr).map(Number));
-    const MAX = arr => Math.max(...flatten(arr).map(Number));
-    const COUNT = arr => flatten(arr).filter(x => typeof x === 'number' && !isNaN(x)).length;
-    const COUNTA = arr => flatten(arr).filter(x => x !== '' && x !== null && x !== undefined).length;
+    const flatten = (...args) => args.flatMap(a => Array.isArray(a) ? a.flat(Infinity) : [a]);
+    const SUM = (...args) => flatten(...args).reduce((a, b) => a + (Number(b) || 0), 0);
+    const AVERAGE = (...args) => { const a = flatten(...args); return a.length ? SUM(...a) / a.length : 0; };
+    const MIN = (...args) => Math.min(...flatten(...args).map(Number));
+    const MAX = (...args) => Math.max(...flatten(...args).map(Number));
+    const COUNT = (...args) => flatten(...args).filter(x => typeof x === 'number' && !isNaN(x)).length;
+    const COUNTA = (...args) => flatten(...args).filter(x => x !== '' && x !== null && x !== undefined).length;
     const COUNTIF = (arr, cond) => flatten(arr).filter(x => String(x) === String(cond)).length;
     const SUMIF = (arr, cond, sumArr) => {
       const a = flatten(arr);
@@ -2179,7 +2179,7 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
     const LEFT = (str, n = 1) => String(str).slice(0, n);
     const RIGHT = (str, n = 1) => String(str).slice(-n);
     const MID = (str, start, len) => String(str).substring(start - 1, start - 1 + len);
-    const PRODUCT = arr => (Array.isArray(arr) ? arr : [arr]).reduce((a, b) => a * (Number(b) || 0), 1);
+    const PRODUCT = (...args) => flatten(...args).reduce((a, b) => a * (Number(b) || 0), 1);
     const IFS = (...args) => { for (let i = 0; i < args.length; i += 2) { if (args[i]) return args[i + 1]; } return '#N/A'; };
     const TEXTJOIN = (delim, skipEmpty, ...args) => {
       let items = [];
@@ -2208,14 +2208,20 @@ function evalGridFormula(expr, cellsMap, visited = new Set()) {
       return '#N/A';
     };
     const XLOOKUP = (key, lookupArr, returnArr, ifNotFound = '#N/A') => {
-      if (!Array.isArray(lookupArr) || !Array.isArray(returnArr)) return ifNotFound;
-      const idx = lookupArr.findIndex(x => String(x) === String(key));
-      return idx >= 0 ? returnArr[idx] : ifNotFound;
+      const lArr = flatten(lookupArr);
+      const rArr = flatten(returnArr);
+      const idx = lArr.findIndex(x => String(x) === String(key));
+      const res = idx >= 0 ? rArr[idx] : ifNotFound;
+      return Array.isArray(res) ? (res[0] ?? '#N/A') : res;
     };
-    const INDEX = (arr, rowIdx) => (Array.isArray(arr) ? arr[rowIdx - 1] : '#REF!');
+    const INDEX = (arr, rowIdx) => {
+      const flat = flatten(arr);
+      const res = flat[rowIdx - 1];
+      return res !== undefined ? res : '#REF!';
+    };
     const MATCH = (key, arr) => {
-      if (!Array.isArray(arr)) return '#N/A';
-      const idx = arr.findIndex(x => String(x) === String(key));
+      const flat = flatten(arr);
+      const idx = flat.findIndex(x => String(x) === String(key));
       return idx >= 0 ? idx + 1 : '#N/A';
     };
 
