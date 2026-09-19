@@ -687,37 +687,111 @@ document.addEventListener('keydown', (e)=>{
 
 function getFolioDocument() {
   const raw = loadLocal('docs', null);
+  let docObj = null;
   if (raw && raw.format === "folio" && raw.document) {
-    return raw;
+    docObj = raw;
+  } else {
+    const legacyHtml = (raw && typeof raw === 'object' && raw.html) ? raw.html : '<p>Start writing...</p>';
+    docObj = {
+      format: "folio",
+      version: 1,
+      document: {
+        id: "doc_" + Date.now(),
+        title: "Untitled Document",
+        metadata: {
+          created: Date.now(),
+          modified: Date.now(),
+          author: "Operator",
+          tags: [],
+          status: "Draft",
+          priority: "Normal"
+        },
+        content: legacyHtml,
+        attachments: [],
+        comments: [],
+        history: [{
+          id: "v_" + Date.now(),
+          title: "Initial Version",
+          timestamp: Date.now(),
+          content: legacyHtml
+        }],
+        relations: []
+      }
+    };
   }
-  // Automatic backward-compatible migration from legacy flat HTML object
-  const legacyHtml = (raw && typeof raw === 'object' && raw.html) ? raw.html : '<p>Start writing...</p>';
-  return {
-    format: "folio",
-    version: 1,
-    document: {
-      id: "doc_" + Date.now(),
-      title: "Untitled Document",
-      metadata: {
-        created: Date.now(),
-        modified: Date.now(),
-        author: "Operator",
-        tags: [],
-        status: "Draft",
-        priority: "Normal"
-      },
-      content: legacyHtml,
-      attachments: [],
-      comments: [],
-      history: [{
-        id: "v_" + Date.now(),
-        title: "Initial Version",
-        timestamp: Date.now(),
-        content: legacyHtml
-      }],
-      relations: []
-    }
+
+  // Ensure robust sub-schemas for complete document data model
+  const doc = docObj.document;
+  if (!doc.settings) {
+    doc.settings = {
+      margins: 'standard',
+      orientation: 'portrait',
+      columns: 1,
+      paperColor: '#ffffff',
+      watermark: '',
+      headerText: '',
+      footerText: '',
+      showRuler: true,
+      showGridlines: false,
+      zoom: 100,
+      protectionLocked: false,
+      protectionPassword: ''
+    };
+  }
+  if (!doc.toc) doc.toc = [];
+  if (!doc.footnotes) doc.footnotes = [];
+  if (!doc.endnotes) doc.endnotes = [];
+  if (!doc.comments) doc.comments = [];
+  if (!doc.revisions) doc.revisions = [];
+  if (!doc.mailMergeData) {
+    doc.mailMergeData = {
+      recipients: [
+        { name: 'Alice Smith', company: 'Acme Corp', role: 'Director', email: 'alice@acme.com' },
+        { name: 'Bob Jones', company: 'Starlight Inc', role: 'Manager', email: 'bob@starlight.com' }
+      ],
+      currentRecipientIndex: 0
+    };
+  }
+  return docObj;
+}
+
+function insertFolioImage() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png, image/jpeg, image/webp, image/gif, image/svg+xml';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUri = evt.target.result;
+      const editor = document.getElementById('docsEditor');
+      if (editor) {
+        editor.focus();
+        const imgId = 'img_' + Date.now();
+        const imgHtml = `<span class="folio-image-wrapper" contenteditable="false" style="display:inline-block; position:relative; margin:8px 0; max-width:100%;">
+          <img id="${imgId}" src="${dataUri}" style="max-width:100%; height:auto; border-radius:4px; border:1px solid rgba(255,255,255,0.15); cursor:pointer; vertical-align:middle;" alt="${file.name}" onclick="selectFolioImage('${imgId}')" />
+        </span><p></p>`;
+        document.execCommand('insertHTML', false, imgHtml);
+        captureFolioCurrentContent();
+        showSeal();
+        if (typeof showToast === 'function') showToast(`Image "${file.name}" inserted locally.`);
+      }
+    };
+    reader.readAsDataURL(file);
   };
+  input.click();
+}
+
+function selectFolioImage(imgId) {
+  const img = document.getElementById(imgId);
+  if (!img) return;
+  const newWidth = prompt("Enter new image width (e.g., 300px, 50%, 100%):", img.style.width || "100%");
+  if (newWidth) {
+    img.style.width = newWidth;
+    captureFolioCurrentContent();
+    if (typeof showToast === 'function') showToast("Image resized.");
+  }
 }
 
 function saveFolioDocument(docObj, silent = false) {
@@ -813,6 +887,14 @@ function renderFolioRibbonTools() {
         <option value="Georgia, serif">Georgia</option>
         <option value="Times New Roman, serif">Times New Roman</option>
       </select>
+      <select title="Font Size" style="background:#27272a; color:#f4f4f5; border:1px solid #3f3f46; padding:4px 8px; border-radius:4px; font-size:0.78rem;" onchange="setFolioFontSize(this.value); this.blur();">
+        <option value="12px">12pt</option>
+        <option value="14px">14pt</option>
+        <option value="16px">16pt</option>
+        <option value="18px">18pt</option>
+        <option value="24px">24pt</option>
+        <option value="36px">36pt</option>
+      </select>
       <div style="height:16px; width:1px; background:#3f3f46;"></div>
       <button class="btn small icon" style="${btnStyle}" title="Bold" onclick="document.execCommand('bold')"><b>B</b></button>
       <button class="btn small icon" style="${btnStyle}" title="Italic" onclick="document.execCommand('italic')"><i>I</i></button>
@@ -821,6 +903,14 @@ function renderFolioRibbonTools() {
       <button class="btn small icon" style="${btnStyle}" title="Superscript" onclick="document.execCommand('superscript')">X²</button>
       <button class="btn small icon" style="${btnStyle}" title="Subscript" onclick="document.execCommand('subscript')">X₂</button>
       <div style="height:16px; width:1px; background:#3f3f46;"></div>
+      <label title="Font Color" style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; color:#f4f4f5;">
+        🎨 <input type="color" value="#1e293b" style="width:20px; height:20px; border:none; background:none; cursor:pointer;" onchange="document.execCommand('foreColor', false, this.value)" />
+      </label>
+      <label title="Highlight Color" style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; color:#f4f4f5;">
+        🖍️ <input type="color" value="#fef08a" style="width:20px; height:20px; border:none; background:none; cursor:pointer;" onchange="document.execCommand('hiliteColor', false, this.value)" />
+      </label>
+      <button class="btn small" style="${btnStyle}" title="Clear Formatting" onclick="document.execCommand('removeFormat')">🧹 Clear Format</button>
+      <div style="height:16px; width:1px; background:#3f3f46;"></div>
       <button class="btn small icon" style="${btnStyle}" title="Align left" onclick="document.execCommand('justifyLeft')">⟵</button>
       <button class="btn small icon" style="${btnStyle}" title="Align center" onclick="document.execCommand('justifyCenter')">↔</button>
       <button class="btn small icon" style="${btnStyle}" title="Align right" onclick="document.execCommand('justifyRight')">⟶</button>
@@ -828,6 +918,14 @@ function renderFolioRibbonTools() {
       <div style="height:16px; width:1px; background:#3f3f46;"></div>
       <button class="btn small icon" style="${btnStyle}" title="Bullet List" onclick="document.execCommand('insertUnorderedList')">• List</button>
       <button class="btn small icon" style="${btnStyle}" title="Numbered List" onclick="document.execCommand('insertOrderedList')">1. List</button>
+      <button class="btn small icon" style="${btnStyle}" title="Indent" onclick="document.execCommand('indent')">⇥ Indent</button>
+      <button class="btn small icon" style="${btnStyle}" title="Outdent" onclick="document.execCommand('outdent')">⇤ Outdent</button>
+      <select title="Line Spacing" style="background:#27272a; color:#f4f4f5; border:1px solid #3f3f46; padding:4px 8px; border-radius:4px; font-size:0.78rem;" onchange="setFolioLineSpacing(this.value); this.blur();">
+        <option value="1.15">Spacing: 1.15</option>
+        <option value="1.0">Spacing: 1.0 Single</option>
+        <option value="1.5">Spacing: 1.5</option>
+        <option value="2.0">Spacing: 2.0 Double</option>
+      </select>
       <button class="btn small" style="${btnStyle}" onclick="openFolioFindReplaceModal()">🔍 Find & Replace</button>
     `;
   }
@@ -851,7 +949,9 @@ function renderFolioRibbonTools() {
       <button class="btn small" style="${btnStyle}" onclick="folioInsertBookmark()">📌 Bookmark</button>
       <button class="btn small" style="${btnStyle}" onclick="insertFolioFootnote()">1️⃣ Footnote</button>
       <button class="btn small" style="${btnStyle}" onclick="folioInsertHeaderFooter()">🔝 Header / Footer</button>
-      <button class="btn small" style="${btnStyle}" onclick="folioInsertSymbol('∑')">∑ Symbol</button>
+      <button class="btn small" style="${btnStyle}" onclick="folioOpenSymbolPicker()">∑ Symbol Picker</button>
+      <button class="btn small" style="${btnStyle}" onclick="folioInsertEquation()">🧮 Equation</button>
+      <button class="btn small" style="${btnStyle}" onclick="folioInsertTextBox()">📦 Text Box</button>
     `;
   }
   if (tab === 'DESIGN') {
@@ -1150,7 +1250,11 @@ function exportFolioFormat(fmt) {
     const md = `# ${title}\n\n${temp.textContent || temp.innerText}`;
     download(`${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.md`, md);
   } else if (fmt === 'docx') {
-    const docxContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHTML(title)}</title></head><body><h1>${escapeHTML(title)}</h1>${content}</body></html>`;
+    const docxContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head><meta charset='utf-8'><title>${escapeHTML(title)}</title>
+    <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+    <style>body { font-family: 'Georgia', serif; font-size: 11pt; line-height: 1.5; padding: 1in; }</style>
+    </head><body><h1>${escapeHTML(title)}</h1>${content}</body></html>`;
     download(`${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.docx`, docxContent);
   } else if (fmt === 'pdf') {
     window.print();
@@ -1174,6 +1278,10 @@ function folioCleanPDFFormatting() {
 
 function setFolioPageMargins(type) {
   const container = document.getElementById('folioPaperContainer');
+  const docObj = getFolioDocument();
+  docObj.document.settings.margins = type;
+  saveFolioDocument(docObj, true);
+
   if (!container) return;
   if (type === 'narrow') {
     container.style.padding = '24px 28px';
@@ -1186,6 +1294,10 @@ function setFolioPageMargins(type) {
 
 function setFolioOrientation(orient) {
   const container = document.getElementById('folioPaperContainer');
+  const docObj = getFolioDocument();
+  docObj.document.settings.orientation = orient;
+  saveFolioDocument(docObj, true);
+
   if (!container) return;
   if (orient === 'landscape') {
     container.style.maxWidth = '1100px';
@@ -1198,11 +1310,15 @@ function setFolioOrientation(orient) {
 
 function setFolioColumns(cols) {
   const editor = document.getElementById('docsEditor');
+  const docObj = getFolioDocument();
+  docObj.document.settings.columns = parseInt(cols) || 1;
+  saveFolioDocument(docObj, true);
+
   if (!editor) return;
-  if (cols === '2') {
+  if (cols == '2') {
     editor.style.columnCount = '2';
     editor.style.columnGap = '28px';
-  } else if (cols === '3') {
+  } else if (cols == '3') {
     editor.style.columnCount = '3';
     editor.style.columnGap = '20px';
   } else {
@@ -1213,6 +1329,10 @@ function setFolioColumns(cols) {
 function setFolioPaperColor(color) {
   const container = document.getElementById('folioPaperContainer');
   const editor = document.getElementById('docsEditor');
+  const docObj = getFolioDocument();
+  docObj.document.settings.paperColor = color;
+  saveFolioDocument(docObj, true);
+
   if (!container) return;
   container.style.background = color;
   if (color === '#18181b') {
@@ -1245,6 +1365,10 @@ function applyFolioTheme(theme) {
 function setFolioWatermark(text) {
   let wm = document.getElementById('folioWatermarkOverlay');
   const container = document.getElementById('folioPaperContainer');
+  const docObj = getFolioDocument();
+  docObj.document.settings.watermark = text;
+  saveFolioDocument(docObj, true);
+
   if (!container) return;
   if (!text) {
     if (wm) wm.remove();
@@ -1267,27 +1391,30 @@ function insertFolioSectionBreak() {
 function insertFolioTOC() {
   const editor = document.getElementById('docsEditor');
   if (!editor) return;
+
+  const existingToc = editor.querySelector('.folio-toc');
+  if (existingToc) existingToc.remove();
+
   const headings = Array.from(editor.querySelectorAll('h1, h2, h3, h4'));
   if (headings.length === 0) {
-    alert('No headings (H1-H4) found to generate Table of Contents.');
+    if (typeof showToast === 'function') showToast('No headings (H1-H4) found to generate Table of Contents.');
     return;
   }
-  let tocHtml = '<div class="folio-toc" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:16px; margin:16px 0; color:#0f172a;"><b style="font-size:1rem; display:block; margin-bottom:8px;">Table of Contents</b><ul style="margin:0; padding-left:20px; font-size:0.9rem;">';
+
+  let tocHtml = '<div class="folio-toc" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:16px; margin:16px 0; color:#0f172a;"><b style="font-size:1rem; display:block; margin-bottom:8px; color:#1e293b;">Table of Contents</b><ul style="margin:0; padding-left:20px; font-size:0.9rem;">';
   headings.forEach((h, idx) => {
-    const id = h.id || `toc_h_${idx}_${Date.now()}`;
-    h.id = id;
+    if (!h.id) {
+      h.id = `toc_h_${idx}_${Date.now()}`;
+    }
     const tag = h.tagName.toLowerCase();
     const indent = tag === 'h2' ? '12px' : tag === 'h3' ? '24px' : tag === 'h4' ? '36px' : '0px';
-    tocHtml += `<li style="margin-left:${indent}; margin-bottom:4px;"><a href="#${id}" onclick="event.preventDefault(); document.getElementById('${id}').scrollIntoView({behavior:'smooth'});" style="color:#2563eb; text-decoration:none;">${h.innerText || h.textContent}</a></li>`;
+    tocHtml += `<li style="margin-left:${indent}; margin-bottom:4px;"><a href="#${h.id}" onclick="event.preventDefault(); document.getElementById('${h.id}').scrollIntoView({behavior:'smooth'});" style="color:#f59e0b; text-decoration:underline; font-weight:600;">${escapeHTML(h.innerText || h.textContent)}</a></li>`;
   });
   tocHtml += '</ul></div><p><br></p>';
-  try {
-    document.execCommand('insertHTML', false, tocHtml);
-  } catch (e) {}
-  if (!editor.querySelector('.folio-toc')) {
-    editor.innerHTML = tocHtml + editor.innerHTML;
-  }
+
+  editor.insertAdjacentHTML('afterbegin', tocHtml);
   captureFolioCurrentContent();
+  if (typeof showToast === 'function') showToast('Table of Contents updated.');
 }
 
 function insertFolioEndnote() {
@@ -1324,19 +1451,58 @@ function insertFolioMergeField(field) {
 }
 
 function importFolioRecipientsCSV() {
-  const jsonStr = prompt('Paste CSV or JSON array of recipients:\nExample: [{"name":"John","company":"Acme","role":"CEO"}]');
-  if (!jsonStr) return;
-  try {
-    const parsed = JSON.parse(jsonStr);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      folioMailMergeRecipients = parsed;
-      alert(`Loaded ${parsed.length} recipients for Mail Merge.`);
-    } else {
-      alert('Invalid array format.');
-    }
-  } catch (e) {
-    alert('Parse error. Please paste valid JSON recipient array.');
-  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv, .json, .txt';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target.result;
+      if (file.name.endsWith('.json')) {
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            folioMailMergeRecipients = parsed;
+            const docObj = getFolioDocument();
+            docObj.document.mailMergeData.recipients = parsed;
+            saveFolioDocument(docObj, true);
+            if (typeof showToast === 'function') showToast(`Loaded ${parsed.length} recipients from JSON.`);
+            renderDocs();
+          }
+        } catch (err) {
+          alert("Invalid JSON recipient file.");
+        }
+      } else {
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) {
+          alert("CSV file must have a header line and at least one data row.");
+          return;
+        }
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+        const recipients = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+          const rec = {};
+          headers.forEach((h, idx) => {
+            rec[h] = cols[idx] || '';
+          });
+          recipients.push(rec);
+        }
+        if (recipients.length > 0) {
+          folioMailMergeRecipients = recipients;
+          const docObj = getFolioDocument();
+          docObj.document.mailMergeData.recipients = recipients;
+          saveFolioDocument(docObj, true);
+          if (typeof showToast === 'function') showToast(`Loaded ${recipients.length} recipients from CSV.`);
+          renderDocs();
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 function generateFolioMailMerge() {
@@ -1423,8 +1589,69 @@ function folioInsertHeaderFooter() {
   captureFolioCurrentContent();
 }
 
+function setFolioFontSize(size) {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    const span = document.createElement('span');
+    span.style.fontSize = size;
+    const range = sel.getRangeAt(0);
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    captureFolioCurrentContent();
+  } else {
+    document.execCommand('fontSize', false, '3');
+    captureFolioCurrentContent();
+  }
+}
+
+function setFolioLineSpacing(spacing) {
+  const editor = document.getElementById('docsEditor');
+  if (editor) {
+    editor.style.lineHeight = spacing;
+    captureFolioCurrentContent();
+    if (typeof showToast === 'function') showToast(`Line spacing set to ${spacing}`);
+  }
+}
+
 function folioInsertSymbol(sym) {
   document.execCommand('insertText', false, sym || '©');
+  captureFolioCurrentContent();
+}
+
+function folioOpenSymbolPicker() {
+  const syms = ['©', '®', '™', '€', '£', '¥', '§', '¶', 'α', 'β', 'γ', 'π', 'Ω', '∑', '∫', '≈', '≠', '≤', '≥', '±', '÷', '×', '∞', '√'];
+  const symHtml = syms.map(s => `<button style="padding:8px; font-size:1.1rem; background:#27272a; color:#f4f4f5; border:1px solid #3f3f46; border-radius:4px; cursor:pointer;" onclick="folioInsertSymbol('${s}'); document.getElementById('folioModalOverlay').remove();">${s}</button>`).join(' ');
+
+  const modal = document.createElement('div');
+  modal.id = 'folioModalOverlay';
+  modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:99999;';
+  modal.innerHTML = `
+    <div style="background:#18181b; border:1px solid #3f3f46; padding:20px; border-radius:8px; width:360px; color:#f4f4f5;">
+      <h3 style="margin-top:0; color:#f59e0b;">Select Symbol</h3>
+      <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; margin:16px 0;">
+        ${symHtml}
+      </div>
+      <button class="btn ghost small" style="width:100%;" onclick="document.getElementById('folioModalOverlay').remove();">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function folioInsertEquation() {
+  const eq = prompt("Enter Mathematical Equation / TeX snippet:", "E = mc²");
+  if (!eq) return;
+  const eqHtml = `<span class="folio-equation" style="font-family:serif; font-style:italic; background:rgba(245,158,11,0.1); padding:2px 6px; border-radius:4px; border:1px solid rgba(245,158,11,0.3); font-weight:bold; color:#f59e0b;">${escapeHTML(eq)}</span> `;
+  document.execCommand('insertHTML', false, eqHtml);
+  captureFolioCurrentContent();
+}
+
+function folioInsertTextBox() {
+  const text = prompt("Enter Text Box content:", "Callout or Sidebar Text Box");
+  if (!text) return;
+  const boxHtml = `<div class="folio-text-box" style="border:1px solid #d4d4d8; background:#f8fafc; padding:12px; margin:12px 0; border-left:4px solid #f59e0b; border-radius:4px; color:#1e293b; font-style:normal;">
+    <p style="margin:0;">${escapeHTML(text)}</p>
+  </div><p></p>`;
+  document.execCommand('insertHTML', false, boxHtml);
   captureFolioCurrentContent();
 }
 
@@ -1443,16 +1670,49 @@ function toggleFolioRuler() {
   }
 }
 
-function showFolioUserGuide() {
-  alert("Folio Professional Document Editor Guide:\n\n1. Use the 11-category command ribbon for full editorial workflow.\n2. All documents stay 100% local on device.\n3. Track Changes, Anchored Comments, TOC, and Mail Merge run offline.\n4. Export to .fils, DOCX, PDF, HTML, MD, and TXT anytime.");
-}
+function showFolioUserGuide() { openFolioHelpCenter('guide'); }
+function showFolioShortcuts() { openFolioHelpCenter('shortcuts'); }
+function showFolioSecurityStatus() { openFolioHelpCenter('security'); }
 
-function showFolioShortcuts() {
-  alert("Folio Keyboard Shortcuts:\n\nCtrl+S: Save Document\nCtrl+B: Bold\nCtrl+I: Italic\nCtrl+U: Underline\nCtrl+Z: Undo\nCtrl+Y: Redo\nCtrl+F: Find & Replace\nCtrl+Shift+F: Focus Mode");
-}
+function openFolioHelpCenter(tab = 'guide') {
+  const existing = document.getElementById('folioHelpCenterOverlay');
+  if (existing) existing.remove();
 
-function showFolioSecurityStatus() {
-  alert("Security Status: 100% PRIVATE & OFFLINE\n\n- Zero Server Data Transmission\n- Local Encrypted Persistence Enabled\n- Client-Side PDF/DOCX Generation");
+  const modal = document.createElement('div');
+  modal.id = 'folioHelpCenterOverlay';
+  modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; z-index:99999;';
+  modal.innerHTML = `
+    <div style="background:#18181b; border:1px solid #3f3f46; border-radius:8px; width:560px; max-width:90vw; color:#f4f4f5; padding:24px; max-height:85vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3f3f46; padding-bottom:12px; margin-bottom:16px;">
+        <h3 style="margin:0; color:#f59e0b; display:flex; align-items:center; gap:8px;">📖 Folio Help & Security Center</h3>
+        <button class="btn ghost small" onclick="document.getElementById('folioHelpCenterOverlay').remove();">✕ Close</button>
+      </div>
+      <div style="font-size:0.88rem; line-height:1.6; color:#d4d4d8;">
+        <h4 style="color:#f59e0b; margin:12px 0 6px 0;">Product Philosophy</h4>
+        <p style="margin:0 0 12px 0;">Folio is an original, 100% local document production studio. Nothing you write ever leaves your device or touches an external server.</p>
+        <h4 style="color:#f59e0b; margin:12px 0 6px 0;">Core Features</h4>
+        <ul style="padding-left:20px; margin:0 0 12px 0;">
+          <li><b>11-Category Command Ribbon:</b> FILE, HOME, PDF TOOLS, INSERT, DESIGN, LAYOUT, REFERENCES, MAILINGS, REVIEW, VIEW, HELP.</li>
+          <li><b>Track Changes & Revisions:</b> Enable tracking to audit insertions, deletions, and formatting edits.</li>
+          <li><b>Anchored Comments:</b> Range-anchored comment threads with resolution states.</li>
+          <li><b>Mail Merge Engine:</b> Import CSV/JSON recipient datasets and generate batch documents offline.</li>
+          <li><b>Local Document Model:</b> Full support for margins, orientation, multi-column layouts, paper tints, watermarks, and footnotes.</li>
+        </ul>
+        <h4 style="color:#f59e0b; margin:12px 0 6px 0;">Keyboard Shortcuts</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; background:#27272a; padding:12px; border-radius:6px; font-family:monospace; font-size:0.8rem; margin-bottom:12px;">
+          <div><b>Ctrl + S:</b> Save Document</div>
+          <div><b>Ctrl + F:</b> Find & Replace</div>
+          <div><b>Ctrl + B:</b> Bold</div>
+          <div><b>Ctrl + I:</b> Italic</div>
+          <div><b>Ctrl + Z:</b> Undo</div>
+          <div><b>Ctrl + Y:</b> Redo</div>
+        </div>
+        <h4 style="color:#10b981; margin:12px 0 6px 0;">🔒 Security Baseline</h4>
+        <p style="margin:0;">Offline storage powered by IndexedDB & Web Storage API. Zero analytics, zero telemetries, zero external requests.</p>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 function renderDocs(){
@@ -1682,41 +1942,97 @@ function toggleFolioFocusMode() {
 }
 
 function insertFolioFootnote() {
-  const editor = document.getElementById('docsEditor');
-  const fnNum = (editor.querySelectorAll('.folio-footnote').length || 0) + 1;
-  const html = `<sup class="folio-footnote" style="color:var(--accent-primary,#3b82f6); font-weight:bold; cursor:pointer;">[${fnNum}]</sup>`;
-  if (editor) {
-    editor.focus();
-    try { document.execCommand('insertHTML', false, html); } catch(e) { editor.innerHTML += html; }
-    saveDocs();
-  }
-}
-
-function generateFolioTOC() {
+  const noteText = prompt('Enter Footnote content:');
+  if (!noteText) return;
   const editor = document.getElementById('docsEditor');
   if (!editor) return;
-  const headings = editor.querySelectorAll('h1, h2, h3');
-  let tocHtml = '<div class="folio-toc" style="background:var(--bg-main); border:1px solid var(--border-color); padding:12px; border-radius:6px; margin:12px 0;"><b>Table of Contents</b><ul style="margin:6px 0 0 0; padding-left:20px;">';
-  headings.forEach(h => {
-    tocHtml += `<li>${escapeHTML(h.textContent)}</li>`;
-  });
-  tocHtml += '</ul></div>';
-  editor.innerHTML = tocHtml + editor.innerHTML;
-  saveDocs();
+
+  editor.focus();
+  const fnId = 'fn_' + Date.now();
+  const fnNum = (editor.querySelectorAll('.folio-footnote-marker').length || 0) + 1;
+  const markHtml = `<sup class="folio-footnote-marker" id="fn_mark_${fnId}" style="color:#f59e0b; font-weight:bold; cursor:pointer;" onclick="document.getElementById('fn_item_${fnId}').scrollIntoView({behavior:'smooth'})" title="${escapeHTML(noteText)}">[${fnNum}]</sup>`;
+
+  let inserted = false;
+  try {
+    inserted = document.execCommand('insertHTML', false, markHtml);
+  } catch (e) { inserted = false; }
+
+  if (!inserted || !editor.querySelector(`#fn_mark_${fnId}`)) {
+    const p = editor.querySelector('p') || editor;
+    p.insertAdjacentHTML('beforeend', markHtml);
+  }
+
+  let footnotesSec = editor.querySelector('.folio-footnotes-section');
+  if (!footnotesSec) {
+    footnotesSec = document.createElement('div');
+    footnotesSec.className = 'folio-footnotes-section';
+    footnotesSec.style.cssText = 'margin-top:32px; border-top:1px solid #cbd5e1; padding-top:12px; font-size:0.85rem; color:#475569;';
+    footnotesSec.innerHTML = '<b style="color:#334155;">Footnotes:</b><ol id="folioFootnotesList" style="margin:8px 0 0 0; padding-left:20px;"></ol>';
+    editor.appendChild(footnotesSec);
+  }
+  const list = footnotesSec.querySelector('#folioFootnotesList');
+  if (list) {
+    const li = document.createElement('li');
+    li.id = `fn_item_${fnId}`;
+    li.innerHTML = `${escapeHTML(noteText)} <a href="#fn_mark_${fnId}" onclick="event.preventDefault(); document.getElementById('fn_mark_${fnId}').scrollIntoView({behavior:'smooth'})" style="color:#f59e0b; font-weight:bold; text-decoration:none;">↩</a>`;
+    list.appendChild(li);
+  }
+
+  const docObj = getFolioDocument();
+  if (!docObj.document.footnotes) docObj.document.footnotes = [];
+  docObj.document.footnotes.push({ id: fnId, num: fnNum, text: noteText });
+  saveFolioDocument(docObj, true);
+  captureFolioCurrentContent();
 }
 
 function openFolioFindReplaceModal() {
-  const findVal = prompt("Find text in document:");
-  if (!findVal) return;
-  const replaceVal = prompt(`Replace "${findVal}" with:`);
-  if (replaceVal === null) return;
+  const modal = document.createElement('div');
+  modal.id = 'folioModalOverlay';
+  modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:99999;';
+  modal.innerHTML = `
+    <div style="background:#18181b; border:1px solid #3f3f46; padding:20px; border-radius:8px; width:400px; color:#f4f4f5;">
+      <h3 style="margin-top:0; color:#f59e0b;">Find & Replace</h3>
+      <div style="display:flex; flex-direction:column; gap:12px; margin:16px 0;">
+        <div>
+          <label style="font-size:0.75rem; color:#a1a1aa; display:block; margin-bottom:4px;">Find Text</label>
+          <input type="text" id="folioFindInput" style="width:100%; background:#27272a; color:#fff; border:1px solid #3f3f46; padding:8px; border-radius:4px;" placeholder="Search term..." />
+        </div>
+        <div>
+          <label style="font-size:0.75rem; color:#a1a1aa; display:block; margin-bottom:4px;">Replace With</label>
+          <input type="text" id="folioReplaceInput" style="width:100%; background:#27272a; color:#fff; border:1px solid #3f3f46; padding:8px; border-radius:4px;" placeholder="Replacement..." />
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:end;">
+        <button class="btn ghost small" onclick="document.getElementById('folioModalOverlay').remove();">Cancel</button>
+        <button class="btn brass small" onclick="executeFolioReplaceAll()">Replace All</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
 
+function executeFolioReplaceAll() {
+  const findVal = document.getElementById('folioFindInput').value;
+  const replaceVal = document.getElementById('folioReplaceInput').value;
+  if (!findVal) return;
   const editor = document.getElementById('docsEditor');
-  if (editor) {
-    editor.innerHTML = editor.innerHTML.replaceAll(findVal, replaceVal);
-    saveDocs();
-    renderDocs();
-  }
+  if (!editor) return;
+
+  const walkAndReplace = (node) => {
+    if (node.nodeType === 3) {
+      if (node.nodeValue.includes(findVal)) {
+        node.nodeValue = node.nodeValue.replaceAll(findVal, replaceVal);
+      }
+    } else if (node.nodeType === 1 && !['SCRIPT', 'STYLE'].includes(node.tagName)) {
+      Array.from(node.childNodes).forEach(walkAndReplace);
+    }
+  };
+
+  walkAndReplace(editor);
+  captureFolioCurrentContent();
+  const overlay = document.getElementById('folioModalOverlay');
+  if (overlay) overlay.remove();
+  if (typeof showToast === 'function') showToast(`Replaced occurrences of "${findVal}".`);
 }
 
 function createTaskFromFolioSelection() {
