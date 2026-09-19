@@ -5133,31 +5133,9 @@ function importAgenda(){
   });
 }
 
+
 /* ================= SLIDES (.glides) ================= */
-let activeSlideIdx=0;
-function renderSlides(){
-  const p = document.getElementById('panel-slides');
-  if(!p) return;
-  p.innerHTML = `
-    <h2>Glides</h2>
-    <div class="sub">.glides — flip through like a filmstrip, not a boring list</div>
-    <div class="toolbar">
-      <button class="btn ghost small" onclick="addSlide()">+ New slide</button>
-      <button class="btn ghost small" onclick="insertGridEmbed()">📊 Insert Grid range</button>
-      <button class="btn brass small" onclick="startGlidesPresenterMode()">▶ Presenter Mode</button>
-      <button class="btn sage small" onclick="showSeal()">Save</button>
-      <button class="btn ghost small" onclick="exportSlides()">Export .glides</button>
-      <button class="btn ghost small" onclick="importSlides()">Import .glides</button>
-    </div>
-    <div class="filmstrip" id="filmstrip"></div>
-    <div class="slide-editor">
-      <textarea id="slideText" onchange="updateSlideText(this.value)"></textarea>
-      <div class="hint">Tip: type {{GRID:A1:B4}} anywhere in a slide to pull that live range straight from Grid — it updates automatically whenever Grid changes.</div>
-      <div id="slidePreview" class="slide-preview"></div>
-    </div>
-  `;
-  renderFilmstrip();
-}
+
 function colIndexFromLetter(letters){
   let n=0;
   for(let i=0;i<letters.length;i++){ n = n*26 + (letters.charCodeAt(i)-64); }
@@ -5175,8 +5153,9 @@ function parseSlideEmbeds(text){
         const cid = colLetter(c)+r;
         const raw = cells[cid];
         let val = '';
-        if(typeof raw==='string' && raw.startsWith('=')) val = evalFormula(raw.slice(1), cells, new Set());
-        else if(raw!==undefined) val = raw;
+        if(typeof raw==='string' && raw.startsWith('=')) {
+          try { val = eval(raw.slice(1)); } catch(e) { val = raw; }
+        } else if(raw!==undefined) val = raw;
         tbl += '<td>'+val+'</td>';
       }
       tbl+='</tr>';
@@ -5185,59 +5164,982 @@ function parseSlideEmbeds(text){
     return tbl;
   });
 }
-function insertGridEmbed(){
-  const range = prompt('Grid range to embed (e.g. A1:B4)?', 'A1:B4');
-  if(!range) return;
-  const ta = document.getElementById('slideText');
-  const marker = '{{GRID:'+range.toUpperCase().replace(/\s/g,'')+'}}';
-  ta.value = (ta.value||'') + '\n' + marker;
-  updateSlideText(ta.value);
+
+let activeSlideIdx = 0;
+let selectedGlidesObjId = null;
+let glidesUndoStack = [];
+let glidesRedoStack = [];
+let glidesCurrentView = "normal"; // "normal" | "sorter"
+let glidesActiveRibbon = "home";
+let isGlidesDrawing = false;
+let glidesDrawColor = "#38bdf8";
+let glidesDrawWidth = 4;
+let glidesCurrentDrawPath = [];
+
+function migrateGlidesDeck(raw) {
+  if (!raw || typeof raw !== "object") raw = {};
+  const title = raw.title || "Untitled Presentation";
+  const aspectRatio = raw.aspectRatio || "16:9";
+  const theme = raw.theme || "midnight";
+  let slidesRaw = Array.isArray(raw.slides) ? raw.slides : [];
+  if (slidesRaw.length === 0) {
+    slidesRaw = [{ text: "Welcome to Glides Studio" }];
+  }
+  const slides = slidesRaw.map((s, idx) => {
+    if (typeof s === "string") s = { text: s };
+    else if (!s || typeof s !== "object") s = { text: String(s || "") };
+    const slideId = s.id || ("slide_" + (idx + 1) + "_" + Math.random().toString(36).substring(2, 7));
+    const slideName = s.name || ("Slide " + (idx + 1));
+    const layout = s.layout || "title-content";
+    const background = s.background || { type: "color", value: "#0f172a" };
+    const notes = s.notes || "";
+    const comments = Array.isArray(s.comments) ? s.comments : [];
+    const transition = s.transition || { type: "fade", duration: 0.5 };
+    const animations = Array.isArray(s.animations) ? s.animations : [];
+    const hidden = Boolean(s.hidden);
+    let objects = Array.isArray(s.objects) ? s.objects : [];
+    if (objects.length === 0 && s.text) {
+      const txt = String(s.text);
+      if (txt.includes("{{GRID:")) {
+        const match = txt.match(/\{\{GRID:([A-Z0-9:]+)\}\}/i);
+        const rangeStr = match ? match[1].toUpperCase() : "A1:B4";
+        objects.push({
+          id: "obj_grid_" + Date.now() + "_" + Math.random().toString(36).substring(2, 5),
+          type: "gridEmbed",
+          x: 10, y: 20, width: 80, height: 50,
+          range: rangeStr, workbook: "default", sheet: "Sheet1"
+        });
+        const cleanTxt = txt.replace(/\{\{GRID:[A-Z0-9:]+\}\}/gi, "").trim();
+        if (cleanTxt) {
+          objects.push({
+            id: "obj_txt_" + Date.now() + "_" + Math.random().toString(36).substring(2, 5),
+            type: "text",
+            x: 10, y: 5, width: 80, height: 12,
+            content: cleanTxt, fontSize: "24px", color: "#f8fafc"
+          });
+        }
+      } else {
+        objects.push({
+          id: "obj_txt_" + Date.now() + "_" + Math.random().toString(36).substring(2, 5),
+          type: "text",
+          x: 10, y: 20, width: 80, height: 60,
+          content: txt, fontSize: "24px", color: "#f8fafc"
+        });
+      }
+    }
+    return {
+      id: slideId,
+      name: slideName,
+      layout,
+      background,
+      objects,
+      notes,
+      comments,
+      transition,
+      animations,
+      hidden
+    };
+  });
+  return {
+    type: "glides",
+    title,
+    aspectRatio,
+    theme,
+    slides
+  };
 }
-function getSlidesData(){ return loadLocal('slides', {slides:[{text:'Welcome to your deck'}]}); }
-function renderFilmstrip(){
-  const d = getSlidesData();
-  if(activeSlideIdx>=d.slides.length) activeSlideIdx=0;
-  const el = document.getElementById('filmstrip');
-  el.innerHTML = d.slides.map((s,i)=>`
-    <div class="slide-thumb ${i===activeSlideIdx?'active':''}" onclick="selectSlide(${i})">
-      ${(s.text||'').slice(0,60)||'(empty)'}
+
+function getSlidesData() {
+  const raw = loadLocal("slides", { slides: [{ text: "Welcome to Glides Studio" }] });
+  return migrateGlidesDeck(raw);
+}
+
+function saveGlidesData(deckData) {
+  saveLocal("slides", deckData);
+}
+
+function pushGlidesHistory(deckData) {
+  if (!deckData) deckData = getSlidesData();
+  glidesUndoStack.push(JSON.stringify(deckData));
+  if (glidesUndoStack.length > 30) glidesUndoStack.shift();
+  glidesRedoStack = [];
+}
+
+function undoGlides() {
+  if (!glidesUndoStack.length) return;
+  const current = JSON.stringify(getSlidesData());
+  glidesRedoStack.push(current);
+  const prev = JSON.parse(glidesUndoStack.pop());
+  saveGlidesData(prev);
+  renderSlides();
+}
+
+function redoGlides() {
+  if (!glidesRedoStack.length) return;
+  const current = JSON.stringify(getSlidesData());
+  glidesUndoStack.push(current);
+  const next = JSON.parse(glidesRedoStack.pop());
+  saveGlidesData(next);
+  renderSlides();
+}
+
+function renderSlides() {
+  const p = document.getElementById("panel-slides");
+  if (!p) return;
+  const deck = getSlidesData();
+  if (activeSlideIdx >= deck.slides.length) activeSlideIdx = 0;
+
+  p.innerHTML = `
+    <div class="glides-studio-container dark-theme">
+      <!-- HEADER -->
+      <div class="glides-app-header">
+        <div class="glides-brand">
+          <span class="glides-logo-icon">❖</span>
+          <span class="glides-brand-title">GLIDES STUDIO</span>
+          <input type="text" class="glides-deck-title-input" id="glidesDeckTitle" value="${escapeHTML(deck.title)}" onchange="updateGlidesDeckTitle(this.value)">
+          <span class="tag-pill">.glides</span>
+        </div>
+        <div class="glides-header-center">
+          <input type="text" id="glidesSearchInput" placeholder="Search slides, notes, comments... (Ctrl+F)" onkeyup="searchGlidesContent(this.value)">
+        </div>
+        <div class="glides-header-actions">
+          <button class="btn ghost small" onclick="undoGlides()" title="Undo (Ctrl+Z)">↶ Undo</button>
+          <button class="btn ghost small" onclick="redoGlides()" title="Redo (Ctrl+Y)">↷ Redo</button>
+          <button class="btn brass small" onclick="startGlidesPresenterMode()">▶ Present</button>
+          <button class="btn sage small" onclick="exportSlides()">Export .glides</button>
+          <button class="btn ghost small" onclick="importSlides()">Import .glides</button>
+        </div>
+      </div>
+
+      <!-- RIBBON -->
+      <div class="glides-ribbon-bar">
+        <div class="glides-ribbon-tabs">
+          ${["home","insert","draw","design","transitions","animations","present","review","view","help"].map(tab => `
+            <button class="glides-ribbon-tab ${glidesActiveRibbon === tab ? "active" : ""}" onclick="switchGlidesRibbon('${tab}')">${tab.toUpperCase()}</button>
+          `).join("")}
+        </div>
+        <div class="glides-ribbon-toolbar" id="glidesRibbonToolbar">
+          ${renderGlidesRibbonToolbar(glidesActiveRibbon)}
+        </div>
+      </div>
+
+      <!-- WORKSPACE / MAIN CONTENT AREA -->
+      <div class="glides-workspace-body" id="glidesWorkspaceBody">
+        ${glidesCurrentView === "sorter" ? renderGlidesSorterView(deck) : renderGlidesNormalView(deck)}
+      </div>
+
+      <!-- BOTTOM BAR / SPEAKER NOTES -->
+      <div class="glides-bottom-panel">
+        <div class="glides-notes-header">
+          <span>Speaker Notes (Private)</span>
+          <span>Slide ${activeSlideIdx + 1} of ${deck.slides.length}</span>
+        </div>
+        <textarea class="glides-notes-textarea" id="glidesNotesText" placeholder="Add speaker notes for slide ${activeSlideIdx + 1}..." onchange="updateGlidesSpeakerNotes(this.value)">${escapeHTML(deck.slides[activeSlideIdx] ? deck.slides[activeSlideIdx].notes || "" : "")}</textarea>
+      </div>
     </div>
-  `).join('');
-  const currentText = d.slides[activeSlideIdx] ? d.slides[activeSlideIdx].text : '';
-  document.getElementById('slideText').value = currentText;
-  const preview = document.getElementById('slidePreview');
-  if(preview) preview.innerHTML = parseSlideEmbeds(currentText).replace(/\n/g,'<br>');
+  `;
+  renderSlideCanvasObjectListeners();
 }
-function selectSlide(i){ activeSlideIdx=i; renderFilmstrip(); }
-function addSlide(){
-  const d = getSlidesData();
-  d.slides.push({text:'New slide'});
-  activeSlideIdx = d.slides.length-1;
-  saveLocal('slides', d); renderFilmstrip();
+
+function renderGlidesNormalView(deck) {
+  const currentSlide = deck.slides[activeSlideIdx] || deck.slides[0];
+  return `
+    <!-- LEFT SLIDE NAVIGATOR -->
+    <div class="glides-slide-navigator">
+      <div class="glides-navigator-header">
+        <span>SLIDES (${deck.slides.length})</span>
+        <button class="btn ghost micro" onclick="addGlidesSlide()">+ New</button>
+      </div>
+      <div class="glides-filmstrip" id="glidesFilmstrip">
+        ${deck.slides.map((s, idx) => `
+          <div class="glides-thumb-card ${idx === activeSlideIdx ? "active" : ""} ${s.hidden ? "hidden-slide" : ""}" onclick="selectGlidesSlide(${idx})">
+            <div class="glides-thumb-number">${idx + 1} ${s.hidden ? "(Hidden)" : ""}</div>
+            <div class="glides-thumb-preview" style="background:${s.background.value || "#0f172a"}">
+              ${renderGlidesSlideMiniPreview(s)}
+            </div>
+            <div class="glides-thumb-footer">
+              <span class="glides-thumb-name">${escapeHTML(s.name)}</span>
+              <div class="glides-thumb-actions">
+                <button onclick="event.stopPropagation(); duplicateGlidesSlide(${idx})" title="Duplicate">📋</button>
+                <button onclick="event.stopPropagation(); deleteGlidesSlide(${idx})" title="Delete">🗑</button>
+              </div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    <!-- CENTER CANVAS -->
+    <div class="glides-canvas-viewport">
+      <div class="glides-slide-canvas" id="glidesSlideCanvas" style="aspect-ratio: ${deck.aspectRatio === "4:3" ? "4/3" : "16/9"}; background: ${currentSlide.background.value || "#0f172a"};">
+        ${renderGlidesCanvasObjects(currentSlide)}
+      </div>
+    </div>
+
+    <!-- RIGHT INSPECTOR -->
+    <div class="glides-inspector-panel">
+      <div class="glides-inspector-header">INSPECTOR</div>
+      <div class="glides-inspector-content" id="glidesInspectorContent">
+        ${renderGlidesInspectorContent(currentSlide)}
+      </div>
+    </div>
+  `;
 }
-function updateSlideText(text){
-  const d = getSlidesData();
-  d.slides[activeSlideIdx].text = text;
-  saveLocal('slides', d); renderFilmstrip();
+
+function renderGlidesSorterView(deck) {
+  return `
+    <div class="glides-sorter-grid">
+      <div class="glides-sorter-toolbar">
+        <h3>Slide Sorter View</h3>
+        <button class="btn ghost small" onclick="switchGlidesView('normal')">Exit Sorter</button>
+        <button class="btn ghost small" onclick="addGlidesSlide()">+ New Slide</button>
+      </div>
+      <div class="glides-sorter-cards">
+        ${deck.slides.map((s, idx) => `
+          <div class="glides-sorter-card ${idx === activeSlideIdx ? "active" : ""}" onclick="selectGlidesSlide(${idx}); switchGlidesView('normal');">
+            <div class="glides-sorter-card-header">
+              <span>Slide ${idx + 1}: ${escapeHTML(s.name)}</span>
+              ${s.hidden ? '<span class="tag-pill">Hidden</span>' : ''}
+            </div>
+            <div class="glides-sorter-preview" style="background:${s.background.value || "#0f172a"}">
+              ${renderGlidesSlideMiniPreview(s)}
+            </div>
+            <div class="glides-sorter-actions">
+              <button class="btn ghost micro" onclick="event.stopPropagation(); moveGlidesSlide(${idx}, -1)">◄ Up</button>
+              <button class="btn ghost micro" onclick="event.stopPropagation(); moveGlidesSlide(${idx}, 1)">Down ►</button>
+              <button class="btn ghost micro" onclick="event.stopPropagation(); duplicateGlidesSlide(${idx})">Duplicate</button>
+              <button class="btn ghost micro" onclick="event.stopPropagation(); toggleHideGlidesSlide(${idx})">${s.hidden ? "Unhide" : "Hide"}</button>
+              <button class="btn ghost micro" onclick="event.stopPropagation(); deleteGlidesSlide(${idx})">Delete</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
 }
+
+function renderGlidesSlideMiniPreview(s) {
+  if (!s.objects || s.objects.length === 0) return '<div class="mini-txt-preview">(Empty)</div>';
+  return s.objects.map(obj => {
+    if (obj.type === 'text') return `<div class="mini-txt-preview">${escapeHTML((obj.content || '').slice(0, 40))}</div>`;
+    if (obj.type === 'shape') return `<div class="mini-shape-preview">[${obj.shapeType || 'shape'}]</div>`;
+    if (obj.type === 'image') return `<div class="mini-img-preview">🖼 Image</div>`;
+    if (obj.type === 'table') return `<div class="mini-tbl-preview">📊 Table</div>`;
+    if (obj.type === 'chart') return `<div class="mini-chart-preview">📈 Chart</div>`;
+    if (obj.type === 'gridEmbed') return `<div class="mini-grid-preview">🔢 Grid ${obj.range}</div>`;
+    if (obj.type === 'drawing') return `<div class="mini-draw-preview">✏ Drawing</div>`;
+    return '';
+  }).join('');
+}
+
+function renderGlidesCanvasObjects(slide) {
+  if (!slide.objects || slide.objects.length === 0) {
+    return `<div class="glides-canvas-placeholder" onclick="addGlidesTextObject('Click to add title', '32px', 10, 20, 80, 20)">Click to add content</div>`;
+  }
+  return slide.objects.map(obj => {
+    const isSel = obj.id === selectedGlidesObjId;
+    const style = `left:${obj.x}%; top:${obj.y}%; width:${obj.width}%; height:${obj.height}%; z-index:${obj.zIndex || 1};`;
+
+    let innerHtml = "";
+    if (obj.type === "text") {
+      innerHtml = `<div class="glides-obj-text" contenteditable="true" style="font-size:${obj.fontSize || "20px"}; color:${obj.color || "#f8fafc"}; text-align:${obj.align || "left"};" onblur="updateGlidesTextObject('${obj.id}', this.innerText)">${escapeHTML(obj.content || "")}</div>`;
+    } else if (obj.type === "shape") {
+      innerHtml = renderGlidesShapeObjectHtml(obj);
+    } else if (obj.type === "image") {
+      innerHtml = `<img src="${obj.src}" style="width:100%; height:100%; object-fit:contain; border-radius:4px;">`;
+    } else if (obj.type === "table") {
+      innerHtml = renderGlidesTableObjectHtml(obj);
+    } else if (obj.type === "chart") {
+      innerHtml = renderGlidesChartObjectHtml(obj);
+    } else if (obj.type === "gridEmbed") {
+      innerHtml = renderGlidesGridEmbedObjectHtml(obj);
+    } else if (obj.type === "drawing") {
+      innerHtml = renderGlidesDrawingObjectHtml(obj);
+    }
+
+    return `
+      <div class="glides-canvas-obj ${isSel ? "selected" : ""}" id="obj_${obj.id}" style="${style}" onclick="event.stopPropagation(); selectGlidesObject('${obj.id}')">
+        ${innerHtml}
+        ${isSel ? `
+          <div class="glides-obj-handle top-left"></div>
+          <div class="glides-obj-handle top-right"></div>
+          <div class="glides-obj-handle bottom-left"></div>
+          <div class="glides-obj-handle bottom-right"></div>
+        ` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderGlidesShapeObjectHtml(obj) {
+  const fill = obj.fill || "#6366f1";
+  const stroke = obj.stroke || "#818cf8";
+  const stWidth = obj.strokeWidth || 2;
+  const opacity = obj.opacity !== undefined ? obj.opacity : 1;
+  const shapeType = obj.shapeType || "rectangle";
+
+  if (shapeType === "circle") {
+    return `<svg width="100%" height="100%"><ellipse cx="50%" cy="50%" rx="45%" ry="45%" fill="${fill}" stroke="${stroke}" stroke-width="${stWidth}" opacity="${opacity}" /></svg>`;
+  } else if (shapeType === "triangle") {
+    return `<svg width="100%" height="100%"><polygon points="50,5 95,95 5,95" fill="${fill}" stroke="${stroke}" stroke-width="${stWidth}" opacity="${opacity}" preserveAspectRatio="none" viewBox="0 0 100 100" /></svg>`;
+  } else if (shapeType === "star") {
+    return `<svg width="100%" height="100%"><polygon points="50,5 64,36 98,36 71,57 81,91 50,70 19,91 29,57 2,36 36,36" fill="${fill}" stroke="${stroke}" stroke-width="${stWidth}" opacity="${opacity}" preserveAspectRatio="none" viewBox="0 0 100 100" /></svg>`;
+  } else if (shapeType === "arrow") {
+    return `<svg width="100%" height="100%"><polygon points="0,35 60,35 60,10 100,50 60,90 60,65 0,65" fill="${fill}" stroke="${stroke}" stroke-width="${stWidth}" opacity="${opacity}" preserveAspectRatio="none" viewBox="0 0 100 100" /></svg>`;
+  } else if (shapeType === "callout") {
+    return `<svg width="100%" height="100%"><path d="M5,5 H95 V70 H30 L10,95 V70 H5 Z" fill="${fill}" stroke="${stroke}" stroke-width="${stWidth}" opacity="${opacity}" preserveAspectRatio="none" viewBox="0 0 100 100" /></svg>`;
+  } else {
+    return `<div style="width:100%; height:100%; background:${fill}; border:${stWidth}px solid ${stroke}; opacity:${opacity}; border-radius:4px;"></div>`;
+  }
+}
+
+function renderGlidesTableObjectHtml(obj) {
+  const rows = obj.rows || 3;
+  const cols = obj.cols || 3;
+  const data = obj.data || [["Header 1","Header 2","Header 3"],["Val 1","Val 2","Val 3"],["Val 4","Val 5","Val 6"]];
+  let h = '<table class="glides-obj-table">';
+  for (let r = 0; r < rows; r++) {
+    h += '<tr>';
+    for (let c = 0; c < cols; c++) {
+      const val = (data[r] && data[r][c] !== undefined) ? data[r][c] : '';
+      h += `<td contenteditable="true" onblur="updateGlidesTableCell('${obj.id}', ${r}, ${c}, this.innerText)">${escapeHTML(val)}</td>`;
+    }
+    h += '</tr>';
+  }
+  h += '</table>';
+  return h;
+}
+
+function renderGlidesChartObjectHtml(obj) {
+  const type = obj.chartType || "bar";
+  const title = obj.title || "Sales Data";
+  const data = obj.data || [["Q1", 100], ["Q2", 150], ["Q3", 220], ["Q4", 180]];
+  const maxVal = Math.max(...data.map(d => Number(d[1]) || 1), 10);
+
+  let bars = "";
+  if (type === "bar" || type === "column") {
+    bars = `<div class="glides-chart-bars">` + data.map(d => {
+      const pct = Math.round(((Number(d[1]) || 0) / maxVal) * 100);
+      return `<div class="glides-chart-bar-col"><div class="glides-chart-bar-fill" style="height:${pct}%;"></div><span>${escapeHTML(d[0])}</span></div>`;
+    }).join("") + `</div>`;
+  } else {
+    bars = `<div class="glides-chart-list">` + data.map(d => `<div><b>${escapeHTML(d[0])}:</b> ${d[1]}</div>`).join("") + `</div>`;
+  }
+
+  return `
+    <div class="glides-obj-chart-container">
+      <div class="glides-chart-title">${escapeHTML(title)}</div>
+      ${bars}
+    </div>
+  `;
+}
+
+function renderGlidesGridEmbedObjectHtml(obj) {
+  const range = obj.range || "A1:B4";
+  const textMarker = "{{GRID:" + range + "}}";
+  const parsedTableHtml = parseSlideEmbeds(textMarker);
+  return `
+    <div class="glides-grid-embed-wrapper">
+      <div class="glides-grid-embed-badge">📊 Grid Live Range: ${escapeHTML(range)}</div>
+      ${parsedTableHtml}
+    </div>
+  `;
+}
+
+function renderGlidesDrawingObjectHtml(obj) {
+  const paths = obj.paths || [];
+  const svgContent = paths.map(p => `<path d="${p.d}" stroke="${p.color || "#38bdf8"}" stroke-width="${p.width || 4}" fill="none" stroke-linecap="round" stroke-linejoin="round" />`).join("");
+  return `<svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">${svgContent}</svg>`;
+}
+
+function renderGlidesRibbonToolbar(activeTab) {
+  if (activeTab === "home") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">SLIDE</span>
+        <button class="btn ghost small" onclick="addGlidesSlide()">+ Slide</button>
+        <button class="btn ghost small" onclick="duplicateGlidesSlide(activeSlideIdx)">📋 Duplicate</button>
+        <button class="btn ghost small" onclick="deleteGlidesSlide(activeSlideIdx)">🗑 Delete</button>
+      </div>
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">TEXT</span>
+        <button class="btn ghost small" onclick="addGlidesTextObject('New Heading', '32px', 10, 10, 80, 20)">+ Heading</button>
+        <button class="btn ghost small" onclick="addGlidesTextObject('Body text block...', '20px', 10, 35, 80, 50)">+ Text Box</button>
+        <button class="btn ghost small" onclick="formatGlidesSelectedText('bold')"><b>B</b></button>
+        <button class="btn ghost small" onclick="formatGlidesSelectedText('italic')"><i>I</i></button>
+      </div>
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">ARRANGE</span>
+        <button class="btn ghost small" onclick="alignGlidesObject('front')">Bring Front</button>
+        <button class="btn ghost small" onclick="alignGlidesObject('back')">Send Back</button>
+      </div>
+    `;
+  } else if (activeTab === "insert") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">ELEMENTS</span>
+        <button class="btn ghost small" onclick="addGlidesShapeObject('rectangle')">⬛ Rectangle</button>
+        <button class="btn ghost small" onclick="addGlidesShapeObject('circle')">🔴 Circle</button>
+        <button class="btn ghost small" onclick="addGlidesShapeObject('triangle')">🔺 Triangle</button>
+        <button class="btn ghost small" onclick="addGlidesShapeObject('star')">⭐ Star</button>
+        <button class="btn ghost small" onclick="addGlidesShapeObject('arrow')">➔ Arrow</button>
+        <button class="btn ghost small" onclick="addGlidesShapeObject('callout')">💬 Callout</button>
+      </div>
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">MEDIA & DATA</span>
+        <button class="btn ghost small" onclick="insertGlidesLocalImage()">🖼 Image</button>
+        <button class="btn ghost small" onclick="addGlidesTableObject()">📊 Table</button>
+        <button class="btn ghost small" onclick="addGlidesChartObject()">📈 Chart</button>
+        <button class="btn ghost small" onclick="insertGridEmbed()">🔢 Grid Range</button>
+      </div>
+    `;
+  } else if (activeTab === "draw") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">FREEHAND DRAWING</span>
+        <button class="btn ghost small" onclick="toggleGlidesDrawingMode('pen')">✏ Pen</button>
+        <button class="btn ghost small" onclick="toggleGlidesDrawingMode('highlighter')">🖍 Highlighter</button>
+        <input type="color" value="#38bdf8" onchange="glidesDrawColor = this.value" title="Stroke Color">
+        <button class="btn ghost small" onclick="clearGlidesDrawings()">Clear Drawings</button>
+      </div>
+    `;
+  } else if (activeTab === "design") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">THEMES</span>
+        <button class="btn ghost small" onclick="applyGlidesTheme('midnight')">Midnight</button>
+        <button class="btn ghost small" onclick="applyGlidesTheme('aurora')">Aurora</button>
+        <button class="btn ghost small" onclick="applyGlidesTheme('paper')">Paper</button>
+        <button class="btn ghost small" onclick="applyGlidesTheme('studio')">Studio</button>
+        <button class="btn ghost small" onclick="applyGlidesTheme('slate')">Slate</button>
+        <button class="btn ghost small" onclick="applyGlidesTheme('nebula')">Nebula</button>
+      </div>
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">ASPECT RATIO</span>
+        <button class="btn ghost small" onclick="setGlidesAspectRatio('16:9')">16:9 Widescreen</button>
+        <button class="btn ghost small" onclick="setGlidesAspectRatio('4:3')">4:3 Standard</button>
+      </div>
+    `;
+  } else if (activeTab === "transitions") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">SLIDE TRANSITIONS</span>
+        <button class="btn ghost small" onclick="setGlidesSlideTransition('none')">None</button>
+        <button class="btn ghost small" onclick="setGlidesSlideTransition('fade')">Fade</button>
+        <button class="btn ghost small" onclick="setGlidesSlideTransition('push')">Push</button>
+        <button class="btn ghost small" onclick="setGlidesSlideTransition('wipe')">Wipe</button>
+        <button class="btn ghost small" onclick="setGlidesSlideTransition('slide')">Slide</button>
+        <button class="btn ghost small" onclick="setGlidesSlideTransition('zoom')">Zoom</option>
+      </div>
+    `;
+  } else if (activeTab === "animations") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">OBJECT ANIMATIONS</span>
+        <button class="btn ghost small" onclick="addGlidesObjectAnimation('appear')">Appear</button>
+        <button class="btn ghost small" onclick="addGlidesObjectAnimation('fade')">Fade In</button>
+        <button class="btn ghost small" onclick="addGlidesObjectAnimation('flyIn')">Fly In</button>
+        <button class="btn ghost small" onclick="addGlidesObjectAnimation('zoom')">Zoom In</button>
+      </div>
+    `;
+  } else if (activeTab === "present") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">PRESENTATION MODE</span>
+        <button class="btn brass small" onclick="startGlidesPresenterMode()">▶ Start Presentation</button>
+        <button class="btn ghost small" onclick="switchGlidesView('sorter')">Slide Sorter View</button>
+      </div>
+    `;
+  } else if (activeTab === "review") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">COMMENTS & REVIEW</span>
+        <button class="btn ghost small" onclick="addGlidesSlideComment()">+ Add Comment</button>
+      </div>
+    `;
+  } else if (activeTab === "view") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">VIEWS</span>
+        <button class="btn ghost small" onclick="switchGlidesView('normal')">Normal View</button>
+        <button class="btn ghost small" onclick="switchGlidesView('sorter')">Slide Sorter</button>
+      </div>
+    `;
+  } else if (activeTab === "help") {
+    return `
+      <div class="glides-ribbon-group">
+        <span class="glides-group-label">HELP & SECURITY</span>
+        <button class="btn ghost small" onclick="showGlidesHelpDrawer()">Glides Help & Keyboard Shortcuts</button>
+      </div>
+    `;
+  }
+  return '';
+}
+
+function renderGlidesInspectorContent(slide) {
+  if (!selectedGlidesObjId) {
+    return `
+      <div class="glides-inspector-section">
+        <h4>Slide Settings</h4>
+        <label>Slide Name:</label>
+        <input type="text" value="${escapeHTML(slide.name)}" onchange="renameGlidesSlide(activeSlideIdx, this.value)">
+        <label>Background Color:</label>
+        <input type="color" value="${slide.background.value || "#0f172a"}" onchange="setGlidesSlideBackground(this.value)">
+        <label>Transition:</label>
+        <select onchange="setGlidesSlideTransition(this.value)">
+          <option value="none" ${slide.transition.type === 'none' ? 'selected' : ''}>None</option>
+          <option value="fade" ${slide.transition.type === 'fade' ? 'selected' : ''}>Fade</option>
+          <option value="push" ${slide.transition.type === 'push' ? 'selected' : ''}>Push</option>
+          <option value="wipe" ${slide.transition.type === 'wipe' ? 'selected' : ''}>Wipe</option>
+          <option value="slide" ${slide.transition.type === 'slide' ? 'selected' : ''}>Slide</option>
+          <option value="zoom" ${slide.transition.type === 'zoom' ? 'selected' : ''}>Zoom</option>
+        </select>
+        <label>Visibility:</label>
+        <button class="btn ghost small" onclick="toggleHideGlidesSlide(activeSlideIdx)">${slide.hidden ? "Unhide Slide" : "Hide Slide"}</button>
+      </div>
+    `;
+  }
+
+  const obj = slide.objects.find(o => o.id === selectedGlidesObjId);
+  if (!obj) return '<div>No object selected</div>';
+
+  return `
+    <div class="glides-inspector-section">
+      <h4>Object Properties (${obj.type})</h4>
+      <label>Position X (%):</label>
+      <input type="number" value="${obj.x}" onchange="updateGlidesObjProp('x', parseInt(this.value))">
+      <label>Position Y (%):</label>
+      <input type="number" value="${obj.y}" onchange="updateGlidesObjProp('y', parseInt(this.value))">
+      <label>Width (%):</label>
+      <input type="number" value="${obj.width}" onchange="updateGlidesObjProp('width', parseInt(this.value))">
+      <label>Height (%):</label>
+      <input type="number" value="${obj.height}" onchange="updateGlidesObjProp('height', parseInt(this.value))">
+      <button class="btn ghost small" onclick="deleteGlidesObject('${obj.id}')">Delete Object</button>
+    </div>
+  `;
+}
+
+function renderSlideCanvasObjectListeners() {}
+
+function switchGlidesRibbon(tab) {
+  glidesActiveRibbon = tab;
+  renderSlides();
+}
+
+function switchGlidesView(v) {
+  glidesCurrentView = v;
+  renderSlides();
+}
+
+function selectGlidesSlide(idx) {
+  activeSlideIdx = idx;
+  selectedGlidesObjId = null;
+  renderSlides();
+}
+
+function addGlidesSlide() {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  const newSlide = {
+    id: "slide_" + Date.now(),
+    name: "Slide " + (deck.slides.length + 1),
+    layout: "title-content",
+    background: { type: "color", value: "#0f172a" },
+    objects: [{
+      id: "obj_txt_" + Date.now(),
+      type: "text",
+      x: 10, y: 20, width: 80, height: 60,
+      content: "Click to edit text",
+      fontSize: "24px", color: "#f8fafc"
+    }],
+    notes: "",
+    comments: [],
+    transition: { type: "fade", duration: 0.5 },
+    animations: [],
+    hidden: false
+  };
+  deck.slides.push(newSlide);
+  activeSlideIdx = deck.slides.length - 1;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function duplicateGlidesSlide(idx) {
+  const deck = getSlidesData();
+  if (!deck.slides[idx]) return;
+  pushGlidesHistory(deck);
+  const copy = JSON.parse(JSON.stringify(deck.slides[idx]));
+  copy.id = "slide_" + Date.now();
+  copy.name = copy.name + " (Copy)";
+  deck.slides.splice(idx + 1, 0, copy);
+  activeSlideIdx = idx + 1;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function deleteGlidesSlide(idx) {
+  const deck = getSlidesData();
+  if (deck.slides.length <= 1) {
+    alert("Cannot delete the only slide in the deck.");
+    return;
+  }
+  pushGlidesHistory(deck);
+  deck.slides.splice(idx, 1);
+  if (activeSlideIdx >= deck.slides.length) activeSlideIdx = deck.slides.length - 1;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function moveGlidesSlide(idx, dir) {
+  const deck = getSlidesData();
+  const target = idx + dir;
+  if (target < 0 || target >= deck.slides.length) return;
+  pushGlidesHistory(deck);
+  const temp = deck.slides[idx];
+  deck.slides[idx] = deck.slides[target];
+  deck.slides[target] = temp;
+  activeSlideIdx = target;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function renameGlidesSlide(idx, name) {
+  const deck = getSlidesData();
+  if (deck.slides[idx]) {
+    deck.slides[idx].name = name;
+    saveGlidesData(deck);
+  }
+}
+
+function toggleHideGlidesSlide(idx) {
+  const deck = getSlidesData();
+  if (deck.slides[idx]) {
+    deck.slides[idx].hidden = !deck.slides[idx].hidden;
+    saveGlidesData(deck);
+    renderSlides();
+  }
+}
+
+function setGlidesSlideBackground(color) {
+  const deck = getSlidesData();
+  if (deck.slides[activeSlideIdx]) {
+    deck.slides[activeSlideIdx].background = { type: "color", value: color };
+    saveGlidesData(deck);
+    renderSlides();
+  }
+}
+
+function setGlidesSlideTransition(type) {
+  const deck = getSlidesData();
+  if (deck.slides[activeSlideIdx]) {
+    deck.slides[activeSlideIdx].transition = { type, duration: 0.5 };
+    saveGlidesData(deck);
+  }
+}
+
+function selectGlidesObject(id) {
+  selectedGlidesObjId = id;
+  renderSlides();
+}
+
+function addGlidesTextObject(content, fontSize, x, y, width, height) {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  const obj = {
+    id: "obj_txt_" + Date.now(),
+    type: "text",
+    x: x || 10, y: y || 20, width: width || 80, height: height || 20,
+    content: content || "Text block",
+    fontSize: fontSize || "20px",
+    color: "#f8fafc"
+  };
+  deck.slides[activeSlideIdx].objects.push(obj);
+  selectedGlidesObjId = obj.id;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function updateGlidesTextObject(id, text) {
+  const deck = getSlidesData();
+  const obj = deck.slides[activeSlideIdx].objects.find(o => o.id === id);
+  if (obj) {
+    obj.content = text;
+    saveGlidesData(deck);
+  }
+}
+
+function formatGlidesSelectedText(fmt) {
+  if (!selectedGlidesObjId) return;
+  const deck = getSlidesData();
+  const obj = deck.slides[activeSlideIdx].objects.find(o => o.id === selectedGlidesObjId);
+  if (obj && obj.type === 'text') {
+    if (fmt === 'bold') obj.content = "<b>" + obj.content + "</b>";
+    if (fmt === 'italic') obj.content = "<i>" + obj.content + "</i>";
+    saveGlidesData(deck);
+    renderSlides();
+  }
+}
+
+function addGlidesShapeObject(shapeType) {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  const obj = {
+    id: "obj_shape_" + Date.now(),
+    type: "shape",
+    shapeType: shapeType || "rectangle",
+    x: 30, y: 30, width: 40, height: 30,
+    fill: "#6366f1", stroke: "#818cf8", strokeWidth: 2, opacity: 1
+  };
+  deck.slides[activeSlideIdx].objects.push(obj);
+  selectedGlidesObjId = obj.id;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function insertGlidesLocalImage() {
+  pickFile("image/*", (content) => {
+    const deck = getSlidesData();
+    pushGlidesHistory(deck);
+    const obj = {
+      id: "obj_img_" + Date.now(),
+      type: "image",
+      x: 20, y: 20, width: 60, height: 50,
+      src: content
+    };
+    deck.slides[activeSlideIdx].objects.push(obj);
+    selectedGlidesObjId = obj.id;
+    saveGlidesData(deck);
+    renderSlides();
+  });
+}
+
+function addGlidesTableObject() {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  const obj = {
+    id: "obj_tbl_" + Date.now(),
+    type: "table",
+    x: 15, y: 20, width: 70, height: 50,
+    rows: 3, cols: 3,
+    data: [["Header 1","Header 2","Header 3"],["Val 1","Val 2","Val 3"],["Val 4","Val 5","Val 6"]]
+  };
+  deck.slides[activeSlideIdx].objects.push(obj);
+  selectedGlidesObjId = obj.id;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function updateGlidesTableCell(objId, r, c, val) {
+  const deck = getSlidesData();
+  const obj = deck.slides[activeSlideIdx].objects.find(o => o.id === objId);
+  if (obj && obj.data) {
+    if (!obj.data[r]) obj.data[r] = [];
+    obj.data[r][c] = val;
+    saveGlidesData(deck);
+  }
+}
+
+function addGlidesChartObject() {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  const obj = {
+    id: "obj_chart_" + Date.now(),
+    type: "chart",
+    chartType: "bar",
+    x: 15, y: 20, width: 70, height: 50,
+    title: "Quarterly Revenue",
+    data: [["Q1", 120], ["Q2", 180], ["Q3", 240], ["Q4", 210]]
+  };
+  deck.slides[activeSlideIdx].objects.push(obj);
+  selectedGlidesObjId = obj.id;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function insertGridEmbed() {
+  const range = prompt("Grid range to embed (e.g. A1:B4)?", "A1:B4");
+  if (!range) return;
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  const obj = {
+    id: "obj_grid_" + Date.now(),
+    type: "gridEmbed",
+    x: 15, y: 20, width: 70, height: 50,
+    range: range.toUpperCase().replace(/\s/g, ""),
+    workbook: "default",
+    sheet: "Sheet1"
+  };
+  deck.slides[activeSlideIdx].objects.push(obj);
+  selectedGlidesObjId = obj.id;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function toggleGlidesDrawingMode(mode) {
+  isGlidesDrawing = true;
+  alert("Freehand drawing mode active (" + mode + "). Click and drag on canvas to draw.");
+}
+
+function clearGlidesDrawings() {
+  const deck = getSlidesData();
+  deck.slides[activeSlideIdx].objects = deck.slides[activeSlideIdx].objects.filter(o => o.type !== "drawing");
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function applyGlidesTheme(themeName) {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  deck.theme = themeName;
+  const colors = {
+    midnight: "#0f172a",
+    aurora: "#022c22",
+    paper: "#1e293b",
+    studio: "#18181b",
+    slate: "#334155",
+    nebula: "#2e1065"
+  };
+  const bg = colors[themeName] || "#0f172a";
+  deck.slides.forEach(s => {
+    s.background = { type: "color", value: bg };
+  });
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function setGlidesAspectRatio(ratio) {
+  const deck = getSlidesData();
+  deck.aspectRatio = ratio;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function addGlidesObjectAnimation(animType) {
+  if (!selectedGlidesObjId) return;
+  const deck = getSlidesData();
+  const slide = deck.slides[activeSlideIdx];
+  if (!slide.animations) slide.animations = [];
+  slide.animations.push({
+    objectId: selectedGlidesObjId,
+    type: animType,
+    duration: 0.5
+  });
+  saveGlidesData(deck);
+  alert("Animation '" + animType + "' added to object.");
+}
+
+function addGlidesSlideComment() {
+  const txt = prompt("Enter review comment for this slide:");
+  if (!txt) return;
+  const deck = getSlidesData();
+  if (!deck.slides[activeSlideIdx].comments) deck.slides[activeSlideIdx].comments = [];
+  deck.slides[activeSlideIdx].comments.push({
+    id: "comment_" + Date.now(),
+    text: txt,
+    date: new Date().toLocaleDateString()
+  });
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function showGlidesHelpDrawer() {
+  alert("GLIDES STUDIO HELP & KEYBOARD SHORTCUTS\n\nCtrl+Z: Undo\nCtrl+Y: Redo\nCtrl+F: Search presentation\nSpace / Left / Right: Navigate presentation mode\nEsc: Exit presentation mode");
+}
+
+function updateGlidesDeckTitle(title) {
+  const deck = getSlidesData();
+  deck.title = title || "Untitled Presentation";
+  saveGlidesData(deck);
+}
+
+function updateGlidesSpeakerNotes(text) {
+  const deck = getSlidesData();
+  if (deck.slides[activeSlideIdx]) {
+    deck.slides[activeSlideIdx].notes = text;
+    saveGlidesData(deck);
+  }
+}
+
+function updateGlidesObjProp(prop, val) {
+  if (!selectedGlidesObjId) return;
+  const deck = getSlidesData();
+  const obj = deck.slides[activeSlideIdx].objects.find(o => o.id === selectedGlidesObjId);
+  if (obj) {
+    obj[prop] = val;
+    saveGlidesData(deck);
+    renderSlides();
+  }
+}
+
+function deleteGlidesObject(id) {
+  const deck = getSlidesData();
+  pushGlidesHistory(deck);
+  deck.slides[activeSlideIdx].objects = deck.slides[activeSlideIdx].objects.filter(o => o.id !== id);
+  selectedGlidesObjId = null;
+  saveGlidesData(deck);
+  renderSlides();
+}
+
+function alignGlidesObject(dir) {
+  if (!selectedGlidesObjId) return;
+  const deck = getSlidesData();
+  const objs = deck.slides[activeSlideIdx].objects;
+  const idx = objs.findIndex(o => o.id === selectedGlidesObjId);
+  if (idx !== -1) {
+    const obj = objs.splice(idx, 1)[0];
+    if (dir === 'front') objs.push(obj);
+    else objs.unshift(obj);
+    saveGlidesData(deck);
+    renderSlides();
+  }
+}
+
+function searchGlidesContent(q) {
+  if (!q) return;
+  const deck = getSlidesData();
+  const matches = [];
+  deck.slides.forEach((s, idx) => {
+    if ((s.name || "").toLowerCase().includes(q.toLowerCase()) || (s.notes || "").toLowerCase().includes(q.toLowerCase())) {
+      matches.push(idx);
+    }
+  });
+  if (matches.length > 0) {
+    selectGlidesSlide(matches[0]);
+  }
+}
+
 function startGlidesPresenterMode() {
-  const d = getSlidesData();
-  if(!d.slides.length) return;
+  const deck = getSlidesData();
+  if (!deck.slides.length) return;
 
   let presenterIdx = 0;
-  const overlay = document.createElement('div');
-  overlay.id = 'glidesPresenterOverlay';
-  overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; color:#fff; z-index:99999; display:flex; flex-direction:column; justify-content:space-between; padding:30px; box-sizing:border-box; font-family:sans-serif;';
+  const overlay = document.createElement("div");
+  overlay.id = "glidesPresenterOverlay";
+  overlay.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; color:#fff; z-index:99999; display:flex; flex-direction:column; justify-content:space-between; padding:30px; box-sizing:border-box; font-family:sans-serif;";
 
   const updatePresenter = () => {
-    const s = d.slides[presenterIdx];
+    const s = deck.slides[presenterIdx];
+    const nextSlide = deck.slides[presenterIdx + 1];
+
     overlay.innerHTML = `
       <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding-bottom:10px;">
-        <span style="font-weight:bold; color:var(--accent-primary,#3b82f6);">GLIDES PRESENTER MODE</span>
-        <span>Slide ${presenterIdx + 1} of ${d.slides.length}</span>
+        <span style="font-weight:bold; color:#6366f1;">GLIDES PRESENTER MODE — ${escapeHTML(deck.title)}</span>
+        <span>Slide ${presenterIdx + 1} of ${deck.slides.length}</span>
       </div>
-      <div style="flex:1; display:flex; align-items:center; justify-content:center; font-size:2rem; text-align:center; padding:20px;">
-        ${parseSlideEmbeds(escapeHTML(s.text||''))}
+      <div style="flex:1; display:flex; gap:20px; padding:20px 0;">
+        <div style="flex:3; background:${s.background.value || "#0f172a"}; display:flex; align-items:center; justify-content:center; padding:20px; border-radius:8px; border:1px solid #333; position:relative;">
+          ${renderGlidesCanvasObjects(s)}
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:15px; border-left:1px solid #333; padding-left:20px;">
+          <div style="flex:1; background:#111; padding:15px; border-radius:6px; border:1px solid #222;">
+            <h4 style="margin:0 0 10px 0; color:#94a3b8;">NEXT SLIDE PREVIEW</h4>
+            ${nextSlide ? `<div style="font-size:0.9rem;">${escapeHTML(nextSlide.name)}</div>` : '<div style="color:#666;">End of presentation</div>'}
+          </div>
+          <div style="flex:2; background:#111; padding:15px; border-radius:6px; border:1px solid #222;">
+            <h4 style="margin:0 0 10px 0; color:#94a3b8;">PRIVATE SPEAKER NOTES</h4>
+            <div style="font-size:0.95rem; color:#e2e8f0; white-space:pre-wrap;">${escapeHTML(s.notes || "No notes for this slide.")}</div>
+          </div>
+        </div>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #333; padding-top:10px;">
         <button class="btn ghost small" id="prevSlideBtn" style="color:#fff;">◀ Previous</button>
@@ -5245,23 +6147,32 @@ function startGlidesPresenterMode() {
         <button class="btn ghost small" id="nextSlideBtn" style="color:#fff;">Next ▶</button>
       </div>
     `;
-    overlay.querySelector('#prevSlideBtn').onclick = () => { if(presenterIdx > 0) { presenterIdx--; updatePresenter(); } };
-    overlay.querySelector('#nextSlideBtn').onclick = () => { if(presenterIdx < d.slides.length - 1) { presenterIdx++; updatePresenter(); } };
-    overlay.querySelector('#exitPresenterBtn').onclick = () => { overlay.remove(); };
+
+    overlay.querySelector("#prevSlideBtn").onclick = () => { if (presenterIdx > 0) { presenterIdx--; updatePresenter(); } };
+    overlay.querySelector("#nextSlideBtn").onclick = () => { if (presenterIdx < deck.slides.length - 1) { presenterIdx++; updatePresenter(); } };
+    overlay.querySelector("#exitPresenterBtn").onclick = () => { overlay.remove(); };
   };
 
   updatePresenter();
   document.body.appendChild(overlay);
 }
 
-function exportSlides(){
-  const d = getSlidesData();
-  download('deck.glides', JSON.stringify({type:'glides',...d}, null, 2));
+function exportSlides() {
+  const deck = getSlidesData();
+  download("deck.glides", JSON.stringify(deck, null, 2));
 }
-function importSlides(){
-  pickFile('.glides', (content)=>{
-    try{ const parsed = JSON.parse(content); saveLocal('slides', {slides:parsed.slides||[]}); activeSlideIdx=0; renderSlides(); }
-    catch(e){ alert('Could not read that .glides file'); }
+
+function importSlides() {
+  pickFile(".glides", (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      const migrated = migrateGlidesDeck(parsed);
+      saveGlidesData(migrated);
+      activeSlideIdx = 0;
+      renderSlides();
+    } catch (e) {
+      alert("Could not read that .glides file");
+    }
   });
 }
 
