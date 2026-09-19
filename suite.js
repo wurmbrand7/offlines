@@ -5442,7 +5442,11 @@ function renderGlidesCanvasObjects(slide) {
 
     let innerHtml = "";
     if (obj.type === "text") {
-      innerHtml = `<div class="glides-obj-text" contenteditable="true" style="font-size:${obj.fontSize || "20px"}; color:${obj.color || "#f8fafc"}; text-align:${obj.align || "left"};" onblur="updateGlidesTextObject('${obj.id}', this.innerText)">${escapeHTML(obj.content || "")}</div>`;
+      const fontWeight = obj.bold ? "bold" : "normal";
+      const fontStyle = obj.italic ? "italic" : "normal";
+      const textDeco = [obj.underline ? "underline" : "", obj.strike ? "line-through" : ""].join(" ").trim();
+      const styleAttr = `font-size:${obj.fontSize || "20px"}; color:${obj.color || "#f8fafc"}; text-align:${obj.align || "left"}; font-weight:${fontWeight}; font-style:${fontStyle}; text-decoration:${textDeco};`;
+      innerHtml = `<div class="glides-obj-text" contenteditable="true" style="${styleAttr}" onblur="updateGlidesTextObject('${obj.id}', this.innerText)">${escapeHTML(obj.content || "")}</div>`;
     } else if (obj.type === "shape") {
       innerHtml = renderGlidesShapeObjectHtml(obj);
     } else if (obj.type === "image") {
@@ -5719,7 +5723,157 @@ function renderGlidesInspectorContent(slide) {
   `;
 }
 
-function renderSlideCanvasObjectListeners() {}
+function renderSlideCanvasObjectListeners() {
+  const canvas = document.getElementById("glidesSlideCanvas");
+  if (!canvas) return;
+
+  let isInteracting = false;
+  let mode = null;
+  let targetObjId = null;
+  let startX = 0, startY = 0;
+  let origObj = null;
+  let drawPoints = [];
+
+  canvas.onpointerdown = (e) => {
+    if (glidesDrawingActive) {
+      isInteracting = true;
+      mode = "draw";
+      const rect = canvas.getBoundingClientRect();
+      const px = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+      const py = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+      drawPoints = [{ x: px, y: py }];
+      return;
+    }
+
+    if (e.target.closest(".glides-obj-text[contenteditable='true']")) return;
+
+    const handle = e.target.closest(".glides-obj-handle");
+    const objEl = e.target.closest(".glides-canvas-obj");
+
+    if (!objEl) {
+      if (e.target === canvas || e.target.classList.contains("glides-slide-canvas")) {
+        selectedGlidesObjId = null;
+        renderSlides();
+      }
+      return;
+    }
+
+    const objId = objEl.id.replace("obj_", "");
+    selectedGlidesObjId = objId;
+
+    const deck = getSlidesData();
+    const currentSlide = deck.slides[activeSlideIdx];
+    if (!currentSlide) return;
+    const obj = currentSlide.objects.find(o => o.id === objId);
+    if (!obj) return;
+
+    if (handle) {
+      if (handle.classList.contains("top-left")) mode = "resize-top-left";
+      else if (handle.classList.contains("top-right")) mode = "resize-top-right";
+      else if (handle.classList.contains("bottom-left")) mode = "resize-bottom-left";
+      else if (handle.classList.contains("bottom-right")) mode = "resize-bottom-right";
+    } else {
+      mode = "move";
+    }
+
+    isInteracting = true;
+    targetObjId = objId;
+    startX = e.clientX;
+    startY = e.clientY;
+    origObj = { x: obj.x, y: obj.y, width: obj.width, height: obj.height };
+
+    if (canvas.setPointerCapture && e.pointerId !== undefined) {
+      try { canvas.setPointerCapture(e.pointerId); } catch(err) {}
+    }
+  };
+
+  canvas.onpointermove = (e) => {
+    if (!isInteracting) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    if (mode === "draw") {
+      const px = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+      const py = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+      drawPoints.push({ x: px, y: py });
+      return;
+    }
+
+    if (!targetObjId || !origObj) return;
+
+    const dxPct = ((e.clientX - startX) / rect.width) * 100;
+    const dyPct = ((e.clientY - startY) / rect.height) * 100;
+
+    const deck = getSlidesData();
+    const currentSlide = deck.slides[activeSlideIdx];
+    if (!currentSlide) return;
+    const obj = currentSlide.objects.find(o => o.id === targetObjId);
+    if (!obj) return;
+
+    if (mode === "move") {
+      obj.x = Math.max(0, Math.min(95, Math.round(origObj.x + dxPct)));
+      obj.y = Math.max(0, Math.min(95, Math.round(origObj.y + dyPct)));
+    } else if (mode === "resize-bottom-right") {
+      obj.width = Math.max(5, Math.min(100 - origObj.x, Math.round(origObj.width + dxPct)));
+      obj.height = Math.max(5, Math.min(100 - origObj.y, Math.round(origObj.height + dyPct)));
+    } else if (mode === "resize-top-left") {
+      const newWidth = Math.max(5, Math.round(origObj.width - dxPct));
+      const newHeight = Math.max(5, Math.round(origObj.height - dyPct));
+      obj.x = Math.max(0, Math.round(origObj.x + (origObj.width - newWidth)));
+      obj.y = Math.max(0, Math.round(origObj.y + (origObj.height - newHeight)));
+      obj.width = newWidth;
+      obj.height = newHeight;
+    } else if (mode === "resize-top-right") {
+      const newHeight = Math.max(5, Math.round(origObj.height - dyPct));
+      obj.y = Math.max(0, Math.round(origObj.y + (origObj.height - newHeight)));
+      obj.width = Math.max(5, Math.min(100 - origObj.x, Math.round(origObj.width + dxPct)));
+      obj.height = newHeight;
+    } else if (mode === "resize-bottom-left") {
+      const newWidth = Math.max(5, Math.round(origObj.width - dxPct));
+      obj.x = Math.max(0, Math.round(origObj.x + (origObj.width - newWidth)));
+      obj.width = newWidth;
+      obj.height = Math.max(5, Math.min(100 - origObj.y, Math.round(origObj.height + dyPct)));
+    }
+
+    const objEl = document.getElementById("obj_" + targetObjId);
+    if (objEl) {
+      objEl.style.left = obj.x + "%";
+      objEl.style.top = obj.y + "%";
+      objEl.style.width = obj.width + "%";
+      objEl.style.height = obj.height + "%";
+    }
+  };
+
+  canvas.onpointerup = canvas.onpointercancel = (e) => {
+    if (isInteracting && mode === "draw" && drawPoints.length > 1) {
+      const deck = getSlidesData();
+      pushGlidesHistory(deck);
+      const pathStr = "M " + drawPoints.map(p => `${p.x} ${p.y}`).join(" L ");
+      const strokeColor = glidesDrawMode === "highlighter" ? "#fde047" : glidesDrawColor;
+      const strokeWidth = glidesDrawMode === "highlighter" ? 12 : glidesDrawWidth;
+
+      const obj = {
+        id: "obj_draw_" + Date.now(),
+        type: "drawing",
+        x: 0, y: 0, width: 100, height: 100,
+        paths: [{ d: pathStr, color: strokeColor, width: strokeWidth }]
+      };
+      deck.slides[activeSlideIdx].objects.push(obj);
+      saveGlidesData(deck);
+      renderSlides();
+    } else if (isInteracting && targetObjId) {
+      const deck = getSlidesData();
+      saveGlidesData(deck);
+      renderSlides();
+    }
+    isInteracting = false;
+    mode = null;
+    targetObjId = null;
+    origObj = null;
+    drawPoints = [];
+  };
+}
 
 function switchGlidesRibbon(tab) {
   glidesActiveRibbon = tab;
@@ -5873,8 +6027,10 @@ function formatGlidesSelectedText(fmt) {
   const deck = getSlidesData();
   const obj = deck.slides[activeSlideIdx].objects.find(o => o.id === selectedGlidesObjId);
   if (obj && obj.type === 'text') {
-    if (fmt === 'bold') obj.content = "<b>" + obj.content + "</b>";
-    if (fmt === 'italic') obj.content = "<i>" + obj.content + "</i>";
+    if (fmt === 'bold') obj.bold = !obj.bold;
+    if (fmt === 'italic') obj.italic = !obj.italic;
+    if (fmt === 'underline') obj.underline = !obj.underline;
+    if (fmt === 'strike') obj.strike = !obj.strike;
     saveGlidesData(deck);
     renderSlides();
   }
@@ -5956,9 +6112,43 @@ function addGlidesChartObject() {
   renderSlides();
 }
 
-function insertGridEmbed() {
-  const range = prompt("Grid range to embed (e.g. A1:B4)?", "A1:B4");
-  if (!range) return;
+function openGridEmbedModal() {
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) {
+    const range = prompt("Grid range to embed (e.g. A1:B4)?", "A1:B4");
+    if (range) insertGridEmbedWithDetails("Sheet1", range);
+    return;
+  }
+  const wb = typeof getGridWorkbook === 'function' ? getGridWorkbook() : null;
+  const sheetOptions = wb && wb.sheets ? wb.sheets.map(s => `<option value="${s.name}">${s.name}</option>`).join('') : '<option value="Sheet1">Sheet1</option>';
+
+  modal.innerHTML = `
+    <h3>🔢 Embed Grid Cell Range into Presentation</h3>
+    <p class="hint">Select worksheet and enter target cell range to embed live calculation table.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-size:0.82rem;margin-bottom:4px;color:#f1f5f9;">Worksheet:</label>
+      <select id="gridEmbedSheet" style="width:100%;padding:8px;background:#0f172a;color:#f8fafc;border:1px solid #1e293b;border-radius:4px;margin-bottom:10px;">
+        ${sheetOptions}
+      </select>
+      <label style="display:block;font-size:0.82rem;margin-bottom:4px;color:#f1f5f9;">Cell Range (e.g. A1:C5):</label>
+      <input type="text" id="gridEmbedRange" value="A1:B4" style="width:100%;padding:8px;background:#0f172a;color:#f8fafc;border:1px solid #1e293b;border-radius:4px;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="submitGridEmbedModal()">Insert Grid Embed</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function submitGridEmbedModal() {
+  const sheet = document.getElementById('gridEmbedSheet')?.value || "Sheet1";
+  const range = document.getElementById('gridEmbedRange')?.value || "A1:B4";
+  closeCapsuleModal();
+  insertGridEmbedWithDetails(sheet, range);
+}
+
+function insertGridEmbedWithDetails(sheet, range) {
   const deck = getSlidesData();
   pushGlidesHistory(deck);
   const obj = {
@@ -5967,7 +6157,7 @@ function insertGridEmbed() {
     x: 15, y: 20, width: 70, height: 50,
     range: range.toUpperCase().replace(/\s/g, ""),
     workbook: "default",
-    sheet: "Sheet1"
+    sheet: sheet
   };
   deck.slides[activeSlideIdx].objects.push(obj);
   selectedGlidesObjId = obj.id;
@@ -5975,9 +6165,21 @@ function insertGridEmbed() {
   renderSlides();
 }
 
+function insertGridEmbed() {
+  openGridEmbedModal();
+}
+
+let glidesDrawingActive = false;
+let glidesDrawMode = 'pen'; // 'pen' | 'highlighter' | 'eraser'
+
 function toggleGlidesDrawingMode(mode) {
-  isGlidesDrawing = true;
-  alert("Freehand drawing mode active (" + mode + "). Click and drag on canvas to draw.");
+  if (mode === 'off' || (glidesDrawingActive && glidesDrawMode === mode)) {
+    glidesDrawingActive = false;
+  } else {
+    glidesDrawingActive = true;
+    glidesDrawMode = mode;
+  }
+  renderSlides();
 }
 
 function clearGlidesDrawings() {
@@ -6095,14 +6297,32 @@ function alignGlidesObject(dir) {
 }
 
 function searchGlidesContent(q) {
-  if (!q) return;
+  if (!q || !q.trim()) return;
+  const query = q.trim().toLowerCase();
   const deck = getSlidesData();
   const matches = [];
+
   deck.slides.forEach((s, idx) => {
-    if ((s.name || "").toLowerCase().includes(q.toLowerCase()) || (s.notes || "").toLowerCase().includes(q.toLowerCase())) {
-      matches.push(idx);
+    let matched = false;
+    if ((s.name || "").toLowerCase().includes(query) || (s.notes || "").toLowerCase().includes(query)) {
+      matched = true;
     }
+    if (!matched && s.comments && Array.isArray(s.comments)) {
+      if (s.comments.some(c => (typeof c === "string" ? c : c.text || "").toLowerCase().includes(query))) {
+        matched = true;
+      }
+    }
+    if (!matched && s.objects && Array.isArray(s.objects)) {
+      s.objects.forEach(o => {
+        if (o.type === "text" && (o.content || "").toLowerCase().includes(query)) matched = true;
+        if (o.type === "gridEmbed" && (o.range || "").toLowerCase().includes(query)) matched = true;
+        if (o.type === "shape" && (o.shapeType || "").toLowerCase().includes(query)) matched = true;
+        if (o.type === "chart" && (o.title || "").toLowerCase().includes(query)) matched = true;
+      });
+    }
+    if (matched) matches.push(idx);
   });
+
   if (matches.length > 0) {
     selectGlidesSlide(matches[0]);
   }
@@ -6110,49 +6330,75 @@ function searchGlidesContent(q) {
 
 function startGlidesPresenterMode() {
   const deck = getSlidesData();
-  if (!deck.slides.length) return;
+  const visibleSlides = deck.slides.filter(s => !s.hidden);
+  if (!visibleSlides.length) return;
 
   let presenterIdx = 0;
   const overlay = document.createElement("div");
   overlay.id = "glidesPresenterOverlay";
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; color:#fff; z-index:99999; display:flex; flex-direction:column; justify-content:space-between; padding:30px; box-sizing:border-box; font-family:sans-serif;";
+  overlay.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:#0b1329; color:#fff; z-index:99999; display:flex; flex-direction:column; justify-content:space-between; padding:24px; box-sizing:border-box; font-family:sans-serif;";
 
   const updatePresenter = () => {
-    const s = deck.slides[presenterIdx];
-    const nextSlide = deck.slides[presenterIdx + 1];
+    const s = visibleSlides[presenterIdx];
+    const nextSlide = visibleSlides[presenterIdx + 1];
+    const transitionType = s.transition ? s.transition.type : "fade";
+
+    let animStyle = "transition: all 0.4s ease;";
+    if (transitionType === "fade") animStyle += " opacity: 1;";
+    else if (transitionType === "zoom") animStyle += " transform: scale(1);";
+    else if (transitionType === "push" || transitionType === "slide") animStyle += " transform: translateX(0);";
 
     overlay.innerHTML = `
-      <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding-bottom:10px;">
-        <span style="font-weight:bold; color:#6366f1;">GLIDES PRESENTER MODE — ${escapeHTML(deck.title)}</span>
-        <span>Slide ${presenterIdx + 1} of ${deck.slides.length}</span>
+      <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1e293b; padding-bottom:12px;">
+        <span style="font-weight:bold; color:#818cf8; font-size:1.1rem;">GLIDES PRESENTER STUDIO — ${escapeHTML(deck.title)}</span>
+        <span style="color:#94a3b8; font-size:0.95rem;">Visible Slide ${presenterIdx + 1} of ${visibleSlides.length} (${s.name})</span>
       </div>
-      <div style="flex:1; display:flex; gap:20px; padding:20px 0;">
-        <div style="flex:3; background:${s.background.value || "#0f172a"}; display:flex; align-items:center; justify-content:center; padding:20px; border-radius:8px; border:1px solid #333; position:relative;">
-          ${renderGlidesCanvasObjects(s)}
-        </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:15px; border-left:1px solid #333; padding-left:20px;">
-          <div style="flex:1; background:#111; padding:15px; border-radius:6px; border:1px solid #222;">
-            <h4 style="margin:0 0 10px 0; color:#94a3b8;">NEXT SLIDE PREVIEW</h4>
-            ${nextSlide ? `<div style="font-size:0.9rem;">${escapeHTML(nextSlide.name)}</div>` : '<div style="color:#666;">End of presentation</div>'}
-          </div>
-          <div style="flex:2; background:#111; padding:15px; border-radius:6px; border:1px solid #222;">
-            <h4 style="margin:0 0 10px 0; color:#94a3b8;">PRIVATE SPEAKER NOTES</h4>
-            <div style="font-size:0.95rem; color:#e2e8f0; white-space:pre-wrap;">${escapeHTML(s.notes || "No notes for this slide.")}</div>
+      <div style="flex:1; display:flex; gap:20px; padding:20px 0; overflow:hidden;">
+        <div style="flex:3; background:${s.background.value || "#0f172a"}; display:flex; align-items:center; justify-content:center; padding:10px; border-radius:8px; border:1px solid #1e293b; position:relative; ${animStyle}">
+          <div style="width:100%; height:100%; position:relative;">
+            ${renderGlidesCanvasObjects(s)}
           </div>
         </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:15px; border-left:1px solid #1e293b; padding-left:20px; min-width:280px;">
+          <div style="flex:1.2; background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b; overflow:hidden;">
+            <h4 style="margin:0 0 8px 0; color:#38bdf8; font-size:0.82rem; letter-spacing:0.05em;">NEXT SLIDE PREVIEW</h4>
+            ${nextSlide ? `
+              <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:6px;">${escapeHTML(nextSlide.name)}</div>
+              <div style="width:100%; height:140px; background:${nextSlide.background.value || "#0f172a"}; position:relative; border-radius:4px; border:1px solid #334155; overflow:hidden;">
+                ${renderGlidesSlideMiniPreview(nextSlide)}
+              </div>
+            ` : '<div style="color:#64748b; font-size:0.85rem; padding-top:20px;">End of Presentation</div>'}
+          </div>
+          <div style="flex:2; background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b; overflow:auto;">
+            <h4 style="margin:0 0 8px 0; color:#38bdf8; font-size:0.82rem; letter-spacing:0.05em;">PRIVATE SPEAKER NOTES</h4>
+            <div style="font-size:0.9rem; color:#e2e8f0; white-space:pre-wrap; line-height:1.5;">${escapeHTML(s.notes || "No notes for this slide.")}</div>
+          </div>
+        </div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #333; padding-top:10px;">
-        <button class="btn ghost small" id="prevSlideBtn" style="color:#fff;">◀ Previous</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #1e293b; padding-top:12px;">
+        <button class="btn ghost small" id="prevSlideBtn" style="color:#f8fafc;">◀ Previous</button>
         <button class="btn brass small" id="exitPresenterBtn">Exit Presentation (Esc)</button>
-        <button class="btn ghost small" id="nextSlideBtn" style="color:#fff;">Next ▶</button>
+        <button class="btn ghost small" id="nextSlideBtn" style="color:#f8fafc;">Next ▶</button>
       </div>
     `;
 
     overlay.querySelector("#prevSlideBtn").onclick = () => { if (presenterIdx > 0) { presenterIdx--; updatePresenter(); } };
-    overlay.querySelector("#nextSlideBtn").onclick = () => { if (presenterIdx < deck.slides.length - 1) { presenterIdx++; updatePresenter(); } };
-    overlay.querySelector("#exitPresenterBtn").onclick = () => { overlay.remove(); };
+    overlay.querySelector("#nextSlideBtn").onclick = () => { if (presenterIdx < visibleSlides.length - 1) { presenterIdx++; updatePresenter(); } };
+    overlay.querySelector("#exitPresenterBtn").onclick = () => { overlay.remove(); window.removeEventListener("keydown", keyHandler); };
   };
 
+  const keyHandler = (e) => {
+    if (e.key === "Escape") {
+      overlay.remove();
+      window.removeEventListener("keydown", keyHandler);
+    } else if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+      if (presenterIdx < visibleSlides.length - 1) { presenterIdx++; updatePresenter(); }
+    } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      if (presenterIdx > 0) { presenterIdx--; updatePresenter(); }
+    }
+  };
+
+  window.addEventListener("keydown", keyHandler);
   updatePresenter();
   document.body.appendChild(overlay);
 }
