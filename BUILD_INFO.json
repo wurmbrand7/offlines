@@ -1,0 +1,13 @@
+{
+  "buildId": "LOCAL-ONLY-2026-09-10-V7",
+  "buildDate": "2026-09-12T10:00:00Z",
+  "productMode": "LOCAL-ONLY",
+  "version": "7.0.0-standalone",
+  "swVersion": "7.0",
+  "cacheVersion": "suite-cache-v7",
+  "canonicalEntryPoint": "index.html",
+  "networkPolicy": "STRICT_OFFLINE_ZERO_SERVER_DATA",
+  "sync": "DISABLED_PERMANENTLY",
+  "licensing": "DISABLED_PERMANENTLY",
+  "pricing": "OPEN_DEVELOPMENT"
+}
