@@ -794,6 +794,66 @@ table.grid th{
   position:absolute;top:2px;right:4px;cursor:pointer;color:#a8563f;font-weight:bold;font-size:0.9em;
 }
 
+/* SPOT KNOWLEDGE WORKSPACE DESIGN SYSTEM */
+.spot-item-card {
+  transition: all 0.2s ease;
+}
+.spot-item-card:hover {
+  border-color: var(--accent-primary, #3b82f6) !important;
+  transform: translateY(-1px);
+}
+.spot-item-card.active {
+  border-color: var(--accent-primary, #3b82f6) !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+.spot-col-card {
+  transition: all 0.2s ease;
+}
+.spot-col-card:hover {
+  border-color: var(--accent-primary, #3b82f6) !important;
+  box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.25);
+}
+
+.spot-rel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+
+.spot-source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.spot-canvas-card {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.spot-canvas-card:hover {
+  border-color: var(--accent-primary, #3b82f6) !important;
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+.spot-graph-node {
+  transition: transform 0.2s ease;
+}
+.spot-graph-node:hover {
+  transform: scale(1.1);
+}
+
 /* DOCKET WORKSPACE */
 .docket-layout {
   display: flex;

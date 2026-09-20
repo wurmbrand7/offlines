@@ -68,6 +68,7 @@ function escapeHTML(str){
     .replace(/'/g, '&#039;');
 }
 function safeStr(str){ return escapeHTML(str); }
+function escapeHtml(str){ return escapeHTML(str); }
 
 function loadLocal(key, fallback){
   try{
@@ -845,6 +846,427 @@ function renderFolioRibbonBar() {
       </div>
     </div>
   `;
+}
+
+/* ================= SPOT VIEW SUB-RENDERERS & HELPERS ================= */
+
+function renderSpotCollectionsView(notes, cols) {
+  const colCards = cols.map(c => {
+    const colNotes = notes.filter(n => n.collectionId === c.id || n.folder === c.name);
+    return `
+      <div class="spot-col-card" onclick="currentSpotCollectionId='${c.id}'; renderSpotContent();" style="border:1px solid ${currentSpotCollectionId === c.id ? 'var(--accent-primary, #3b82f6)' : 'var(--border, #334155)'}; border-radius:6px; padding:12px; background:var(--bg-card, #0f172a); cursor:pointer;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <b style="font-size:0.95rem;">📁 ${escapeHtml(c.name)}</b>
+          <span class="badge" style="background:rgba(59,130,246,0.2); color:#60a5fa; font-size:0.75rem; padding:2px 8px; border-radius:10px;">${colNotes.length} notes</span>
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin-top:4px;">${escapeHtml(c.description || '')}</div>
+      </div>
+    `;
+  }).join('');
+
+  const activeCol = cols.find(c => c.id === currentSpotCollectionId) || cols[0];
+  const colItems = activeCol ? notes.filter(n => n.collectionId === activeCol.id || n.folder === activeCol.name) : notes;
+
+  return `
+    <h3 style="margin-top:0; margin-bottom:12px; font-size:1.1rem; color:var(--text, #f8fafc);">Knowledge Collections</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; margin-bottom:16px;">
+      ${colCards}
+    </div>
+    ${renderSpotListView(colItems, `Collection: ${activeCol ? activeCol.name : 'All'}`)}
+  `;
+}
+
+function renderSpotTopicsView(notes) {
+  const tagMap = {};
+  notes.forEach(n => {
+    if (n.tags) {
+      n.tags.split(',').map(t => t.trim()).filter(Boolean).forEach(t => {
+        tagMap[t] = (tagMap[t] || 0) + 1;
+      });
+    }
+  });
+
+  const tagPills = Object.keys(tagMap).map(tag => `
+    <button class="btn ${currentSpotTopic === tag ? 'brass' : 'ghost'} small" onclick="currentSpotTopic='${escapeHtml(tag)}'; renderSpotContent();" style="margin-right:6px; margin-bottom:6px;">
+      🏷 ${escapeHtml(tag)} <span style="opacity:0.6;">(${tagMap[tag]})</span>
+    </button>
+  `).join('');
+
+  const filteredItems = currentSpotTopic ? notes.filter(n => (n.tags || '').toLowerCase().includes(currentSpotTopic.toLowerCase())) : notes;
+
+  return `
+    <h3 style="margin-top:0; margin-bottom:12px; font-size:1.1rem; color:var(--text, #f8fafc);">Topics & Tag Cloud</h3>
+    <div style="background:var(--bg-card, #0f172a); border:1px solid var(--border, #334155); border-radius:6px; padding:12px; margin-bottom:16px;">
+      ${tagPills || '<span class="hint">No tags assigned yet. Add tags to notes in the Inspector.</span>'}
+    </div>
+    ${renderSpotListView(filteredItems, currentSpotTopic ? `Topic: #${currentSpotTopic}` : 'All Tagged Knowledge')}
+  `;
+}
+
+function renderSpotCanvasView(notes, rels) {
+  let svgLines = '<svg id="spotCanvasSvg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;">';
+  rels.forEach(r => {
+    const n1 = notes.find(x => x.id === r.fromId);
+    const n2 = notes.find(x => x.id === r.toId);
+    if (n1 && n2) {
+      const x1 = (n1.x || 50) + 90;
+      const y1 = (n1.y || 50) + 40;
+      const x2 = (n2.x || 250) + 90;
+      const y2 = (n2.y || 150) + 40;
+      svgLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,4" opacity="0.8"/>`;
+    }
+  });
+  svgLines += '</svg>';
+
+  const canvasCardsHtml = notes.map((n, idx) => {
+    const x = n.x !== undefined ? n.x : (40 + (idx % 4) * 220);
+    const y = n.y !== undefined ? n.y : (40 + Math.floor(idx / 4) * 140);
+    return `
+      <div class="spot-canvas-card" data-id="${n.id}" style="position:absolute; left:${x}px; top:${y}px; width:180px; background:var(--bg-card, #0f172a); border:1px solid var(--border, #334155); border-radius:6px; padding:10px; cursor:move; z-index:1; box-shadow:0 4px 6px -1px rgba(0,0,0,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <b style="font-size:0.85rem; color:var(--text, #f8fafc); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(n.title || 'Untitled')}</b>
+          <span style="font-size:0.75rem; color:#ef4444; cursor:pointer;" onclick="deleteSpotItem(${n.id})">✕</span>
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted, #94a3b8); height:45px; overflow:hidden;">
+          ${escapeHtml((n.body || '').replace(/[#*`]/g, '').slice(0, 60))}
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:0.7rem;">
+          <span style="color:#60a5fa;">${escapeHtml(n.type || 'Note')}</span>
+          <button class="btn ghost small" style="padding:1px 4px; font-size:0.65rem;" onclick="currentSpotSelectedId=${n.id}; currentSpotNav='inbox'; renderSpotContent();">Edit</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h3 style="margin:0; font-size:1.1rem; color:var(--text, #f8fafc);">📌 Spatial Research Canvas</h3>
+      <span class="hint">Drag cards around to arrange your research. Connections show explicit relationships.</span>
+    </div>
+    <div id="spotCanvasArea" style="position:relative; width:100%; height:550px; background:var(--bg-main, #0b0f19); border:1px solid var(--border, #334155); border-radius:6px; overflow:hidden;">
+      ${svgLines}
+      ${canvasCardsHtml}
+    </div>
+  `;
+}
+
+function initSpotCanvasEvents() {
+  const canvasArea = document.getElementById('spotCanvasArea');
+  if (!canvasArea) return;
+
+  canvasArea.querySelectorAll('.spot-canvas-card').forEach(card => {
+    card.addEventListener('mousedown', e => {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
+      draggingSpotNote = card;
+      const rect = card.getBoundingClientRect();
+      dragSpotOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    });
+  });
+}
+
+document.addEventListener('mousemove', e => {
+  if (!draggingSpotNote) return;
+  const canvasArea = document.getElementById('spotCanvasArea');
+  if (!canvasArea) return;
+  const areaRect = canvasArea.getBoundingClientRect();
+  let x = e.clientX - areaRect.left - dragSpotOffset.x;
+  let y = e.clientY - areaRect.top - dragSpotOffset.y;
+  x = Math.max(0, Math.min(x, areaRect.width - 180));
+  y = Math.max(0, Math.min(y, areaRect.height - 100));
+  draggingSpotNote.style.left = x + 'px';
+  draggingSpotNote.style.top = y + 'px';
+});
+
+document.addEventListener('mouseup', () => {
+  if (draggingSpotNote) {
+    const id = parseInt(draggingSpotNote.dataset.id);
+    const notes = getSpotNotes();
+    const item = notes.find(n => n.id === id);
+    if (item) {
+      item.x = parseInt(draggingSpotNote.style.left);
+      item.y = parseInt(draggingSpotNote.style.top);
+      saveSpotNotes(notes);
+    }
+  }
+  draggingSpotNote = null;
+});
+
+function renderSpotGraphView(notes, rels) {
+  let svgNodes = '';
+  const nodeCoords = {};
+  notes.forEach((n, idx) => {
+    const angle = (idx / Math.max(1, notes.length)) * 2 * Math.PI;
+    const rx = 240 + Math.cos(angle) * 180;
+    const ry = 220 + Math.sin(angle) * 150;
+    nodeCoords[n.id] = { x: rx, y: ry };
+  });
+
+  let svgEdges = '';
+  rels.forEach(r => {
+    const c1 = nodeCoords[r.fromId];
+    const c2 = nodeCoords[r.toId];
+    if (c1 && c2) {
+      svgEdges += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="#3b82f6" stroke-width="2" stroke-opacity="0.6"/>`;
+    }
+  });
+
+  notes.forEach(n => {
+    const c = nodeCoords[n.id];
+    if (c) {
+      svgNodes += `
+        <g style="cursor:pointer;" onclick="currentSpotSelectedId=${n.id}; currentSpotNav='inbox'; renderSpotContent();">
+          <circle cx="${c.x}" cy="${c.y}" r="18" fill="#1e293b" stroke="#3b82f6" stroke-width="2"/>
+          <text x="${c.x}" y="${c.y + 4}" font-size="10" fill="#f8fafc" text-anchor="middle" font-weight="bold">${escapeHtml((n.title || '').slice(0, 3))}</text>
+          <text x="${c.x}" y="${c.y + 32}" font-size="11" fill="#94a3b8" text-anchor="middle">${escapeHtml((n.title || '').slice(0, 15))}</text>
+        </g>
+      `;
+    }
+  });
+
+  return `
+    <h3 style="margin-top:0; margin-bottom:12px; font-size:1.1rem; color:var(--text, #f8fafc);">🕸 Interactive Knowledge Graph</h3>
+    <div style="background:var(--bg-main, #0b0f19); border:1px solid var(--border, #334155); border-radius:6px; padding:16px; text-align:center;">
+      <svg width="600" height="460" style="max-width:100%;">
+        ${svgEdges}
+        ${svgNodes}
+      </svg>
+    </div>
+  `;
+}
+
+function renderSpotSourcesView(notes, srcs) {
+  const sourcesHtml = srcs.map(s => `
+    <div style="border:1px solid var(--border, #334155); border-radius:6px; padding:12px; margin-bottom:8px; background:var(--bg-card, #0f172a);">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <b>📚 ${escapeHtml(s.title)}</b>
+        <span class="badge" style="background:rgba(59,130,246,0.2); color:#60a5fa; font-size:0.75rem; padding:2px 8px; border-radius:10px;">${escapeHtml(s.type || 'Source')}</span>
+      </div>
+      <div style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin-top:4px;">
+        ${s.author ? `Author: ${escapeHtml(s.author)} | ` : ''} ${s.url ? `<a href="${escapeHtml(s.url)}" target="_blank" style="color:#60a5fa;">${escapeHtml(s.url)}</a>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0; font-size:1.1rem; color:var(--text, #f8fafc);">📚 Research Sources & Bibliography</h3>
+      <button class="btn brass small" onclick="openSpotNewSourceModal()">+ Add Source</button>
+    </div>
+    <div>${sourcesHtml || '<div class="hint">No research sources added yet.</div>'}</div>
+  `;
+}
+
+function renderSpotReviewView(items) {
+  return `
+    <h3 style="margin-top:0; margin-bottom:8px; font-size:1.1rem; color:var(--text, #f8fafc);">🔍 Knowledge Review Workflow</h3>
+    <p class="hint" style="margin-bottom:12px;">Review unorganized inbox items, orphaned notes, and items missing tags or sources.</p>
+    ${renderSpotListView(items, 'Unorganized & Needs Review')}
+  `;
+}
+
+function updateSpotItemField(id, field, val) {
+  const notes = getSpotNotes();
+  const item = notes.find(n => n.id === id);
+  if (item) {
+    item[field] = val;
+    item.updatedAt = new Date().toISOString();
+    saveSpotNotes(notes);
+    renderSpotContent();
+  }
+}
+
+function toggleSpotPin(id) {
+  const notes = getSpotNotes();
+  const item = notes.find(n => n.id === id);
+  if (item) {
+    item.pinned = !item.pinned;
+    saveSpotNotes(notes);
+    renderSpotContent();
+  }
+}
+
+function deleteSpotItem(id) {
+  if (!confirm('Are you sure you want to delete this knowledge item?')) return;
+  let notes = getSpotNotes();
+  notes = notes.filter(n => n.id !== id);
+  saveSpotNotes(notes);
+  if (currentSpotSelectedId === id) currentSpotSelectedId = null;
+  renderNotes();
+}
+
+function openSpotNewItemModal() {
+  const title = prompt('Enter note title:');
+  if (!title) return;
+  const notes = getSpotNotes();
+  const newNote = {
+    id: Date.now(),
+    title: title.trim(),
+    body: '',
+    type: 'Note',
+    collectionId: currentSpotCollectionId || 'Inbox',
+    folder: 'Inbox',
+    tags: '',
+    status: 'Inbox',
+    attachments: [],
+    relatedItemIds: [],
+    backlinks: [],
+    pinned: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  notes.push(newNote);
+  saveSpotNotes(notes);
+  currentSpotSelectedId = newNote.id;
+  renderNotes();
+}
+
+function openSpotQuickCaptureModal() {
+  const text = prompt('⚡ Quick Capture (Idea, Task, Thought):');
+  if (!text || text.trim() === '') return;
+  const notes = getSpotNotes();
+  const titleLine = text.split('\n')[0].slice(0, 50);
+  const newNote = {
+    id: Date.now(),
+    title: titleLine || 'Quick Capture',
+    body: text,
+    type: 'Idea',
+    collectionId: 'Inbox',
+    folder: 'Inbox',
+    tags: 'quick-capture',
+    status: 'Inbox',
+    attachments: [],
+    relatedItemIds: [],
+    backlinks: [],
+    pinned: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  notes.push(newNote);
+  saveSpotNotes(notes);
+  currentSpotSelectedId = newNote.id;
+  currentSpotNav = 'inbox';
+  renderNotes();
+}
+
+function openSpotNewCollectionModal() {
+  const name = prompt('Enter new Collection name:');
+  if (!name || name.trim() === '') return;
+  const cols = getSpotCollections();
+  cols.push({ id: name.toLowerCase().replace(/\s+/g, '_'), name: name.trim(), description: name.trim() + ' collection' });
+  saveSpotCollections(cols);
+  renderNotes();
+}
+
+function openSpotNewSourceModal() {
+  const title = prompt('Enter Source Title (e.g. Book, Web Article, Report):');
+  if (!title || title.trim() === '') return;
+  const author = prompt('Enter Author / Publisher (optional):') || '';
+  const url = prompt('Enter URL / Reference (optional):') || '';
+  const srcs = getSpotSources();
+  srcs.push({ id: 'src_' + Date.now(), title: title.trim(), author: author.trim(), url: url.trim(), type: 'Reference', notes: '' });
+  saveSpotSources(srcs);
+  renderNotes();
+}
+
+function openSpotAddRelationshipModal(fromId) {
+  const notes = getSpotNotes();
+  const targetIdStr = prompt('Enter Target Note ID to connect to:\n' + notes.map(n => `#${n.id}: ${n.title}`).join('\n'));
+  if (!targetIdStr) return;
+  const targetId = parseInt(targetIdStr.replace('#', ''));
+  if (!targetId || targetId === fromId) { alert('Invalid target note.'); return; }
+
+  const relType = prompt('Select Relationship Type:\n' + SPOT_RELATIONSHIP_TYPES.join(', ')) || 'Related to';
+  const rels = getSpotRelationships();
+  rels.push({ id: 'rel_' + Date.now(), fromId, toId: targetId, type: relType, createdAt: new Date().toISOString() });
+  saveSpotRelationships(rels);
+  renderSpotContent();
+}
+
+function deleteSpotRelationship(relId) {
+  let rels = getSpotRelationships();
+  rels = rels.filter(r => r.id !== relId);
+  saveSpotRelationships(rels);
+  renderSpotContent();
+}
+
+function convertSpotToDocketTask(noteId) {
+  const notes = getSpotNotes();
+  const n = notes.find(x => x.id === noteId);
+  if (!n) return;
+
+  if (typeof createDocketTaskFromApp === 'function') {
+    createDocketTaskFromApp('spot', n.id, n.title || 'Spot Note', n.body || '');
+    if (confirm(`Created Docket task for "${n.title}". Would you like to switch to Docket now?`)) {
+      activateTab('tasks');
+    }
+  } else {
+    alert('Created task successfully!');
+  }
+}
+
+function convertSpotToFolioDoc(noteId) {
+  const notes = getSpotNotes();
+  const n = notes.find(x => x.id === noteId);
+  if (!n) return;
+
+  const docData = {
+    title: n.title || 'Untitled Document',
+    body: n.body || '',
+    sourceApp: 'spot',
+    sourceRecordId: n.id,
+    createdAt: new Date().toISOString()
+  };
+  saveLocal('doc_folio_' + Date.now(), docData);
+  if (confirm(`Created Folio document for "${n.title}". Would you like to switch to Folio now?`)) {
+    activateTab('docs');
+  }
+}
+
+function convertSpotToGlidesDeck(noteId) {
+  const notes = getSpotNotes();
+  const n = notes.find(x => x.id === noteId);
+  if (!n) return;
+
+  const glidesData = typeof getGlidesData === 'function' ? getGlidesData() : { presentations: [] };
+  const newPres = {
+    id: 'pres_' + Date.now(),
+    title: n.title || 'Spot Presentation',
+    slides: [
+      { id: 'slide_1', title: n.title || 'Overview', objects: [{ id: 'obj_1', type: 'text', content: (n.body || '').slice(0, 200), x: 50, y: 100, width: 600, height: 300 }] }
+    ],
+    sourceApp: 'spot',
+    sourceRecordId: n.id,
+    createdAt: new Date().toISOString()
+  };
+  glidesData.presentations.push(newPres);
+  glidesData.activeId = newPres.id;
+  if (typeof saveGlidesData === 'function') saveGlidesData(glidesData);
+  if (confirm(`Created Glides deck for "${n.title}". Would you like to switch to Glides now?`)) {
+    activateTab('slides');
+  }
+}
+
+function exportSpotNotes() {
+  const notes = getSpotNotes();
+  const cols = getSpotCollections();
+  const srcs = getSpotSources();
+  const rels = getSpotRelationships();
+  download('knowledge.spot', JSON.stringify({ type: 'spot_v2', notes, collections: cols, sources: srcs, relationships: rels }, null, 2));
+}
+
+function importSpotNotes() {
+  pickFile('.spot', (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.notes) saveSpotNotes(parsed.notes);
+      if (parsed.collections) saveSpotCollections(parsed.collections);
+      if (parsed.sources) saveSpotSources(parsed.sources);
+      if (parsed.relationships) saveSpotRelationships(parsed.relationships);
+      renderNotes();
+    } catch (e) {
+      alert('Could not read that .spot file');
+    }
+  });
 }
 
 function renderFolioRibbonTools() {
@@ -4224,149 +4646,296 @@ function importForms(){
   });
 }
 
-/* ================= NOTES (.spot) ================= */
-let draggingNote=null, dragOffset={x:0,y:0};
-function renderNotes(){
+/* ================= SPOT (.spot) — KNOWLEDGE, RESEARCH & IDEA WORKSPACE ================= */
+let currentSpotNav = 'inbox';
+let currentSpotSearch = '';
+let currentSpotSelectedId = null;
+let currentSpotCollectionId = null;
+let currentSpotTopic = null;
+let spotPreviewMode = false;
+let draggingSpotNote = null, dragSpotOffset = { x: 0, y: 0 };
+
+function renderNotes() {
   const p = document.getElementById('panel-notes');
-  if(!p) return;
-  const view = _notesView || 'board';
+  if (!p) return;
+
+  const notes = getSpotNotes();
+  const cols = getSpotCollections();
+  const srcs = getSpotSources();
+
+  const inboxCount = notes.filter(n => n.status === 'Inbox' || n.collectionId === 'inbox' || n.folder === 'Inbox').length;
+  const activeCount = notes.filter(n => n.status !== 'Archived').length;
+  const colsCount = cols.length;
+  const sourcesCount = srcs.length;
+  const reviewCount = notes.filter(n => (n.status === 'Inbox' || !n.tags || n.tags.trim() === '') && n.status !== 'Archived').length;
+  const archiveCount = notes.filter(n => n.status === 'Archived').length;
+
   p.innerHTML = `
-    <h2>Spot</h2>
-    <div class="sub">.spot — ${view==='board' ? 'drag ideas around, see how they connect (capped at 100)' : 'a real private knowledge system: folders, markdown, tags, backlinks'}</div>
-    <div class="toolbar">
-      <div class="view-switch">
-        <button class="btn ${view==='board'?'brass':'ghost'} small" onclick="switchNotesView('board')">📌 Board</button>
-        <button class="btn ${view==='library'?'brass':'ghost'} small" onclick="switchNotesView('library')">📚 Library</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+      <div>
+        <h2 style="margin:0; font-size:1.3rem;">Spot Knowledge & Research Workspace</h2>
+        <div class="sub">.spot — Capture, organize, connect, and transform knowledge into action</div>
       </div>
-      ${view==='board' ? `
-        <button class="btn ghost small" onclick="addSpotNote()">+ New note</button>
-        <button class="btn sage small" onclick="showSeal()">Save</button>
-        <button class="btn ghost small" onclick="exportNotes()">Export .spot</button>
-        <button class="btn ghost small" onclick="importNotes()">Import .spot</button>
-      ` : `
-        <button class="btn ghost small" onclick="addLibraryNote()">+ New note</button>
-      `}
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn brass small" onclick="openSpotNewItemModal()">+ New Note</button>
+        <button class="btn ghost small" onclick="openSpotQuickCaptureModal()">⚡ Quick Capture</button>
+        <button class="btn ghost small" onclick="openSpotNewCollectionModal()">+ Collection</button>
+        <button class="btn ghost small" onclick="openSpotNewSourceModal()">+ Source</button>
+        <button class="btn ghost small" onclick="exportSpotNotes()">Export .spot</button>
+        <button class="btn ghost small" onclick="importSpotNotes()">Import .spot</button>
+      </div>
     </div>
-    <div id="notesCanvas" style="${view==='board'?'':'display:none;'}"></div>
-    <div id="notesLibrary" style="${view==='library'?'':'display:none;'}"></div>
+
+    <div class="spot-layout" style="display:grid; grid-template-columns:220px 1fr; gap:16px; align-items:start;">
+      <!-- SIDEBAR -->
+      <div class="spot-sidebar" style="background:var(--bg-surface, #1e293b); border:1px solid var(--border, #334155); border-radius:8px; padding:12px;">
+        <div style="margin-bottom:12px;">
+          <input type="text" placeholder="Search knowledge..." value="${escapeHtml(currentSpotSearch)}" oninput="currentSpotSearch=this.value; renderSpotContent();" style="width:100%; box-sizing:border-box; padding:6px 10px; font-size:0.85rem; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-card, #0f172a); color:var(--text, #f8fafc);">
+        </div>
+        <div class="spot-nav-group" style="display:flex; flex-direction:column; gap:4px;">
+          <button class="btn ${currentSpotNav === 'inbox' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='inbox'; renderSpotContent();">
+            <span>📥 Inbox</span> <span class="badge">${inboxCount}</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'recent' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='recent'; renderSpotContent();">
+            <span>🕒 Recent</span> <span class="badge">${activeCount}</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'collections' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='collections'; renderSpotContent();">
+            <span>📁 Collections</span> <span class="badge">${colsCount}</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'topics' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='topics'; renderSpotContent();">
+            <span>🏷 Topics & Tags</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'canvas' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='canvas'; renderSpotContent();">
+            <span>📌 Research Canvas</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'graph' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='graph'; renderSpotContent();">
+            <span>🕸 Knowledge Graph</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'sources' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='sources'; renderSpotContent();">
+            <span>📚 Sources</span> <span class="badge">${sourcesCount}</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'review' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='review'; renderSpotContent();">
+            <span>🔍 Review</span> <span class="badge">${reviewCount}</span>
+          </button>
+          <button class="btn ${currentSpotNav === 'archive' ? 'brass' : 'ghost'} small" style="justify-content:space-between; text-align:left; width:100%;" onclick="currentSpotNav='archive'; renderSpotContent();">
+            <span>📦 Archive</span> <span class="badge">${archiveCount}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN CONTENT -->
+      <div id="spotMainContent" style="background:var(--bg-surface, #1e293b); border:1px solid var(--border, #334155); border-radius:8px; padding:16px; min-height:500px;">
+      </div>
+    </div>
   `;
-  if(view==='board') renderNotesCanvas(); else renderNotesLibrary();
+
+  renderSpotContent();
 }
-function switchNotesView(v){ _notesView = v; renderNotes(); }
-function getNotesData(){ return loadLocal('notes', {items:[
-  {id:1,x:30,y:30,text:'Drag me anywhere'},
-  {id:2,x:220,y:110,text:'Cluster related ideas by proximity'}
-]}); }
-function renderNotesCanvas(){
-  const d = getNotesData();
-  const canvas = document.getElementById('notesCanvas');
-  if(!canvas) return;
 
-  // Render connector lines based on shared tags, anchors, or spatial proximity
-  let svgConnectors = '<svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;">';
-  for (let i = 0; i < d.items.length; i++) {
-    for (let j = i + 1; j < d.items.length; j++) {
-      const n1 = d.items[i];
-      const n2 = d.items[j];
-      const text1 = (n1.text || '').toLowerCase();
-      const text2 = (n2.text || '').toLowerCase();
+function renderSpotContent() {
+  const container = document.getElementById('spotMainContent');
+  if (!container) return;
 
-      const words1 = text1.split(/\W+/).filter(w => w.length > 3);
-      const sharedWord = words1.find(w => text2.includes(w));
-      const sharedAnchor = n1.anchor && n2.anchor && n1.anchor === n2.anchor;
-      const dx = n1.x - n2.x;
-      const dy = n1.y - n2.y;
-      const distance = Math.sqrt(dx*dx + dy*dy);
+  const notes = getSpotNotes();
+  const cols = getSpotCollections();
+  const srcs = getSpotSources();
+  const rels = getSpotRelationships();
 
-      // Draw connector line if notes share anchor, key words, or are within 220px proximity
-      if (sharedAnchor || sharedWord || distance < 220) {
-        const x1 = n1.x + 75, y1 = n1.y + 45;
-        const x2 = n2.x + 75, y2 = n2.y + 45;
-        const strokeColor = sharedAnchor ? '#10b981' : (sharedWord ? '#3b82f6' : 'rgba(255,255,255,0.25)');
-        svgConnectors += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${strokeColor}" stroke-width="2" stroke-dasharray="4,4" opacity="0.75"/>`;
-      }
-    }
+  let filtered = notes;
+  if (currentSpotSearch && currentSpotSearch.trim() !== '') {
+    const q = currentSpotSearch.toLowerCase();
+    filtered = filtered.filter(n =>
+      (n.title || '').toLowerCase().includes(q) ||
+      (n.body || '').toLowerCase().includes(q) ||
+      (n.tags || '').toLowerCase().includes(q) ||
+      (n.type || '').toLowerCase().includes(q)
+    );
   }
-  svgConnectors += '</svg>';
 
-  const notesHtml = d.items.map(item=>`
-    <div class="spot-note${item.anchor?' anchored':''}" style="left:${item.x}px; top:${item.y}px; z-index:1;" data-id="${item.id}">
-      <span class="del" onclick="deleteSpotNote(${item.id})">✕</span>
-      ${item.anchor?`<div class="anchor-tag" title="${item.anchor.replace(/"/g,'&quot;')}">📌 "${item.anchor.slice(0,26)}${item.anchor.length>26?'…':''}" <span style="cursor:pointer;text-decoration:underline;" onclick="findInFolio('${item.anchor.replace(/'/g,"\\'")}')">find</span></div>`:''}
-      <textarea onchange="updateSpotText(${item.id}, this.value)">${item.text}</textarea>
+  if (currentSpotNav === 'inbox') {
+    const inboxNotes = filtered.filter(n => n.status === 'Inbox' || n.collectionId === 'inbox' || n.folder === 'Inbox');
+    container.innerHTML = renderSpotListView(inboxNotes, '📥 Unprocessed Inbox');
+  } else if (currentSpotNav === 'recent') {
+    const recentNotes = filtered.filter(n => n.status !== 'Archived').sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+    container.innerHTML = renderSpotListView(recentNotes, '🕒 Recently Updated Knowledge');
+  } else if (currentSpotNav === 'collections') {
+    container.innerHTML = renderSpotCollectionsView(filtered, cols);
+  } else if (currentSpotNav === 'topics') {
+    container.innerHTML = renderSpotTopicsView(filtered);
+  } else if (currentSpotNav === 'canvas') {
+    container.innerHTML = renderSpotCanvasView(filtered, rels);
+    initSpotCanvasEvents();
+  } else if (currentSpotNav === 'graph') {
+    container.innerHTML = renderSpotGraphView(filtered, rels);
+  } else if (currentSpotNav === 'sources') {
+    container.innerHTML = renderSpotSourcesView(filtered, srcs);
+  } else if (currentSpotNav === 'review') {
+    const reviewNotes = filtered.filter(n => (n.status === 'Inbox' || !n.tags || n.tags.trim() === '') && n.status !== 'Archived');
+    container.innerHTML = renderSpotReviewView(reviewNotes);
+  } else if (currentSpotNav === 'archive') {
+    const archivedNotes = filtered.filter(n => n.status === 'Archived');
+    container.innerHTML = renderSpotListView(archivedNotes, '📦 Knowledge Archive');
+  }
+}
+
+function renderSpotListView(items, title) {
+  let listHtml = '';
+  if (items.length === 0) {
+    listHtml = `<div class="hint" style="padding:24px; text-align:center;">No knowledge items found here. Use <b>+ New Note</b> or <b>⚡ Quick Capture</b> to capture thoughts.</div>`;
+  } else {
+    listHtml = items.map(n => {
+      const isSelected = currentSpotSelectedId === n.id;
+      const typeBadge = `<span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#60a5fa;">${escapeHtml(n.type || 'Note')}</span>`;
+      const dateStr = (n.updatedAt || n.createdAt || '').slice(0, 10);
+      return `
+        <div class="spot-item-card ${isSelected ? 'active' : ''}" onclick="currentSpotSelectedId=${n.id}; renderSpotContent();" style="border:1px solid ${isSelected ? 'var(--accent-primary, #3b82f6)' : 'var(--border, #334155)'}; border-radius:6px; padding:10px 14px; margin-bottom:8px; cursor:pointer; background:${isSelected ? 'rgba(59,130,246,0.1)' : 'var(--bg-card, #0f172a)'}; display:flex; justify-content:space-between; align-items:center;">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              ${n.pinned ? '📌 ' : ''}<b>${escapeHtml(n.title || 'Untitled')}</b>
+              ${typeBadge}
+              <span style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">${escapeHtml(n.collectionId || n.folder || 'Inbox')}</span>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-muted, #94a3b8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:400px;">
+              ${escapeHtml((n.body || '').replace(/[#*`\[\]]/g, '').slice(0, 80))}
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">${dateStr}</span>
+            <button class="btn ghost small" onclick="event.stopPropagation(); convertSpotToDocketTask(${n.id});" title="Convert to Docket Task">⚡ Task</button>
+            <button class="btn ghost small" onclick="event.stopPropagation(); deleteSpotItem(${n.id});" style="color:#ef4444;">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const openNote = currentSpotSelectedId ? getSpotNotes().find(n => n.id === currentSpotSelectedId) : null;
+  const inspectorHtml = renderSpotItemInspector(openNote);
+
+  return `
+    <h3 style="margin-top:0; margin-bottom:12px; font-size:1.1rem; color:var(--text, #f8fafc);">${title} (${items.length})</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;">
+      <div>${listHtml}</div>
+      <div style="background:var(--bg-card, #0f172a); border:1px solid var(--border, #334155); border-radius:6px; padding:16px; min-height:400px;">
+        ${inspectorHtml}
+      </div>
     </div>
-  `).join('');
+  `;
+}
 
-  canvas.innerHTML = svgConnectors + notesHtml;
-  canvas.querySelectorAll('.spot-note').forEach(el=>{
-    el.addEventListener('mousedown', e=>{
-      if(e.target.tagName==='TEXTAREA' || e.target.classList.contains('del')) return;
-      draggingNote = el;
-      const rect = el.getBoundingClientRect();
-      dragOffset = {x:e.clientX-rect.left, y:e.clientY-rect.top};
-    });
-  });
-}
-function findInFolio(snippet){
-  activateTab('docs');
-  setTimeout(()=>{
-    if(window.find){ window.find(snippet); }
-    else { alert('This browser doesn\'t support in-page search — the pinned line was:\n\n'+snippet); }
-  }, 60);
-}
-document.addEventListener('mousemove', e=>{
-  if(!draggingNote) return;
-  const canvas = document.getElementById('notesCanvas');
-  if(!canvas) return;
-  const canvasRect = canvas.getBoundingClientRect();
-  let x = e.clientX - canvasRect.left - dragOffset.x;
-  let y = e.clientY - canvasRect.top - dragOffset.y;
-  x = Math.max(0, Math.min(x, canvasRect.width-150));
-  y = Math.max(0, Math.min(y, canvasRect.height-90));
-  draggingNote.style.left = x+'px';
-  draggingNote.style.top = y+'px';
-});
-document.addEventListener('mouseup', ()=>{
-  if(draggingNote){
-    const id = parseInt(draggingNote.dataset.id);
-    const d = getNotesData();
-    const item = d.items.find(i=>i.id===id);
-    if(item){
-      item.x = parseInt(draggingNote.style.left);
-      item.y = parseInt(draggingNote.style.top);
-      localStorage.setItem(KEY_PREFIX+'notes', JSON.stringify(d));
-    }
+function renderSpotItemInspector(n) {
+  if (!n) {
+    return `<div class="hint" style="text-align:center; padding:40px 10px;">Select a knowledge item on the left to inspect, edit, or connect, or create a new one.</div>`;
   }
-  draggingNote=null;
-});
-function addSpotNote(){
-  const d = getNotesData();
-  if(d.items.length>=100){ alert('100 notes on one canvas is the cap — keeps it fast and simple.'); return; }
-  const id = Date.now();
-  d.items.push({id, x:40+Math.random()*200, y:40+Math.random()*200, text:'New idea'});
-  saveLocal('notes', d); bumpSpotStreak(); renderNotesCanvas();
-}
-function updateSpotText(id, text){
-  const d = getNotesData();
-  const item = d.items.find(i=>i.id===id);
-  if(item) item.text=text;
-  saveLocal('notes', d);
-  bumpSpotStreak();
-}
-function deleteSpotNote(id){
-  const d = getNotesData();
-  d.items = d.items.filter(i=>i.id!==id);
-  saveLocal('notes', d); renderNotesCanvas();
-}
-function exportNotes(){
-  const d = getNotesData();
-  download('notes.spot', JSON.stringify({type:'spot',...d}, null, 2));
-}
-function importNotes(){
-  pickFile('.spot', (content)=>{
-    try{ const parsed = JSON.parse(content); saveLocal('notes', {items:parsed.items||[]}); renderNotes(); }
-    catch(e){ alert('Could not read that .spot file'); }
-  });
+
+  const cols = getSpotCollections();
+  const srcs = getSpotSources();
+  const allNotes = getSpotNotes();
+  const rels = getSpotRelationships();
+
+  const noteRels = rels.filter(r => r.fromId === n.id || r.toId === n.id);
+  const backlinks = allNotes.filter(other =>
+    other.id !== n.id && (
+      (other.body || '').toLowerCase().includes(`[[${(n.title || '').toLowerCase()}]]`) ||
+      rels.some(r => r.fromId === other.id && r.toId === n.id)
+    )
+  );
+
+  const relsListHtml = noteRels.length === 0 ? '<span class="hint">No explicit relationships linked yet.</span>' : noteRels.map(r => {
+    const otherId = r.fromId === n.id ? r.toId : r.fromId;
+    const otherNote = allNotes.find(x => x.id === otherId);
+    const label = otherNote ? otherNote.title : `Item #${otherId}`;
+    const relDirection = r.fromId === n.id ? `➔ ${r.type}` : `⬅ ${r.type}`;
+    return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:4px; margin-bottom:4px; font-size:0.8rem;">
+      <span>${relDirection} <b>${escapeHtml(label)}</b></span>
+      <span style="cursor:pointer; color:#ef4444;" onclick="deleteSpotRelationship('${r.id}')">✕</span>
+    </div>`;
+  }).join('');
+
+  const backlinksListHtml = backlinks.length === 0 ? '<span class="hint">No backlinks found.</span>' : backlinks.map(b =>
+    `<button class="btn ghost small" style="display:inline-block; margin-right:4px; margin-bottom:4px;" onclick="currentSpotSelectedId=${b.id}; renderSpotContent();">🔗 ${escapeHtml(b.title)}</button>`
+  ).join('');
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h4 style="margin:0; font-size:1rem; color:var(--text, #f8fafc);">Knowledge Item Inspector</h4>
+      <div style="display:flex; gap:6px;">
+        <button class="btn ghost small" onclick="spotPreviewMode=!spotPreviewMode; renderSpotContent();">${spotPreviewMode ? '✎ Edit' : '👁 Preview'}</button>
+        <button class="btn ghost small" onclick="toggleSpotPin(${n.id})">${n.pinned ? '📌 Unpin' : '📍 Pin'}</button>
+        <button class="btn ghost small" style="color:#ef4444;" onclick="deleteSpotItem(${n.id})">✕ Delete</button>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div>
+        <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Title</label>
+        <input type="text" value="${escapeHtml(n.title || '')}" onchange="updateSpotItemField(${n.id}, 'title', this.value)" style="width:100%; box-sizing:border-box; padding:6px 10px; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-surface, #1e293b); color:var(--text, #f8fafc); font-weight:600;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Type</label>
+          <select onchange="updateSpotItemField(${n.id}, 'type', this.value)" style="width:100%; padding:6px; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-surface, #1e293b); color:var(--text, #f8fafc);">
+            ${SPOT_TYPES.map(t => `<option value="${t}" ${t === n.type ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Collection</label>
+          <select onchange="updateSpotItemField(${n.id}, 'collectionId', this.value)" style="width:100%; padding:6px; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-surface, #1e293b); color:var(--text, #f8fafc);">
+            ${cols.map(c => `<option value="${c.id}" ${c.id === n.collectionId || c.name === n.folder ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Status</label>
+          <select onchange="updateSpotItemField(${n.id}, 'status', this.value)" style="width:100%; padding:6px; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-surface, #1e293b); color:var(--text, #f8fafc);">
+            <option value="Inbox" ${n.status === 'Inbox' ? 'selected' : ''}>Inbox</option>
+            <option value="Active" ${n.status === 'Active' ? 'selected' : ''}>Active</option>
+            <option value="Archived" ${n.status === 'Archived' ? 'selected' : ''}>Archived</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Tags (comma separated)</label>
+          <input type="text" value="${escapeHtml(n.tags || '')}" onchange="updateSpotItemField(${n.id}, 'tags', this.value)" style="width:100%; box-sizing:border-box; padding:6px; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-surface, #1e293b); color:var(--text, #f8fafc);">
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Body (Markdown supported)</label>
+        ${spotPreviewMode ? `
+          <div class="md-preview" style="background:var(--bg-surface, #1e293b); border:1px solid var(--border, #334155); border-radius:4px; padding:10px; min-height:160px; max-height:250px; overflow-y:auto;">
+            ${renderMarkdown(n.body || '')}
+          </div>
+        ` : `
+          <textarea onchange="updateSpotItemField(${n.id}, 'body', this.value)" style="width:100%; box-sizing:border-box; min-height:160px; max-height:250px; padding:8px; border-radius:4px; border:1px solid var(--border, #334155); background:var(--bg-surface, #1e293b); color:var(--text, #f8fafc); font-family:monospace; font-size:0.85rem;">${escapeHtml(n.body || '')}</textarea>
+        `}
+      </div>
+
+      <!-- RELATIONSHIPS -->
+      <div style="border-top:1px solid var(--border, #334155); padding-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #94a3b8);">Explicit Relationships</label>
+          <button class="btn ghost small" onclick="openSpotAddRelationshipModal(${n.id})">+ Add Link</button>
+        </div>
+        ${relsListHtml}
+      </div>
+
+      <!-- BACKLINKS -->
+      <div style="border-top:1px solid var(--border, #334155); padding-top:8px;">
+        <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted, #94a3b8); display:block; margin-bottom:4px;">Backlinks (${backlinks.length})</label>
+        ${backlinksListHtml}
+      </div>
+
+      <!-- CROSS-APP ACTIONS -->
+      <div style="border-top:1px solid var(--border, #334155); padding-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn brass small" onclick="convertSpotToDocketTask(${n.id})">⚡ Send to Docket Task</button>
+        <button class="btn ghost small" onclick="convertSpotToFolioDoc(${n.id})">📄 Send to Folio</button>
+        <button class="btn ghost small" onclick="convertSpotToGlidesDeck(${n.id})">📊 Send to Glides</button>
+      </div>
+    </div>
+  `;
 }
 
 /* ================= NOTES LIBRARY (Phase 13) =================
@@ -4380,8 +4949,107 @@ let _libFolder = 'Inbox';
 let _libSearch = '';
 let _libOpenId = null;
 
-function getLibraryNotes(){ return loadLocal('notes_library', []); }
-function saveLibraryNotes(arr){ saveLocal('notes_library', arr); }
+/* ================= SPOT DATA ENGINE & KNOWLEDGE MODELS ================= */
+const SPOT_TYPES = ['Note', 'Research', 'Idea', 'Reference', 'Meeting', 'Decision', 'Question', 'Procedure', 'Document', 'Image', 'Link'];
+const SPOT_RELATIONSHIP_TYPES = ['Related to', 'Depends on', 'Supports', 'Contradicts', 'References', 'Derived from', 'Part of'];
+
+function getSpotNotes() {
+  let notes = loadLocal('notes_library', null);
+  if (!notes || !Array.isArray(notes) || notes.length === 0) {
+    notes = [
+      {
+        id: 101,
+        title: 'Welcome to Spot Knowledge Workspace',
+        body: '# Welcome to Spot\nCapture ideas, research findings, and notes, organize them into collections, connect them with explicit relationships, and turn them into actionable Docket tasks.',
+        type: 'Note',
+        collectionId: 'Inbox',
+        folder: 'Inbox',
+        tags: 'welcome, spot, guide',
+        status: 'Inbox',
+        source: 'Offlines Guide',
+        sourceUrl: 'https://offlines.xyz',
+        attachments: [],
+        relatedItemIds: [],
+        backlinks: [],
+        pinned: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 102,
+        title: 'Research: Local First Architecture',
+        body: 'Local-first software ensures user data remains encrypted on the device without requiring external server processing.',
+        type: 'Research',
+        collectionId: 'Research',
+        folder: 'Research',
+        tags: 'privacy, architecture, local',
+        status: 'Active',
+        source: 'Local-First Research',
+        sourceUrl: '',
+        attachments: [],
+        relatedItemIds: [101],
+        backlinks: [],
+        pinned: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+    saveLocal('notes_library', notes);
+  }
+  notes.forEach(n => {
+    if (!n.type) n.type = 'Note';
+    if (!n.collectionId) n.collectionId = n.folder || 'Inbox';
+    if (!n.folder) n.folder = n.collectionId || 'Inbox';
+    if (!n.status) n.status = 'Active';
+    if (!n.tags) n.tags = '';
+    if (!n.attachments) n.attachments = [];
+    if (!n.relatedItemIds) n.relatedItemIds = [];
+    if (!n.backlinks) n.backlinks = [];
+    if (!n.createdAt) n.createdAt = new Date().toISOString();
+    if (!n.updatedAt) n.updatedAt = n.createdAt;
+  });
+  return notes;
+}
+
+function saveSpotNotes(arr) { saveLocal('notes_library', arr); }
+function getLibraryNotes() { return getSpotNotes(); }
+function saveLibraryNotes(arr) { saveSpotNotes(arr); }
+
+function getSpotCollections() {
+  const defaultCols = ['Inbox', 'Personal', 'Work', 'Projects', 'Research', 'Ideas', 'Archive'];
+  let cols = loadLocal('spot_collections', null);
+  if (!cols || !Array.isArray(cols)) {
+    cols = defaultCols.map(c => ({ id: c.toLowerCase(), name: c, description: c + ' collection' }));
+    saveLocal('spot_collections', cols);
+  }
+  return cols;
+}
+function saveSpotCollections(cols) { saveLocal('spot_collections', cols); }
+
+function getSpotSources() {
+  let srcs = loadLocal('spot_sources', null);
+  if (!srcs || !Array.isArray(srcs)) {
+    srcs = [
+      { id: 'src_1', title: 'Local-First Software Paper', author: 'Ink & Switch', url: 'https://www.inkandswitch.com/local-first/', type: 'Article', notes: 'Foundational paper on local-first principles' },
+      { id: 'src_2', title: 'Offlines Architectural Spec', author: 'Privacy Engineering', url: 'https://offlines.xyz/spec', type: 'Document', notes: 'Internal security and architecture specification' }
+    ];
+    saveLocal('spot_sources', srcs);
+  }
+  return srcs;
+}
+function saveSpotSources(srcs) { saveLocal('spot_sources', srcs); }
+
+function getSpotRelationships() {
+  let rels = loadLocal('spot_relationships', null);
+  if (!rels || !Array.isArray(rels)) {
+    rels = [
+      { id: 'rel_1', fromId: 102, toId: 101, type: 'Supports', createdAt: new Date().toISOString() }
+    ];
+    saveLocal('spot_relationships', rels);
+  }
+  return rels;
+}
+function saveSpotRelationships(rels) { saveLocal('spot_relationships', rels); }
 
 /* Small, dependency-free markdown: headers, bold/italic, inline code,
    checklists, bullet lists, pipe tables, and [[backlink]] note-title links. */
