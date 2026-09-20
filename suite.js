@@ -5332,6 +5332,9 @@ function onDocketSearchInput(q) {
 }
 
 function renderDocketCurrentView(data, projs) {
+  if (currentDocketNav === 'projects') return renderDocketProjectsView(data, projs);
+  if (currentDocketNav === 'review') return renderDocketReviewView(data, projs);
+
   if (currentDocketView === 'matrix') {
     return renderDocketMatrixView(data);
   }
@@ -5340,9 +5343,7 @@ function renderDocketCurrentView(data, projs) {
   if (currentDocketNav === 'upcoming') return renderDocketListSection(data, projs, i => i.dueDate > todayStr() && i.status !== 'completed' && i.status !== 'archived', '🔮 Upcoming Tasks');
   if (currentDocketNav === 'overdue') return renderDocketListSection(data, projs, i => i.dueDate < todayStr() && i.status !== 'completed' && i.status !== 'archived', '⚠️ Overdue Tasks');
   if (currentDocketNav === 'waiting') return renderDocketListSection(data, projs, i => (i.status === 'waiting' || (i.blockedBy && i.blockedBy.length > 0)) && i.status !== 'archived', '⏳ Waiting & Blocked Tasks');
-  if (currentDocketNav === 'projects') return renderDocketProjectsView(data, projs);
   if (currentDocketNav === 'completed') return renderDocketListSection(data, projs, i => i.status === 'completed', '✓ Completed Tasks');
-  if (currentDocketNav === 'review') return renderDocketReviewView(data, projs);
   if (currentDocketNav === 'archive') return renderDocketListSection(data, projs, i => i.status === 'archived', '📦 Archived Tasks');
 
   return renderDocketTodayView(data, projs);
@@ -5403,6 +5404,10 @@ function renderDocketTaskItemCard(item, projs) {
 }
 
 function renderDocketTodayView(data, projs) {
+  if (currentDocketView === 'board') return renderDocketBoardView(data.items, projs);
+  if (currentDocketView === 'calendar') return renderDocketCalendarView(data.items, projs);
+  if (currentDocketView === 'timeline') return renderDocketTimelineView(data.items, projs);
+
   const today = todayStr();
   let overdue = data.items.filter(i => i.dueDate < today && i.status !== 'completed' && i.status !== 'archived');
   let dueToday = data.items.filter(i => i.dueDate === today && i.status !== 'completed' && i.status !== 'archived');
@@ -5440,26 +5445,50 @@ function renderDocketProjectsView(data, projs) {
   return `
     <div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h3 style="margin:0; font-size:1.05rem; color:#f8fafc;">📂 PROJECTS WORKSPACE</h3>
+        <h3 style="margin:0; font-size:1.05rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+          📂 PROJECT MANAGEMENT WORKSPACE
+        </h3>
         <button class="btn brass small" onclick="openNewDocketProjectModal()">+ Create Project</button>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
         ${projs.map(p => {
-          const projTasks = data.items.filter(i => i.projectId === p.id);
+          const projTasks = data.items.filter(i => String(i.projectId) === String(p.id));
           const doneTasks = projTasks.filter(i => i.status === 'completed');
+          const blockedTasks = projTasks.filter(i => i.status === 'blocked');
+          const inProgTasks = projTasks.filter(i => i.status === 'in_progress');
           const pct = projTasks.length > 0 ? Math.round((doneTasks.length / projTasks.length) * 100) : 0;
+
           return `
-            <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
               <div>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <h4 style="margin:0; color:#f8fafc; font-size:0.95rem;">${escapeHTML(p.name)}</h4>
-                  <span class="docket-priority-badge docket-priority-${p.priority || 'normal'}">${p.priority || 'normal'}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <h4 style="margin:0; color:#f8fafc; font-size:1rem; font-weight:700;">${escapeHTML(p.name)}</h4>
+                  <span class="docket-priority-badge docket-priority-${p.priority || 'normal'}">${(p.priority || 'normal').toUpperCase()}</span>
                 </div>
-                <p style="margin:6px 0; font-size:0.8rem; color:#94a3b8; line-height:1.4;">${escapeHTML(p.description || '')}</p>
+                <p style="margin:0 0 10px 0; font-size:0.8rem; color:#94a3b8; line-height:1.4;">${escapeHTML(p.description || 'No project description provided.')}</p>
+
+                <!-- METRICS BADGES -->
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; background:#020617; padding:8px; border-radius:4px; text-align:center; font-size:0.75rem; border:1px solid #1e293b; margin-bottom:10px;">
+                  <div><span style="color:#64748b; display:block;">Active</span><span style="color:#38bdf8; font-weight:bold;">${inProgTasks.length}</span></div>
+                  <div><span style="color:#64748b; display:block;">Blocked</span><span style="color:#ef4444; font-weight:bold;">${blockedTasks.length}</span></div>
+                  <div><span style="color:#64748b; display:block;">Done</span><span style="color:#10b981; font-weight:bold;">${doneTasks.length}/${projTasks.length}</span></div>
+                </div>
+
+                <!-- RECENT TASKS IN PROJECT -->
+                <div style="display:flex; flex-direction:column; gap:4px; max-height:110px; overflow-y:auto;">
+                  ${projTasks.slice(0, 4).map(t => `
+                    <div onclick="openDocketTaskDetailModal('${t.id}')" style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#cbd5e1; background:#1e293b; padding:4px 6px; border-radius:3px; cursor:pointer;">
+                      <span style="text-decoration:${t.status === 'completed' ? 'line-through' : 'none'}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">• ${escapeHTML(t.title)}</span>
+                      <span style="font-size:0.65rem; color:#38bdf8;">${t.status}</span>
+                    </div>
+                  `).join('')}
+                </div>
               </div>
+
               <div>
                 <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94a3b8; margin-bottom:4px;">
-                  <span>Progress (${doneTasks.length}/${projTasks.length} tasks)</span>
+                  <span>Project Completion Rate</span>
                   <span style="font-weight:bold; color:#38bdf8;">${pct}%</span>
                 </div>
                 <div style="width:100%; height:6px; background:#1e293b; border-radius:3px; overflow:hidden;">
@@ -5478,47 +5507,157 @@ function renderDocketReviewView(data, projs) {
   const today = todayStr();
   const completedToday = data.items.filter(i => i.completedAt === today || (i.status === 'completed' && i.dueDate === today));
   const overdue = data.items.filter(i => i.dueDate < today && i.status !== 'completed' && i.status !== 'archived');
-  const waiting = data.items.filter(i => i.status === 'waiting' || (i.blockedBy && i.blockedBy.length > 0));
+  const waiting = data.items.filter(i => i.status === 'waiting' || i.status === 'blocked' || (i.blockedBy && i.blockedBy.length > 0));
   const unassigned = data.items.filter(i => i.projectId === 'proj_default' && i.status !== 'completed' && i.status !== 'archived');
 
   return `
     <div>
-      <h3 style="margin-top:0; font-size:1.05rem; color:#f8fafc; border-bottom:1px solid #1e293b; padding-bottom:8px;">📊 DAILY & WEEKLY WORK REVIEW</h3>
+      <h3 style="margin-top:0; font-size:1.05rem; color:#f8fafc; border-bottom:1px solid #1e293b; padding-bottom:8px; display:flex; align-items:center; gap:8px;">
+        📊 WORKFLOW REVIEW & ACTION CENTER
+      </h3>
+
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
-          <h4 style="margin:0 0 8px 0; color:#4ade80;">✓ Completed Today (${completedToday.length})</h4>
-          ${completedToday.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)}</div>`).join('')}
+        <!-- OVERDUE ACTION CENTER -->
+        <div style="background:#0f172a; padding:14px; border-radius:6px; border:1px solid #1e293b;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="margin:0; color:#fca5a5; font-size:0.9rem;">⚠️ Overdue Needing Action (${overdue.length})</h4>
+            ${overdue.length > 0 ? `<button class="btn ghost micro" onclick="batchRescheduleOverdueTasks()">Reschedule All to Today</button>` : ''}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;">
+            ${overdue.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No overdue tasks. All work is on track!</div>' : overdue.map(i => `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; padding:6px; border-radius:4px; border:1px solid #1e293b; font-size:0.8rem;">
+                <div>
+                  <span style="color:#f8fafc; font-weight:600;">${escapeHTML(i.title)}</span>
+                  <span style="color:#ef4444; font-size:0.7rem; display:block;">Due: ${i.dueDate}</span>
+                </div>
+                <div style="display:flex; gap:4px;">
+                  <button class="btn brass micro" onclick="toggleDocketTaskDone('${i.id}')">Complete</button>
+                  <button class="btn ghost micro" onclick="rescheduleDocketTaskToToday('${i.id}')">To Today</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
-        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
-          <h4 style="margin:0 0 8px 0; color:#fca5a5;">⚠️ Overdue Needing Attention (${overdue.length})</h4>
-          ${overdue.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)} (${i.dueDate})</div>`).join('')}
+
+        <!-- WAITING / BLOCKED ACTION CENTER -->
+        <div style="background:#0f172a; padding:14px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 10px 0; color:#fdba74; font-size:0.9rem;">⏳ Waiting / Blocked Items (${waiting.length})</h4>
+          <div style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;">
+            ${waiting.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No blocked or waiting tasks.</div>' : waiting.map(i => `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; padding:6px; border-radius:4px; border:1px solid #1e293b; font-size:0.8rem;">
+                <div>
+                  <span style="color:#f8fafc; font-weight:600;">${escapeHTML(i.title)}</span>
+                  <span style="color:#fb923c; font-size:0.7rem; display:block;">Reason: ${escapeHTML(i.waitingFor || (i.blockedBy || []).join(', ') || 'Blocked')}</span>
+                </div>
+                <button class="btn ghost micro" onclick="unblockDocketTask('${i.id}')">Unblock</button>
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
+
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
-          <h4 style="margin:0 0 8px 0; color:#fdba74;">⏳ Waiting / Blocked Items (${waiting.length})</h4>
-          ${waiting.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)}</div>`).join('')}
+        <!-- UNASSIGNED INBOX ACTION CENTER -->
+        <div style="background:#0f172a; padding:14px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 10px 0; color:#38bdf8; font-size:0.9rem;">📥 Unassigned Inbox Items (${unassigned.length})</h4>
+          <div style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;">
+            ${unassigned.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">Inbox is clear!</div>' : unassigned.map(i => `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; padding:6px; border-radius:4px; border:1px solid #1e293b; font-size:0.8rem;">
+                <span style="color:#f8fafc;">${escapeHTML(i.title)}</span>
+                <button class="btn ghost micro" onclick="openDocketTaskDetailModal('${i.id}', 'planning')">Assign Project</button>
+              </div>
+            `).join('')}
+          </div>
         </div>
-        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
-          <h4 style="margin:0 0 8px 0; color:#38bdf8;">📥 Unassigned Inbox Items (${unassigned.length})</h4>
-          ${unassigned.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)}</div>`).join('')}
+
+        <!-- TODAY COMPLETED LOG -->
+        <div style="background:#0f172a; padding:14px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 10px 0; color:#4ade80; font-size:0.9rem;">✓ Completed Today (${completedToday.length})</h4>
+          <div style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;">
+            ${completedToday.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No tasks completed yet today.</div>' : completedToday.map(i => `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:#020617; padding:6px; border-radius:4px; border:1px solid #1e293b; font-size:0.8rem;">
+                <span style="color:#cbd5e1; text-decoration:line-through;">${escapeHTML(i.title)}</span>
+                <span style="color:#4ade80; font-size:0.7rem;">Done</span>
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
     </div>
   `;
 }
 
+function rescheduleDocketTaskToToday(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(id));
+  if (item) {
+    item.dueDate = todayStr();
+    item.updatedAt = todayStr();
+    saveDocketData(data);
+    renderTasks();
+  }
+}
+
+function batchRescheduleOverdueTasks() {
+  const data = getDocketData();
+  const today = todayStr();
+  data.items.forEach(i => {
+    if (i.dueDate < today && i.status !== 'completed' && i.status !== 'archived') {
+      i.dueDate = today;
+      i.updatedAt = today;
+    }
+  });
+  saveDocketData(data);
+  renderTasks();
+}
+
+function unblockDocketTask(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(id));
+  if (item) {
+    item.status = 'in_progress';
+    item.waitingFor = '';
+    item.blockedBy = [];
+    item.updatedAt = todayStr();
+    saveDocketData(data);
+    renderTasks();
+  }
+}
+
+let _docketCalYear = null;
+let _docketCalMonth = null; // 0-indexed
+
 function renderDocketBoardView(items, projs) {
-  const statuses = ['inbox', 'planned', 'in_progress', 'waiting', 'completed'];
+  const statuses = ['inbox', 'planned', 'in_progress', 'waiting', 'blocked', 'completed'];
+  const statusLabels = {
+    inbox: '📥 Inbox',
+    planned: '📅 Planned',
+    in_progress: '🚀 In Progress',
+    waiting: '⏳ Waiting',
+    blocked: '🛑 Blocked',
+    completed: '✓ Completed'
+  };
+
   return `
     <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:12px;">
       ${statuses.map(st => {
         const colItems = items.filter(i => i.status === st);
         return `
-          <div style="flex:1; min-width:220px; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:10px;">
-            <h4 style="margin:0 0 10px 0; font-size:0.82rem; text-transform:uppercase; color:#38bdf8; border-bottom:1px solid #1e293b; padding-bottom:6px;">${st.replace('_', ' ')} (${colItems.length})</h4>
-            <div>
-              ${colItems.map(i => renderDocketTaskItemCard(i, projs)).join('')}
+          <div style="flex:1; min-width:240px; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:10px; display:flex; flex-direction:column;"
+               ondragover="event.preventDefault()"
+               ondrop="handleDocketBoardDrop(event, '${st}')">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:6px; margin-bottom:10px;">
+              <h4 style="margin:0; font-size:0.82rem; text-transform:uppercase; color:#38bdf8; font-weight:700;">${statusLabels[st] || st}</h4>
+              <span style="font-size:0.75rem; background:#1e293b; color:#cbd5e1; padding:2px 8px; border-radius:10px;">${colItems.length}</span>
+            </div>
+            <div style="flex:1; min-height:220px; display:flex; flex-direction:column; gap:8px;">
+              ${colItems.length === 0 ? '<div style="color:#64748b; font-size:0.75rem; text-align:center; padding:16px; border:1px dashed #1e293b; border-radius:4px;">Drag tasks here</div>' : colItems.map(i => `
+                <div draggable="true"
+                     ondragstart="handleDocketBoardDragStart(event, '${i.id}')"
+                     style="cursor:grab;">
+                  ${renderDocketTaskItemCard(i, projs)}
+                </div>
+              `).join('')}
             </div>
           </div>
         `;
@@ -5527,22 +5666,118 @@ function renderDocketBoardView(items, projs) {
   `;
 }
 
+function handleDocketBoardDragStart(e, taskId) {
+  e.dataTransfer.setData('text/plain', taskId);
+}
+
+function handleDocketBoardDrop(e, targetStatus) {
+  e.preventDefault();
+  const taskId = e.dataTransfer.getData('text/plain');
+  if (!taskId) return;
+
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(taskId));
+  if (item) {
+    item.status = targetStatus;
+    item.done = targetStatus === 'completed';
+    if (item.done) {
+      item.completedAt = todayStr();
+      item.completedDate = todayStr();
+    }
+    item.updatedAt = todayStr();
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: 'Status Changed',
+      detail: `Moved task to ${targetStatus}`
+    });
+
+    resolveDocketDependencies(data);
+    saveDocketData(data);
+    renderTasks();
+  }
+}
+
 function renderDocketCalendarView(items, projs) {
+  const now = new Date();
+  if (_docketCalYear === null) _docketCalYear = now.getFullYear();
+  if (_docketCalMonth === null) _docketCalMonth = now.getMonth();
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const firstDay = new Date(_docketCalYear, _docketCalMonth, 1);
+  const lastDay = new Date(_docketCalYear, _docketCalMonth + 1, 0);
+
+  let startDayOfWeek = firstDay.getDay() - 1; // 0 for Mon, 6 for Sun
+  if (startDayOfWeek < 0) startDayOfWeek = 6;
+
+  const totalDays = lastDay.getDate();
+  const prevMonthLastDay = new Date(_docketCalYear, _docketCalMonth, 0).getDate();
+
+  const calendarCells = [];
+
+  // Previous month padding days
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    const dayNum = prevMonthLastDay - i;
+    const prevDate = new Date(_docketCalYear, _docketCalMonth - 1, dayNum);
+    const dateStr = prevDate.toISOString().split('T')[0];
+    calendarCells.push({ dateStr, dayNum, isCurrentMonth: false });
+  }
+
+  // Current month days
+  for (let d = 1; d <= totalDays; d++) {
+    const curDate = new Date(_docketCalYear, _docketCalMonth, d);
+    const dateStr = curDate.toISOString().split('T')[0];
+    calendarCells.push({ dateStr, dayNum: d, isCurrentMonth: true });
+  }
+
+  // Next month padding days to complete 35 or 42 grid cells
+  const remaining = 35 - calendarCells.length > 0 ? 35 - calendarCells.length : 42 - calendarCells.length;
+  for (let n = 1; n <= remaining; n++) {
+    const nextDate = new Date(_docketCalYear, _docketCalMonth + 1, n);
+    const dateStr = nextDate.toISOString().split('T')[0];
+    calendarCells.push({ dateStr, dayNum: n, isCurrentMonth: false });
+  }
+
   return `
     <div style="background:#0f172a; padding:16px; border-radius:6px; border:1px solid #1e293b;">
-      <h4 style="margin-top:0; color:#38bdf8;">📅 Calendar Schedule View</h4>
-      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:12px; font-size:0.8rem; color:#94a3b8; text-align:center;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="margin:0; color:#38bdf8; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+          📅 Calendar Schedule: <span style="color:#f8fafc;">${monthNames[_docketCalMonth]} ${_docketCalYear}</span>
+        </h4>
+        <div style="display:flex; gap:6px;">
+          <button class="btn ghost micro" onclick="changeDocketCalMonth(-1)">◀ Prev</button>
+          <button class="btn ghost micro" onclick="resetDocketCalMonth()">Today</button>
+          <button class="btn ghost micro" onclick="changeDocketCalMonth(1)">Next ▶</button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; font-size:0.8rem; color:#94a3b8; text-align:center; font-weight:600; padding-bottom:6px; border-bottom:1px solid #1e293b;">
         <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:6px; min-height:220px;">
-        ${Array.from({ length: 14 }).map((_, idx) => {
-          const d = new Date(); d.setDate(d.getDate() - 2 + idx);
-          const dateStr = d.toISOString().split('T')[0];
-          const dayItems = items.filter(i => i.dueDate === dateStr);
+
+      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:8px;">
+        ${calendarCells.map(cell => {
+          const dayItems = items.filter(i => i.dueDate === cell.dateStr);
+          const isToday = cell.dateStr === todayStr();
           return `
-            <div style="background:#1e293b; padding:6px; border-radius:4px; font-size:0.75rem; color:#f8fafc; min-height:60px;">
-              <div style="font-weight:bold; color:#38bdf8; margin-bottom:4px;">${d.getDate()}</div>
-              ${dayItems.map(i => `<div style="font-size:0.7rem; color:#cbd5e1; background:#0f172a; padding:2px; border-radius:2px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(i.title)}</div>`).join('')}
+            <div style="background:${cell.isCurrentMonth ? (isToday ? '#1e293b' : '#020617') : '#0b0f19'}; opacity:${cell.isCurrentMonth ? '1' : '0.4'}; border:${isToday ? '1px solid #38bdf8' : '1px solid #1e293b'}; border-radius:4px; padding:6px; min-height:85px; cursor:pointer;"
+                 onclick="openQuickTaskForDate('${cell.dateStr}')"
+                 ondragover="event.preventDefault()"
+                 ondrop="handleDocketCalDrop(event, '${cell.dateStr}')">
+              <div style="font-weight:bold; color:${isToday ? '#38bdf8' : '#cbd5e1'}; font-size:0.8rem; margin-bottom:4px; display:flex; justify-content:space-between;">
+                <span>${cell.dayNum}</span>
+                ${dayItems.length > 0 ? `<span style="font-size:0.7rem; color:#94a3b8;">${dayItems.length}</span>` : ''}
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px; max-height:60px; overflow-y:auto;">
+                ${dayItems.map(i => `
+                  <div onclick="event.stopPropagation(); openDocketTaskDetailModal('${i.id}')"
+                       draggable="true"
+                       ondragstart="handleDocketBoardDragStart(event, '${i.id}')"
+                       style="font-size:0.7rem; color:${i.status === 'completed' ? '#64748b' : '#f8fafc'}; text-decoration:${i.status === 'completed' ? 'line-through' : 'none'}; background:#0f172a; border:1px solid #334155; padding:2px 4px; border-radius:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${escapeHTML(i.title)}
+                  </div>
+                `).join('')}
+              </div>
             </div>
           `;
         }).join('')}
@@ -5551,19 +5786,128 @@ function renderDocketCalendarView(items, projs) {
   `;
 }
 
+function changeDocketCalMonth(delta) {
+  _docketCalMonth += delta;
+  if (_docketCalMonth < 0) {
+    _docketCalMonth = 11;
+    _docketCalYear -= 1;
+  } else if (_docketCalMonth > 11) {
+    _docketCalMonth = 0;
+    _docketCalYear += 1;
+  }
+  renderTasks();
+}
+
+function resetDocketCalMonth() {
+  const now = new Date();
+  _docketCalYear = now.getFullYear();
+  _docketCalMonth = now.getMonth();
+  renderTasks();
+}
+
+function openQuickTaskForDate(dateStr) {
+  openDocketQuickCaptureModal();
+  setTimeout(() => {
+    const dueEl = document.getElementById('qcTaskDueDate');
+    if (dueEl) dueEl.value = dateStr;
+  }, 100);
+}
+
+function handleDocketCalDrop(e, targetDateStr) {
+  e.preventDefault();
+  const taskId = e.dataTransfer.getData('text/plain');
+  if (!taskId) return;
+
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(taskId));
+  if (item) {
+    item.dueDate = targetDateStr;
+    item.updatedAt = todayStr();
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: 'Rescheduled',
+      detail: `Rescheduled due date to ${targetDateStr} via Calendar`
+    });
+
+    saveDocketData(data);
+    renderTasks();
+  }
+}
+
 function renderDocketTimelineView(items, projs) {
+  if (items.length === 0) {
+    return `<div style="background:#0f172a; padding:20px; border-radius:6px; border:1px solid #1e293b; color:#64748b; text-align:center;">No tasks found for timeline display.</div>`;
+  }
+
+  // Calculate timeline date range
+  let minTime = Infinity;
+  let maxTime = -Infinity;
+
+  items.forEach(i => {
+    const sTime = new Date(i.startDate || i.createdAt || todayStr()).getTime();
+    const dTime = new Date(i.dueDate || todayStr()).getTime();
+    if (sTime < minTime) minTime = sTime;
+    if (dTime > maxTime) maxTime = dTime;
+  });
+
+  const nowTime = new Date(todayStr()).getTime();
+  if (minTime > nowTime) minTime = nowTime - (3 * 86400000);
+  if (maxTime < nowTime) maxTime = nowTime + (14 * 86400000);
+
+  // Buffer range by 2 days on each end
+  minTime -= 2 * 86400000;
+  maxTime += 2 * 86400000;
+
+  const totalDurationMs = maxTime - minTime;
+  const totalDays = Math.ceil(totalDurationMs / 86400000);
+
+  // Generate day tick markers for header
+  const ticks = [];
+  for (let d = 0; d < totalDays; d += Math.max(1, Math.floor(totalDays / 10))) {
+    const tickDt = new Date(minTime + (d * 86400000));
+    ticks.push({
+      label: (tickDt.getMonth() + 1) + '/' + tickDt.getDate(),
+      pct: (d / totalDays) * 100
+    });
+  }
+
   return `
     <div style="background:#0f172a; padding:16px; border-radius:6px; border:1px solid #1e293b;">
-      <h4 style="margin-top:0; color:#38bdf8;">📈 Project Gantt & Task Timeline</h4>
-      <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+      <h4 style="margin:0 0 12px 0; color:#38bdf8; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+        📈 Date-Driven Project Timeline & Gantt Chart
+      </h4>
+
+      <!-- TIMELINE DATE HEADER -->
+      <div style="position:relative; height:24px; border-bottom:1px solid #1e293b; margin-bottom:12px; margin-left:180px;">
+        ${ticks.map(t => `
+          <div style="position:absolute; left:${t.pct}%; transform:translateX(-50%); font-size:0.7rem; color:#94a3b8; font-weight:600;">
+            ${t.label}
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- TIMELINE BARS -->
+      <div style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow-y:auto;">
         ${items.map(i => {
-          const start = i.startDate || todayStr();
-          const due = i.dueDate || todayStr();
+          const sTime = new Date(i.startDate || i.createdAt || todayStr()).getTime();
+          const dTime = new Date(i.dueDate || todayStr()).getTime();
+          const taskDuration = Math.max(86400000, dTime - sTime + 86400000);
+
+          const leftPct = Math.max(0, Math.min(100, ((sTime - minTime) / totalDurationMs) * 100));
+          const widthPct = Math.max(2, Math.min(100 - leftPct, (taskDuration / totalDurationMs) * 100));
+
+          const barColor = i.status === 'completed' ? '#10b981' : (i.status === 'blocked' ? '#ef4444' : '#0284c7');
+
           return `
-            <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem; color:#f8fafc;">
-              <span style="width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(i.title)}</span>
-              <div style="flex:1; background:#1e293b; height:18px; border-radius:4px; position:relative; overflow:hidden;">
-                <div style="position:absolute; left:10%; width:60%; height:100%; background:#0284c7; border-radius:4px; display:flex; align-items:center; padding-left:6px; font-size:0.7rem;">${start} ➔ ${due}</div>
+            <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem; color:#f8fafc;" onclick="openDocketTaskDetailModal('${i.id}')">
+              <div style="width:170px; min-width:170px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;" title="${escapeHTML(i.title)}">
+                <span style="font-weight:600;">${escapeHTML(i.title)}</span>
+              </div>
+              <div style="flex:1; background:#020617; height:22px; border-radius:4px; position:relative; overflow:hidden; border:1px solid #1e293b;">
+                <div style="position:absolute; left:${leftPct}%; width:${widthPct}%; height:100%; background:${barColor}; border-radius:3px; display:flex; align-items:center; padding-left:6px; font-size:0.7rem; color:#ffffff; font-weight:600; white-space:nowrap; overflow:hidden; cursor:pointer; transition:all 0.2s;" title="${i.startDate} to ${i.dueDate}">
+                  ${i.startDate} ➔ ${i.dueDate}
+                </div>
               </div>
             </div>
           `;
@@ -5652,54 +5996,215 @@ function openNewDocketProjectModal() {
 }
 
 function openDocketQuickCaptureModal() {
-  openModalForm({
-    title: '⚡ Quick Capture Task',
-    fields: [
-      { name: 'raw', label: 'Task Title or Quick Input', type: 'text', value: '', required: true },
-      { name: 'priority', label: 'Priority', type: 'select', value: 'normal', options: ['low', 'normal', 'high', 'urgent'] }
-    ],
-    onSubmit: (vals) => {
-      if (!vals.raw) return;
-      const data = getDocketData();
-      data.items.push({
-        id: 'task_' + Date.now(),
-        title: vals.raw,
-        label: vals.raw,
-        status: 'inbox',
-        priority: vals.priority || 'normal',
-        projectId: 'proj_default',
-        dueDate: todayStr(),
-        createdAt: todayStr()
-      });
-      saveDocketData(data);
-      renderTasks();
+  const projs = getDocketProjects();
+  const projOptions = projs.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
+
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <h3 style="margin-top:0; color:#f8fafc; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+      ⚡ Quick Capture Work
+    </h3>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; font-size:0.85rem;">
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">What needs to happen?</label>
+        <input type="text" id="qcTaskTitle" placeholder="e.g. Verify Transmute PDF table extraction" style="width:100%; padding:8px 10px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-size:0.9rem;" autofocus>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Project</label>
+          <select id="qcTaskProject" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            ${projOptions}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Priority</label>
+          <select id="qcTaskPriority" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            <option value="low">Low</option>
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Target Date</label>
+          <input type="date" id="qcTaskDueDate" value="${todayStr()}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Destination</label>
+          <select id="qcTaskDestination" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            <option value="inbox" selected>📥 Save to Inbox</option>
+            <option value="planned">📅 Schedule Task</option>
+            <option value="in_progress">🚀 Direct to In Progress</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Context / Notes</label>
+        <textarea id="qcTaskNotes" rows="2" placeholder="Optional details or context..." style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-family:inherit; resize:vertical;"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="submitQuickCaptureTask()">Save Task</button>
+    </div>
+  `;
+
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+  setTimeout(() => document.getElementById('qcTaskTitle')?.focus(), 100);
+}
+
+function submitQuickCaptureTask() {
+  const title = document.getElementById('qcTaskTitle')?.value?.trim();
+  if (!title) return;
+
+  const projectId = document.getElementById('qcTaskProject')?.value || 'proj_default';
+  const priority = document.getElementById('qcTaskPriority')?.value || 'normal';
+  const dueDate = document.getElementById('qcTaskDueDate')?.value || todayStr();
+  const status = document.getElementById('qcTaskDestination')?.value || 'inbox';
+  const notes = document.getElementById('qcTaskNotes')?.value?.trim() || '';
+
+  const data = getDocketData();
+  const newTask = {
+    id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    title,
+    label: title,
+    description: notes,
+    status,
+    priority,
+    projectId,
+    startDate: todayStr(),
+    dueDate,
+    notes,
+    createdAt: todayStr(),
+    activity: [
+      { timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5), action: 'Quick Captured', detail: 'Task added via Quick Capture' }
+    ]
+  };
+
+  data.items.push(newTask);
+  saveDocketData(data);
+  closeCapsuleModal();
+  renderTasks();
+}
+
+function resolveDocketDependencies(data) {
+  // Resolve blocked status based on prerequisite completion
+  data.items.forEach(item => {
+    if (item.dependencies && item.dependencies.length > 0) {
+      const incompletePrereqs = data.items.filter(dep => item.dependencies.includes(String(dep.id)) && dep.status !== 'completed');
+      if (incompletePrereqs.length > 0) {
+        if (item.status !== 'completed' && item.status !== 'archived') {
+          item.status = 'blocked';
+          item.blockedBy = incompletePrereqs.map(p => p.title);
+        }
+      } else {
+        if (item.status === 'blocked') {
+          item.status = 'planned';
+          item.blockedBy = [];
+        }
+      }
     }
   });
 }
 
+function updateParentTaskProgress(data, parentId) {
+  if (!parentId) return;
+  const parent = data.items.find(i => String(i.id) === String(parentId));
+  if (!parent) return;
+
+  const subtasks = data.items.filter(i => String(i.parentTaskId) === String(parentId));
+  if (subtasks.length === 0) return;
+
+  const completedSubtasks = subtasks.filter(s => s.status === 'completed').length;
+  if (completedSubtasks === subtasks.length) {
+    parent.done = true;
+    parent.status = 'completed';
+    parent.completedAt = todayStr();
+    parent.completedDate = todayStr();
+  } else if (completedSubtasks > 0) {
+    parent.done = false;
+    parent.status = 'in_progress';
+  } else {
+    parent.done = false;
+    if (parent.status === 'completed') parent.status = 'in_progress';
+  }
+}
+
+function calculateNextRecurrenceDate(startDateStr, pattern, interval = 1) {
+  const dt = new Date(startDateStr || todayStr());
+  interval = Math.max(1, parseInt(interval || 1));
+
+  if (pattern === 'daily') {
+    dt.setDate(dt.getDate() + interval);
+  } else if (pattern === 'weekdays') {
+    do {
+      dt.setDate(dt.getDate() + 1);
+    } while (dt.getDay() === 0 || dt.getDay() === 6); // Skip Sun (0) and Sat (6)
+  } else if (pattern === 'weekly') {
+    dt.setDate(dt.getDate() + (7 * interval));
+  } else if (pattern === 'monthly') {
+    dt.setMonth(dt.getMonth() + interval);
+  }
+  return dt.toISOString().split('T')[0];
+}
+
 function toggleDocketTaskDone(id) {
   const data = getDocketData();
-  const item = data.items.find(i => i.id === id);
+  const item = data.items.find(i => String(i.id) === String(id));
   if (item) {
     item.done = !item.done;
     item.status = item.done ? 'completed' : 'in_progress';
     item.completedAt = item.done ? todayStr() : null;
+    item.completedDate = item.done ? todayStr() : null;
 
-    if (item.done && item.recurrence && item.recurrence !== 'none') {
-      const nextDate = new Date();
-      if (item.recurrence === 'daily') nextDate.setDate(nextDate.getDate() + 1);
-      else if (item.recurrence === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
-      else if (item.recurrence === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: item.done ? 'Completed' : 'Reopened',
+      detail: item.done ? 'Task marked as completed' : 'Task reopened'
+    });
 
-      data.items.push({
-        ...item,
-        id: 'task_' + Date.now(),
-        done: false,
-        status: 'planned',
-        dueDate: nextDate.toISOString().split('T')[0],
-        completedAt: null
-      });
+    // Subtask progress auto-calculation
+    if (item.parentTaskId) {
+      updateParentTaskProgress(data, item.parentTaskId);
     }
+
+    // Handle Recurrence
+    if (item.done && item.recurrence && item.recurrence !== 'none') {
+      const nextDueDate = calculateNextRecurrenceDate(item.dueDate || todayStr(), item.recurrence, item.recurrenceInterval || 1);
+      const isWithinEnd = !item.recurrenceEndDate || nextDueDate <= item.recurrenceEndDate;
+
+      if (isWithinEnd) {
+        const recurringTask = {
+          ...item,
+          id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          title: item.title,
+          label: item.title,
+          done: false,
+          status: 'planned',
+          startDate: nextDueDate,
+          dueDate: nextDueDate,
+          completedAt: null,
+          completedDate: null,
+          createdAt: todayStr(),
+          activity: [
+            { timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5), action: 'Recurring Instance Created', detail: `Generated from recurring rule (${item.recurrence})` }
+          ]
+        };
+        data.items.push(recurringTask);
+      }
+    }
+
+    // Resolve dependencies dynamically across all tasks
+    resolveDocketDependencies(data);
 
     saveDocketData(data);
     renderTasks();
@@ -5713,9 +6218,12 @@ function deleteDocketTask(id) {
   renderTasks();
 }
 
-function openDocketTaskDetailModal(id) {
+let _docketInspectorActiveTab = 'task';
+
+function openDocketTaskDetailModal(id, tab = 'task') {
+  _docketInspectorActiveTab = tab;
   const data = getDocketData();
-  const item = data.items.find(i => i.id === id);
+  const item = data.items.find(i => String(i.id) === String(id));
   if (!item) return;
 
   const modal = document.getElementById('capsuleModal');
@@ -5724,55 +6232,338 @@ function openDocketTaskDetailModal(id) {
   const projs = getDocketProjects();
   const projOptions = projs.map(p => `<option value="${p.id}" ${p.id === item.projectId ? 'selected' : ''}>${escapeHTML(p.name)}</option>`).join('');
 
+  // Parent task options (exclude self)
+  const otherTasks = data.items.filter(i => String(i.id) !== String(item.id));
+  const parentOptions = `<option value="">(None - Top Level Task)</option>` +
+    otherTasks.map(t => `<option value="${t.id}" ${String(t.id) === String(item.parentTaskId) ? 'selected' : ''}>${escapeHTML(t.title)}</option>`).join('');
+
+  // Subtasks list
+  const subtasks = data.items.filter(i => String(i.parentTaskId) === String(item.id));
+  const subtaskCompletedCount = subtasks.filter(s => s.status === 'completed').length;
+  const subtaskProgressPct = subtasks.length > 0 ? Math.round((subtaskCompletedCount / subtasks.length) * 100) : 0;
+
+  // Dependencies select options
+  const depOptions = otherTasks.map(t => {
+    const isChecked = item.dependencies.includes(String(t.id));
+    return `<label style="display:flex; align-items:center; gap:6px; padding:3px 0; color:#cbd5e1; font-size:0.8rem; cursor:pointer;">
+      <input type="checkbox" class="editTaskDepCheckbox" value="${t.id}" ${isChecked ? 'checked' : ''}>
+      <span>${escapeHTML(t.title)} <span style="font-size:0.7rem; color:#64748b;">(${t.status})</span></span>
+    </label>`;
+  }).join('');
+
   modal.innerHTML = `
-    <h3>Task Inspector: ${escapeHTML(item.title)}</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.85rem; margin-bottom:12px;">
-      <div>
-        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Task Title:</label>
-        <input type="text" id="editTaskTitle" value="${escapeHTML(item.title)}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+    <div style="max-width:760px; width:100%;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:10px; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+          📌 Task Inspector: <span style="color:#38bdf8;">${escapeHTML(item.title)}</span>
+        </h3>
+        <span class="docket-priority-badge docket-priority-${item.priority}">${item.priority.toUpperCase()}</span>
       </div>
-      <div>
-        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Status:</label>
-        <select id="editTaskStatus" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
-          <option value="inbox" ${item.status === 'inbox' ? 'selected' : ''}>Inbox</option>
-          <option value="planned" ${item.status === 'planned' ? 'selected' : ''}>Planned</option>
-          <option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-          <option value="waiting" ${item.status === 'waiting' ? 'selected' : ''}>Waiting</option>
-          <option value="blocked" ${item.status === 'blocked' ? 'selected' : ''}>Blocked</option>
-          <option value="completed" ${item.status === 'completed' ? 'selected' : ''}>Completed</option>
-          <option value="archived" ${item.status === 'archived' ? 'selected' : ''}>Archived</option>
-        </select>
+
+      <!-- INSPECTOR TAB NAVIGATION -->
+      <div style="display:flex; gap:4px; border-bottom:1px solid #1e293b; margin-bottom:12px; overflow-x:auto;">
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'task' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'task')">📋 Task</button>
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'planning' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'planning')">📅 Planning</button>
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'repeat' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'repeat')">🔄 Repeat</button>
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'structure' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'structure')">🌿 Structure (${subtasks.length})</button>
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'context' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'context')">🏷️ Context</button>
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'resources' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'resources')">📎 Resources</button>
+        <button class="btn ghost micro ${_docketInspectorActiveTab === 'activity' ? 'active' : ''}" onclick="switchDocketInspectorTab('${item.id}', 'activity')">⏱️ Activity</button>
       </div>
-      <div>
-        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Priority:</label>
-        <select id="editTaskPriority" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
-          <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Low</option>
-          <option value="normal" ${item.priority === 'normal' ? 'selected' : ''}>Normal</option>
-          <option value="high" ${item.priority === 'high' ? 'selected' : ''}>High</option>
-          <option value="urgent" ${item.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
-        </select>
+
+      <!-- TAB CONTENT PANELS -->
+      <div id="docketInspectorTabBody" style="min-height:260px; max-height:420px; overflow-y:auto; font-size:0.85rem; padding-right:4px;">
+        ${renderDocketInspectorTabContent(item, projs, parentOptions, subtasks, subtaskCompletedCount, subtaskProgressPct, depOptions)}
       </div>
-      <div>
-        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Project:</label>
-        <select id="editTaskProject" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
-          ${projOptions}
-        </select>
+
+      <!-- MODAL ACTIONS -->
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #1e293b; pt:12px; margin-top:12px; padding-top:10px;">
+        <button class="btn ghost small" style="color:#ef4444;" onclick="deleteDocketTask('${item.id}'); closeCapsuleModal();">🗑️ Delete Task</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+          <button class="btn brass small" onclick="saveTaskDetailsFromModal('${item.id}')">Save Changes</button>
+        </div>
       </div>
-      <div>
-        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Due Date:</label>
-        <input type="text" id="editTaskDueDate" value="${escapeHTML(item.dueDate || todayStr())}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
-      </div>
-      <div>
-        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Waiting Reason / Blocked By:</label>
-        <input type="text" id="editTaskWaiting" value="${escapeHTML(item.waitingFor || '')}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
-      </div>
-    </div>
-    <div style="display:flex; justify-content:flex-end; gap:8px;">
-      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
-      <button class="btn brass small" onclick="saveTaskDetailsFromModal('${item.id}')">Save Changes</button>
     </div>
   `;
   document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function switchDocketInspectorTab(id, tab) {
+  _docketInspectorActiveTab = tab;
+  openDocketTaskDetailModal(id, tab);
+}
+
+function renderDocketInspectorTabContent(item, projs, parentOptions, subtasks, subtaskCompletedCount, subtaskProgressPct, depOptions) {
+  if (_docketInspectorActiveTab === 'task') {
+    return `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Task Title</label>
+          <input type="text" id="editTaskTitle" value="${escapeHTML(item.title)}" style="width:100%; padding:8px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-weight:600;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Description</label>
+          <textarea id="editTaskDescription" rows="3" style="width:100%; padding:8px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-family:inherit; resize:vertical;">${escapeHTML(item.description || '')}</textarea>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Internal Work Notes</label>
+          <textarea id="editTaskNotes" rows="3" placeholder="Add detailed notes, logs, or comments..." style="width:100%; padding:8px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-family:inherit; resize:vertical;">${escapeHTML(item.notes || '')}</textarea>
+        </div>
+      </div>
+    `;
+  }
+
+  if (_docketInspectorActiveTab === 'planning') {
+    const projOpts = projs.map(p => `<option value="${p.id}" ${p.id === item.projectId ? 'selected' : ''}>${escapeHTML(p.name)}</option>`).join('');
+    return `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Status</label>
+          <select id="editTaskStatus" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            <option value="inbox" ${item.status === 'inbox' ? 'selected' : ''}>📥 Inbox</option>
+            <option value="planned" ${item.status === 'planned' ? 'selected' : ''}>📅 Planned</option>
+            <option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>🚀 In Progress</option>
+            <option value="waiting" ${item.status === 'waiting' ? 'selected' : ''}>⏳ Waiting</option>
+            <option value="blocked" ${item.status === 'blocked' ? 'selected' : ''}>🛑 Blocked</option>
+            <option value="completed" ${item.status === 'completed' ? 'selected' : ''}>✓ Completed</option>
+            <option value="archived" ${item.status === 'archived' ? 'selected' : ''}>📦 Archived</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Priority</label>
+          <select id="editTaskPriority" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Low</option>
+            <option value="normal" ${item.priority === 'normal' ? 'selected' : ''}>Normal</option>
+            <option value="high" ${item.priority === 'high' ? 'selected' : ''}>High</option>
+            <option value="urgent" ${item.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Project</label>
+          <select id="editTaskProject" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            ${projOpts}
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Section / Category</label>
+          <input type="text" id="editTaskSection" value="${escapeHTML(item.sectionId || 'General')}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Start Date</label>
+          <input type="date" id="editTaskStartDate" value="${item.startDate || todayStr()}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Due Date</label>
+          <input type="date" id="editTaskDueDate" value="${item.dueDate || todayStr()}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Estimated Minutes</label>
+          <input type="number" id="editTaskEstimatedMinutes" value="${item.estimatedMinutes || 30}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Actual Minutes Spent</label>
+          <input type="number" id="editTaskActualMinutes" value="${item.actualMinutes || 0}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+      </div>
+    `;
+  }
+
+  if (_docketInspectorActiveTab === 'repeat') {
+    return `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div style="grid-column: span 2;">
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Recurrence Pattern</label>
+          <select id="editTaskRecurrence" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            <option value="none" ${item.recurrence === 'none' ? 'selected' : ''}>Does not repeat</option>
+            <option value="daily" ${item.recurrence === 'daily' ? 'selected' : ''}>Daily</option>
+            <option value="weekdays" ${item.recurrence === 'weekdays' ? 'selected' : ''}>Every Weekday (Mon - Fri)</option>
+            <option value="weekly" ${item.recurrence === 'weekly' ? 'selected' : ''}>Weekly</option>
+            <option value="monthly" ${item.recurrence === 'monthly' ? 'selected' : ''}>Monthly</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Repeat Every (Interval)</label>
+          <input type="number" id="editTaskRecurrenceInterval" value="${item.recurrenceInterval || 1}" min="1" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">End Date (Optional)</label>
+          <input type="date" id="editTaskRecurrenceEndDate" value="${item.recurrenceEndDate || ''}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div style="grid-column: span 2; background:#0f172a; padding:10px; border-radius:6px; border:1px solid #1e293b; color:#94a3b8; font-size:0.8rem;">
+          💡 When a recurring task is completed, Docket will automatically calculate and schedule the next instance according to your recurrence rules.
+        </div>
+      </div>
+    `;
+  }
+
+  if (_docketInspectorActiveTab === 'structure') {
+    return `
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Parent Task</label>
+          <select id="editTaskParent" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            ${parentOptions}
+          </select>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="color:#94a3b8; font-weight:600;">Subtasks (${subtaskCompletedCount}/${subtasks.length} Complete - ${subtaskProgressPct}%)</label>
+          </div>
+          <div style="background:#020617; border:1px solid #1e293b; border-radius:6px; padding:10px; margin-bottom:8px;">
+            <div style="height:6px; background:#1e293b; border-radius:3px; overflow:hidden; margin-bottom:10px;">
+              <div style="height:100%; width:${subtaskProgressPct}%; background:#38bdf8; transition:width 0.2s;"></div>
+            </div>
+            ${subtasks.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No subtasks created yet. Add one below.</div>' : subtasks.map(s => `
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 0; border-bottom:1px solid #0f172a;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                  <input type="checkbox" ${s.status === 'completed' ? 'checked' : ''} onchange="toggleDocketTaskDone('${s.id}')">
+                  <span style="text-decoration:${s.status === 'completed' ? 'line-through' : 'none'}; color:${s.status === 'completed' ? '#64748b' : '#f8fafc'};">${escapeHTML(s.title)}</span>
+                </label>
+                <button class="btn ghost micro" onclick="openDocketTaskDetailModal('${s.id}')">Edit</button>
+              </div>
+            `).join('')}
+          </div>
+
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="newSubtaskTitle" placeholder="New subtask title..." style="flex:1; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+            <button class="btn brass micro" onclick="addInlineSubtask('${item.id}')">+ Add Subtask</button>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Dependencies (Task depends on)</label>
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:4px; padding:8px; max-height:120px; overflow-y:auto;">
+            ${depOptions || '<div style="color:#64748b; font-size:0.8rem;">No other tasks available for dependency mapping.</div>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (_docketInspectorActiveTab === 'context') {
+    return `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div style="grid-column: span 2;">
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Tags (Comma separated)</label>
+          <input type="text" id="editTaskTags" value="${escapeHTML((item.tags || []).join(', '))}" placeholder="e.g. urgent, backend, review" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Assignee</label>
+          <input type="text" id="editTaskAssignee" value="${escapeHTML(item.assignee || 'Self')}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Waiting Reason / Blocked By</label>
+          <input type="text" id="editTaskWaiting" value="${escapeHTML(item.waitingFor || '')}" placeholder="e.g. Waiting for API key from team" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+        </div>
+      </div>
+    `;
+  }
+
+  if (_docketInspectorActiveTab === 'resources') {
+    return `
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Originating Source Integration</label>
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:10px;">
+            ${item.sourceApp ? `
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <div style="font-weight:600; color:#38bdf8;">Linked Application: ${escapeHTML(item.sourceApp)}</div>
+                  <div style="font-size:0.75rem; color:#64748b;">Record ID: ${escapeHTML(item.sourceRecordId || 'N/A')}</div>
+                </div>
+                <button class="btn brass micro" onclick="navigateToDocketSourceApp('${item.sourceApp}', '${item.sourceRecordId}')">↗ Open Source Record</button>
+              </div>
+            ` : '<div style="color:#64748b; font-size:0.8rem;">No external source linked to this task. Created natively inside Docket.</div>'}
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Attachments (${(item.attachments || []).length})</label>
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:10px;">
+            ${(item.attachments || []).length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No files attached to this task.</div>' : (item.attachments || []).map(att => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #1e293b;">
+                <span style="color:#cbd5e1;">📎 ${escapeHTML(att.name || att)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (_docketInspectorActiveTab === 'activity') {
+    return `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#0f172a; padding:10px; border-radius:6px; border:1px solid #334155;">
+          <div><span style="color:#64748b;">Created:</span> <span style="color:#cbd5e1;">${item.createdAt || 'N/A'}</span></div>
+          <div><span style="color:#64748b;">Last Updated:</span> <span style="color:#cbd5e1;">${item.updatedAt || 'N/A'}</span></div>
+          <div><span style="color:#64748b;">Completed At:</span> <span style="color:#cbd5e1;">${item.completedAt || 'Not Completed'}</span></div>
+          <div><span style="color:#64748b;">Status:</span> <span style="color:#38bdf8;">${item.status}</span></div>
+        </div>
+
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Activity History Log</label>
+          <div style="background:#020617; border:1px solid #1e293b; border-radius:6px; padding:10px; max-height:180px; overflow-y:auto;">
+            ${(item.activity || []).map(act => `
+              <div style="padding:4px 0; border-bottom:1px solid #0f172a; font-size:0.8rem;">
+                <div style="display:flex; justify-content:space-between; color:#64748b;">
+                  <span>${escapeHTML(act.action)}</span>
+                  <span>${escapeHTML(act.timestamp)}</span>
+                </div>
+                <div style="color:#cbd5e1;">${escapeHTML(act.detail)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
+function addInlineSubtask(parentId) {
+  const titleInput = document.getElementById('newSubtaskTitle');
+  const title = titleInput?.value?.trim();
+  if (!title) return;
+
+  const data = getDocketData();
+  const parent = data.items.find(i => String(i.id) === String(parentId));
+  if (!parent) return;
+
+  const newSubtask = {
+    id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    title,
+    label: title,
+    description: '',
+    status: 'planned',
+    priority: parent.priority || 'normal',
+    projectId: parent.projectId || 'proj_default',
+    parentTaskId: String(parentId),
+    startDate: todayStr(),
+    dueDate: parent.dueDate || todayStr(),
+    createdAt: todayStr(),
+    activity: [
+      { timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5), action: 'Created Subtask', detail: `Created as subtask of ${parent.title}` }
+    ]
+  };
+
+  data.items.push(newSubtask);
+  saveDocketData(data);
+  openDocketTaskDetailModal(parentId, 'structure');
+}
+
+function navigateToDocketSourceApp(app, recordId) {
+  closeCapsuleModal();
+  if (app === 'Spot') switchTab('spot');
+  else if (app === 'Transmute') switchTab('transmute');
+  else if (app === 'Folio') switchTab('folio');
+  else if (app === 'Grid') switchTab('grid');
+  else if (app === 'Glides') switchTab('glides');
+  else if (app === 'Almanac') switchTab('almanac');
+  else alert(`Navigating to ${app} record ${recordId}...`);
 }
 
 function createDocketTaskFromApp(sourceApp, sourceRecordId, title, details) {
@@ -5799,16 +6590,61 @@ function createDocketTaskFromApp(sourceApp, sourceRecordId, title, details) {
 
 function saveTaskDetailsFromModal(id) {
   const data = getDocketData();
-  const item = data.items.find(i => i.id === id);
+  const item = data.items.find(i => String(i.id) === String(id));
   if (item) {
-    item.title = document.getElementById('editTaskTitle')?.value || item.title;
-    item.label = item.title;
-    item.status = document.getElementById('editTaskStatus')?.value || item.status;
-    item.priority = document.getElementById('editTaskPriority')?.value || item.priority;
-    item.projectId = document.getElementById('editTaskProject')?.value || item.projectId;
-    item.dueDate = document.getElementById('editTaskDueDate')?.value || item.dueDate;
-    item.waitingFor = document.getElementById('editTaskWaiting')?.value || item.waitingFor;
-    item.done = item.status === 'completed';
+    // Collect task tab fields if present
+    const newTitle = document.getElementById('editTaskTitle')?.value?.trim();
+    if (newTitle) { item.title = newTitle; item.label = newTitle; }
+    if (document.getElementById('editTaskDescription')) item.description = document.getElementById('editTaskDescription').value;
+    if (document.getElementById('editTaskNotes')) item.notes = document.getElementById('editTaskNotes').value;
+
+    // Collect planning tab fields if present
+    if (document.getElementById('editTaskStatus')) {
+      const oldStatus = item.status;
+      item.status = document.getElementById('editTaskStatus').value;
+      item.done = item.status === 'completed';
+      if (item.done && oldStatus !== 'completed') {
+        item.completedAt = todayStr();
+        item.completedDate = todayStr();
+      }
+    }
+    if (document.getElementById('editTaskPriority')) item.priority = document.getElementById('editTaskPriority').value;
+    if (document.getElementById('editTaskProject')) item.projectId = document.getElementById('editTaskProject').value;
+    if (document.getElementById('editTaskSection')) item.sectionId = document.getElementById('editTaskSection').value;
+    if (document.getElementById('editTaskStartDate')) item.startDate = document.getElementById('editTaskStartDate').value;
+    if (document.getElementById('editTaskDueDate')) item.dueDate = document.getElementById('editTaskDueDate').value;
+    if (document.getElementById('editTaskEstimatedMinutes')) item.estimatedMinutes = parseInt(document.getElementById('editTaskEstimatedMinutes').value || 30);
+    if (document.getElementById('editTaskActualMinutes')) item.actualMinutes = parseInt(document.getElementById('editTaskActualMinutes').value || 0);
+
+    // Collect repeat tab fields if present
+    if (document.getElementById('editTaskRecurrence')) item.recurrence = document.getElementById('editTaskRecurrence').value;
+    if (document.getElementById('editTaskRecurrenceInterval')) item.recurrenceInterval = parseInt(document.getElementById('editTaskRecurrenceInterval').value || 1);
+    if (document.getElementById('editTaskRecurrenceEndDate')) item.recurrenceEndDate = document.getElementById('editTaskRecurrenceEndDate').value || null;
+
+    // Collect structure tab fields if present
+    if (document.getElementById('editTaskParent')) item.parentTaskId = document.getElementById('editTaskParent').value || null;
+
+    // Collect dependencies if present
+    const depCheckboxes = document.querySelectorAll('.editTaskDepCheckbox:checked');
+    if (depCheckboxes.length > 0 || document.querySelector('.editTaskDepCheckbox')) {
+      item.dependencies = Array.from(depCheckboxes).map(cb => String(cb.value));
+    }
+
+    // Collect context tab fields if present
+    if (document.getElementById('editTaskTags')) {
+      item.tags = document.getElementById('editTaskTags').value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (document.getElementById('editTaskAssignee')) item.assignee = document.getElementById('editTaskAssignee').value;
+    if (document.getElementById('editTaskWaiting')) item.waitingFor = document.getElementById('editTaskWaiting').value;
+
+    item.updatedAt = todayStr();
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: 'Updated',
+      detail: 'Updated task details via Task Inspector'
+    });
+
     saveDocketData(data);
     renderTasks();
   }
@@ -5816,17 +6652,17 @@ function saveTaskDetailsFromModal(id) {
 }
 function getDocketData() {
   const raw = loadLocal('tasks', { items: [
-    { id: 'task_1', x: 20, y: 20, label: 'Reply to client', done: false, status: 'in_progress', priority: 'high', createdDate: todayStr(), dueDate: todayStr(), projectId: 'proj_default' },
-    { id: 'task_2', x: 70, y: 60, label: 'Plan next month', done: false, status: 'planned', priority: 'normal', createdDate: todayStr(), dueDate: todayStr(), projectId: 'proj_offlines' },
-    { id: 'task_3', x: 40, y: 85, label: 'Renew domain', done: true, status: 'completed', priority: 'low', createdDate: todayStr(), dueDate: todayStr(), projectId: 'proj_default' }
+    { id: 'task_1', x: 20, y: 20, title: 'Reply to client', label: 'Reply to client', done: false, status: 'in_progress', priority: 'high', createdDate: todayStr(), startDate: todayStr(), dueDate: todayStr(), projectId: 'proj_default' },
+    { id: 'task_2', x: 70, y: 60, title: 'Plan next month', label: 'Plan next month', done: false, status: 'planned', priority: 'normal', createdDate: todayStr(), startDate: todayStr(), dueDate: todayStr(), projectId: 'proj_offlines' },
+    { id: 'task_3', x: 40, y: 85, title: 'Renew domain', label: 'Renew domain', done: true, status: 'completed', priority: 'low', createdDate: todayStr(), startDate: todayStr(), dueDate: todayStr(), projectId: 'proj_default' }
   ] });
 
   let itemsRaw = Array.isArray(raw.items) ? raw.items : [];
   const items = itemsRaw.map((it, idx) => {
-    if (typeof it === 'string') it = { label: it };
-    else if (!it || typeof it !== 'object') it = { label: String(it || '') };
+    if (typeof it === 'string') it = { label: it, title: it };
+    else if (!it || typeof it !== 'object') it = { label: String(it || ''), title: String(it || '') };
 
-    const id = it.id || ('task_' + Date.now() + '_' + idx);
+    const id = String(it.id || ('task_' + Date.now() + '_' + idx));
     const title = it.title || it.label || 'Untitled Task';
     const description = it.description || '';
     let status = it.status;
@@ -5841,20 +6677,26 @@ function getDocketData() {
     }
     const projectId = it.projectId || 'proj_default';
     const sectionId = it.sectionId || 'section_general';
-    const parentTaskId = it.parentTaskId || null;
+    const parentTaskId = it.parentTaskId ? String(it.parentTaskId) : null;
     const startDate = it.startDate || it.createdDate || todayStr();
     const dueDate = it.dueDate || (it.createdDate || todayStr());
     const completedDate = it.completedDate || (it.done ? (it.createdDate || todayStr()) : null);
     const recurrence = it.recurrence || 'none';
+    const recurrenceInterval = parseInt(it.recurrenceInterval || 1);
+    const recurrenceEndDate = it.recurrenceEndDate || null;
+    const recurrenceMax = it.recurrenceMax ? parseInt(it.recurrenceMax) : null;
     const estimatedMinutes = parseInt(it.estimatedMinutes || 30);
     const actualMinutes = parseInt(it.actualMinutes || 0);
     const tags = Array.isArray(it.tags) ? it.tags : [];
     const assignee = it.assignee || 'Self';
-    const dependencies = Array.isArray(it.dependencies) ? it.dependencies : [];
-    const blockedBy = Array.isArray(it.blockedBy) ? it.blockedBy : [];
+    const dependencies = Array.isArray(it.dependencies) ? it.dependencies.map(String) : [];
+    const blockedBy = Array.isArray(it.blockedBy) ? it.blockedBy.map(String) : [];
     const waitingFor = it.waitingFor || '';
     const notes = it.notes || '';
     const attachments = Array.isArray(it.attachments) ? it.attachments : [];
+    const activity = Array.isArray(it.activity) ? it.activity : [
+      { timestamp: todayStr() + ' 09:00', action: 'Created', detail: 'Task created' }
+    ];
     const sourceApp = it.sourceApp || null;
     const sourceRecordId = it.sourceRecordId || null;
     const x = it.x !== undefined ? it.x : 50;
@@ -5878,6 +6720,9 @@ function getDocketData() {
       dueDate,
       completedDate,
       recurrence,
+      recurrenceInterval,
+      recurrenceEndDate,
+      recurrenceMax,
       estimatedMinutes,
       actualMinutes,
       tags,
@@ -5887,6 +6732,7 @@ function getDocketData() {
       waitingFor,
       notes,
       attachments,
+      activity,
       sourceApp,
       sourceRecordId,
       x,
@@ -5904,6 +6750,11 @@ function getDocketData() {
 
 function saveDocketData(data) {
   saveLocal('tasks', data);
+}
+
+// Redirect legacy calls to canonical Docket Data engine
+function getTasksData() {
+  return getDocketData();
 }
 
 function getDocketProjects() {
