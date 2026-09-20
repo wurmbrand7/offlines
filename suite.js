@@ -4541,49 +4541,745 @@ function deleteLibraryNote(id){
   renderNotesLibrary();
 }
 
-/* ================= TASKS (.plot) ================= */
-let draggingDot=null;
-function renderTasks(){
-  const p = document.getElementById('panel-tasks');
-  if(!p) return;
-  p.innerHTML = `
-    <h2>Docket</h2>
-    <div class="sub">.plot — urgent vs. important. Dots you keep avoiding visibly age and pick up a carried-day count.</div>
-    <div class="toolbar" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <button class="btn ghost small" onclick="addPlotTask()">+ New task</button>
-      <button class="btn sage small" onclick="showSeal()">Save</button>
+/* ================= TASKS (.plot) — DOCKET WORKSPACE ================= */
+let draggingDot = null;
+let currentDocketNav = 'today';
+let currentDocketView = 'list';
+let currentDocketSearch = '';
 
-      <div style="display:flex; border:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
-        <button class="btn ghost small" onclick="switchDocketView('matrix')">Matrix</button>
-        <button class="btn ghost small" onclick="switchDocketView('list')">List</button>
+function renderTasks() {
+  const p = document.getElementById('panel-tasks');
+  if (!p) return;
+
+  const data = getDocketData();
+  const projs = getDocketProjects();
+  const today = todayStr();
+
+  const inboxCount = data.items.filter(i => i.status === 'inbox' || i.projectId === 'proj_default').length;
+  const todayCount = data.items.filter(i => i.dueDate === today && i.status !== 'completed' && i.status !== 'archived').length;
+  const upcomingCount = data.items.filter(i => i.dueDate > today && i.status !== 'completed' && i.status !== 'archived').length;
+  const overdueCount = data.items.filter(i => i.dueDate < today && i.status !== 'completed' && i.status !== 'archived').length;
+  const waitingCount = data.items.filter(i => (i.status === 'waiting' || (i.blockedBy && i.blockedBy.length > 0)) && i.status !== 'archived').length;
+  const projectsCount = projs.length;
+  const completedCount = data.items.filter(i => i.status === 'completed').length;
+  const archiveCount = data.items.filter(i => i.status === 'archived').length;
+
+  p.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h2 style="margin:0;">Docket Work Execution</h2>
+        <div class="sub">.plot — Capture, organize, schedule, and track daily work execution</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn brass small" onclick="openNewDocketTaskModal()">+ New Task</button>
+        <button class="btn ghost small" onclick="openNewDocketProjectModal()">+ New Project</button>
+        <button class="btn ghost small" onclick="openDocketQuickCaptureModal()">⚡ Quick Capture</button>
+      </div>
+    </div>
+
+    <div class="docket-layout">
+      <!-- SIDEBAR NAVIGATION -->
+      <div class="docket-sidebar">
+        <button class="docket-nav-btn ${currentDocketNav === 'inbox' ? 'active' : ''}" onclick="setDocketNav('inbox')">
+          <span>📥 Inbox</span>
+          <span class="docket-nav-badge">${inboxCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'today' ? 'active' : ''}" onclick="setDocketNav('today')">
+          <span>📅 Today</span>
+          <span class="docket-nav-badge">${todayCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'upcoming' ? 'active' : ''}" onclick="setDocketNav('upcoming')">
+          <span>🔮 Upcoming</span>
+          <span class="docket-nav-badge">${upcomingCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'overdue' ? 'active' : ''}" onclick="setDocketNav('overdue')">
+          <span>⚠️ Overdue</span>
+          <span class="docket-nav-badge" style="${overdueCount > 0 ? 'background:#7f1d1d; color:#fca5a5;' : ''}">${overdueCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'waiting' ? 'active' : ''}" onclick="setDocketNav('waiting')">
+          <span>⏳ Waiting & Blocked</span>
+          <span class="docket-nav-badge">${waitingCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'projects' ? 'active' : ''}" onclick="setDocketNav('projects')">
+          <span>📂 Projects</span>
+          <span class="docket-nav-badge">${projectsCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'completed' ? 'active' : ''}" onclick="setDocketNav('completed')">
+          <span>✓ Completed</span>
+          <span class="docket-nav-badge">${completedCount}</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'review' ? 'active' : ''}" onclick="setDocketNav('review')">
+          <span>📊 Review Workflow</span>
+        </button>
+        <button class="docket-nav-btn ${currentDocketNav === 'archive' ? 'active' : ''}" onclick="setDocketNav('archive')">
+          <span>📦 Archive</span>
+          <span class="docket-nav-badge">${archiveCount}</span>
+        </button>
       </div>
 
-      <input type="text" id="docketQueryInput" placeholder="Filter tasks e.g. urgent, done, today..." oninput="filterDocketTasks(this.value)" style="width:200px; padding:4px 8px; font-size:0.8rem;">
+      <!-- MAIN BODY CONTENT -->
+      <div class="docket-main-body">
+        <div class="docket-header-bar">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="text" id="docketSearchInput" value="${escapeHTML(currentDocketSearch)}" placeholder="Search tasks, tags, projects..." oninput="onDocketSearchInput(this.value)" style="width:240px; padding:6px 10px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px; font-size:0.85rem;">
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.8rem; color:#94a3b8; font-weight:600;">View:</span>
+            <button class="btn ghost micro ${currentDocketView === 'list' ? 'active' : ''}" onclick="setDocketView('list')">List</button>
+            <button class="btn ghost micro ${currentDocketView === 'board' ? 'active' : ''}" onclick="setDocketView('board')">Board</button>
+            <button class="btn ghost micro ${currentDocketView === 'calendar' ? 'active' : ''}" onclick="setDocketView('calendar')">Calendar</button>
+            <button class="btn ghost micro ${currentDocketView === 'timeline' ? 'active' : ''}" onclick="setDocketView('timeline')">Timeline</button>
+            <button class="btn ghost micro ${currentDocketView === 'matrix' ? 'active' : ''}" onclick="setDocketView('matrix')">Matrix</button>
+            <button class="btn ghost micro" onclick="exportTasks()" title="Export .plot">Export</button>
+            <button class="btn ghost micro" onclick="importTasks()" title="Import .plot">Import</button>
+          </div>
+        </div>
 
-      <button class="btn ghost small" onclick="exportTasks()">Export .plot</button>
-      <button class="btn ghost small" onclick="importTasks()">Import .plot</button>
+        <div id="docketViewContainer">
+          ${renderDocketCurrentView(data, projs)}
+        </div>
+      </div>
     </div>
-
-    <div id="docketListContainer" style="display:none; margin-bottom:12px; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:6px; padding:12px;"></div>
-
-    <div id="plotArea">
-      <div class="plot-axis-label" style="bottom:6px; left:10px;">Soon</div>
-      <div class="plot-axis-label" style="bottom:6px; right:10px;">Later</div>
-      <div class="plot-axis-label" style="top:6px; left:10px;">Urgent</div>
-      <div class="plot-axis-label" style="bottom:50%; left:10px;">Low priority</div>
-    </div>
-    <div class="hint">Drag dots. Click a dot to mark it done. X = timing, Y = urgency.</div>
   `;
-  renderPlotArea();
 }
-function getTasksData(){
-  const d = loadLocal('tasks', {items:[
-    {id:1,x:20,y:20,label:'Reply to client',done:false,createdDate:todayStr()},
-    {id:2,x:70,y:60,label:'Plan next month',done:false,createdDate:todayStr()},
-    {id:3,x:40,y:85,label:'Renew domain',done:true,createdDate:todayStr()}
-  ]});
-  d.items.forEach(it=>{ if(!it.createdDate) it.createdDate = todayStr(); });
-  return d;
+
+function setDocketNav(nav) {
+  currentDocketNav = nav;
+  renderTasks();
+}
+
+function setDocketView(view) {
+  currentDocketView = view;
+  renderTasks();
+}
+
+function onDocketSearchInput(q) {
+  currentDocketSearch = q;
+  const container = document.getElementById('docketViewContainer');
+  if (container) {
+    const data = getDocketData();
+    const projs = getDocketProjects();
+    container.innerHTML = renderDocketCurrentView(data, projs);
+  }
+}
+
+function renderDocketCurrentView(data, projs) {
+  if (currentDocketView === 'matrix') {
+    return renderDocketMatrixView(data);
+  }
+  if (currentDocketNav === 'inbox') return renderDocketListSection(data, projs, i => i.status === 'inbox' || i.projectId === 'proj_default', '📥 Inbox Tasks');
+  if (currentDocketNav === 'today') return renderDocketTodayView(data, projs);
+  if (currentDocketNav === 'upcoming') return renderDocketListSection(data, projs, i => i.dueDate > todayStr() && i.status !== 'completed' && i.status !== 'archived', '🔮 Upcoming Tasks');
+  if (currentDocketNav === 'overdue') return renderDocketListSection(data, projs, i => i.dueDate < todayStr() && i.status !== 'completed' && i.status !== 'archived', '⚠️ Overdue Tasks');
+  if (currentDocketNav === 'waiting') return renderDocketListSection(data, projs, i => (i.status === 'waiting' || (i.blockedBy && i.blockedBy.length > 0)) && i.status !== 'archived', '⏳ Waiting & Blocked Tasks');
+  if (currentDocketNav === 'projects') return renderDocketProjectsView(data, projs);
+  if (currentDocketNav === 'completed') return renderDocketListSection(data, projs, i => i.status === 'completed', '✓ Completed Tasks');
+  if (currentDocketNav === 'review') return renderDocketReviewView(data, projs);
+  if (currentDocketNav === 'archive') return renderDocketListSection(data, projs, i => i.status === 'archived', '📦 Archived Tasks');
+
+  return renderDocketTodayView(data, projs);
+}
+
+function filterDocketItemsBySearch(items) {
+  if (!currentDocketSearch || !currentDocketSearch.trim()) return items;
+  const q = currentDocketSearch.trim().toLowerCase();
+  return items.filter(i => (i.title || '').toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q) || (i.tags || []).some(t => t.toLowerCase().includes(q)));
+}
+
+function renderDocketListSection(data, projs, filterFn, title) {
+  let items = data.items.filter(filterFn);
+  items = filterDocketItemsBySearch(items);
+
+  if (currentDocketView === 'board') return renderDocketBoardView(items, projs);
+  if (currentDocketView === 'calendar') return renderDocketCalendarView(items, projs);
+  if (currentDocketView === 'timeline') return renderDocketTimelineView(items, projs);
+
+  return `
+    <h3 style="margin-top:0; font-size:1rem; color:#f8fafc; border-bottom:1px solid #1e293b; padding-bottom:8px;">${title} (${items.length})</h3>
+    ${items.length === 0 ? '<div style="color:#64748b; padding:20px 0; text-align:center;">No tasks found in this view.</div>' : ''}
+    <div>
+      ${items.map(i => renderDocketTaskItemCard(i, projs)).join('')}
+    </div>
+  `;
+}
+
+function renderDocketTaskItemCard(item, projs) {
+  const proj = projs.find(p => p.id === item.projectId);
+  const projName = proj ? proj.name : 'General';
+  const isOverdue = item.dueDate < todayStr() && item.status !== 'completed';
+
+  return `
+    <div class="docket-task-item" onclick="openDocketTaskDetailModal('${item.id}')">
+      <div style="display:flex; align-items:center; gap:10px; flex:1;">
+        <input type="checkbox" ${item.done ? 'checked' : ''} onclick="event.stopPropagation(); toggleDocketTaskDone('${item.id}')" style="cursor:pointer; width:16px; height:16px;">
+        <div>
+          <div style="font-weight:600; font-size:0.9rem; text-decoration:${item.done ? 'line-through' : 'none'}; color:${item.done ? '#64748b' : '#f8fafc'};">
+            ${escapeHTML(item.title)}
+            ${item.sourceApp ? `<span class="tag-pill" style="font-size:0.7rem; margin-left:6px;">from ${item.sourceApp}</span>` : ''}
+          </div>
+          <div style="font-size:0.75rem; color:#94a3b8; display:flex; gap:10px; margin-top:2px;">
+            <span>📂 ${escapeHTML(projName)}</span>
+            <span style="${isOverdue ? 'color:#fca5a5; font-weight:bold;' : ''}">📅 ${item.dueDate || 'No due date'}</span>
+            ${item.recurrence && item.recurrence !== 'none' ? `<span>🔄 ${item.recurrence}</span>` : ''}
+            ${item.blockedBy && item.blockedBy.length > 0 ? `<span style="color:#fca5a5;">🔒 Blocked by ${item.blockedBy.length}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="docket-priority-badge docket-priority-${item.priority || 'normal'}">${item.priority || 'normal'}</span>
+        <span style="font-size:0.75rem; color:#64748b; background:#1e293b; padding:2px 8px; border-radius:4px;">${item.status || 'inbox'}</span>
+        <button class="btn ghost micro" onclick="event.stopPropagation(); deleteDocketTask('${item.id}')" title="Delete">🗑</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketTodayView(data, projs) {
+  const today = todayStr();
+  let overdue = data.items.filter(i => i.dueDate < today && i.status !== 'completed' && i.status !== 'archived');
+  let dueToday = data.items.filter(i => i.dueDate === today && i.status !== 'completed' && i.status !== 'archived');
+  let completedToday = data.items.filter(i => i.completedAt === today || (i.status === 'completed' && i.dueDate === today));
+
+  overdue = filterDocketItemsBySearch(overdue);
+  dueToday = filterDocketItemsBySearch(dueToday);
+  completedToday = filterDocketItemsBySearch(completedToday);
+
+  return `
+    <div>
+      <h3 style="margin-top:0; font-size:1.05rem; color:#f8fafc; border-bottom:1px solid #1e293b; padding-bottom:8px;">📅 TODAY EXECUTION COCKPIT (${today})</h3>
+
+      ${overdue.length > 0 ? `
+        <div style="margin-bottom:18px;">
+          <h4 style="color:#fca5a5; margin:0 0 8px 0; font-size:0.88rem;">⚠️ OVERDUE TASKS (${overdue.length})</h4>
+          ${overdue.map(i => renderDocketTaskItemCard(i, projs)).join('')}
+        </div>
+      ` : ''}
+
+      <div style="margin-bottom:18px;">
+        <h4 style="color:#38bdf8; margin:0 0 8px 0; font-size:0.88rem;">🎯 DUE / SCHEDULED TODAY (${dueToday.length})</h4>
+        ${dueToday.length === 0 ? '<div style="color:#64748b; font-size:0.85rem; padding:8px 0;">No tasks scheduled for today. Great job!</div>' : dueToday.map(i => renderDocketTaskItemCard(i, projs)).join('')}
+      </div>
+
+      <div>
+        <h4 style="color:#4ade80; margin:0 0 8px 0; font-size:0.88rem;">✓ COMPLETED TODAY (${completedToday.length})</h4>
+        ${completedToday.length === 0 ? '<div style="color:#64748b; font-size:0.85rem; padding:8px 0;">No tasks completed yet today.</div>' : completedToday.map(i => renderDocketTaskItemCard(i, projs)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketProjectsView(data, projs) {
+  return `
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:1.05rem; color:#f8fafc;">📂 PROJECTS WORKSPACE</h3>
+        <button class="btn brass small" onclick="openNewDocketProjectModal()">+ Create Project</button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+        ${projs.map(p => {
+          const projTasks = data.items.filter(i => i.projectId === p.id);
+          const doneTasks = projTasks.filter(i => i.status === 'completed');
+          const pct = projTasks.length > 0 ? Math.round((doneTasks.length / projTasks.length) * 100) : 0;
+          return `
+            <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h4 style="margin:0; color:#f8fafc; font-size:0.95rem;">${escapeHTML(p.name)}</h4>
+                  <span class="docket-priority-badge docket-priority-${p.priority || 'normal'}">${p.priority || 'normal'}</span>
+                </div>
+                <p style="margin:6px 0; font-size:0.8rem; color:#94a3b8; line-height:1.4;">${escapeHTML(p.description || '')}</p>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94a3b8; margin-bottom:4px;">
+                  <span>Progress (${doneTasks.length}/${projTasks.length} tasks)</span>
+                  <span style="font-weight:bold; color:#38bdf8;">${pct}%</span>
+                </div>
+                <div style="width:100%; height:6px; background:#1e293b; border-radius:3px; overflow:hidden;">
+                  <div style="width:${pct}%; height:100%; background:#0284c7; border-radius:3px;"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketReviewView(data, projs) {
+  const today = todayStr();
+  const completedToday = data.items.filter(i => i.completedAt === today || (i.status === 'completed' && i.dueDate === today));
+  const overdue = data.items.filter(i => i.dueDate < today && i.status !== 'completed' && i.status !== 'archived');
+  const waiting = data.items.filter(i => i.status === 'waiting' || (i.blockedBy && i.blockedBy.length > 0));
+  const unassigned = data.items.filter(i => i.projectId === 'proj_default' && i.status !== 'completed' && i.status !== 'archived');
+
+  return `
+    <div>
+      <h3 style="margin-top:0; font-size:1.05rem; color:#f8fafc; border-bottom:1px solid #1e293b; padding-bottom:8px;">📊 DAILY & WEEKLY WORK REVIEW</h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 8px 0; color:#4ade80;">✓ Completed Today (${completedToday.length})</h4>
+          ${completedToday.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)}</div>`).join('')}
+        </div>
+        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 8px 0; color:#fca5a5;">⚠️ Overdue Needing Attention (${overdue.length})</h4>
+          ${overdue.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)} (${i.dueDate})</div>`).join('')}
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 8px 0; color:#fdba74;">⏳ Waiting / Blocked Items (${waiting.length})</h4>
+          ${waiting.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)}</div>`).join('')}
+        </div>
+        <div style="background:#0f172a; padding:12px; border-radius:6px; border:1px solid #1e293b;">
+          <h4 style="margin:0 0 8px 0; color:#38bdf8;">📥 Unassigned Inbox Items (${unassigned.length})</h4>
+          ${unassigned.map(i => `<div style="font-size:0.85rem; color:#cbd5e1; padding:2px 0;">• ${escapeHTML(i.title)}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketBoardView(items, projs) {
+  const statuses = ['inbox', 'planned', 'in_progress', 'waiting', 'completed'];
+  return `
+    <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:12px;">
+      ${statuses.map(st => {
+        const colItems = items.filter(i => i.status === st);
+        return `
+          <div style="flex:1; min-width:220px; background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:10px;">
+            <h4 style="margin:0 0 10px 0; font-size:0.82rem; text-transform:uppercase; color:#38bdf8; border-bottom:1px solid #1e293b; padding-bottom:6px;">${st.replace('_', ' ')} (${colItems.length})</h4>
+            <div>
+              ${colItems.map(i => renderDocketTaskItemCard(i, projs)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderDocketCalendarView(items, projs) {
+  return `
+    <div style="background:#0f172a; padding:16px; border-radius:6px; border:1px solid #1e293b;">
+      <h4 style="margin-top:0; color:#38bdf8;">📅 Calendar Schedule View</h4>
+      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:12px; font-size:0.8rem; color:#94a3b8; text-align:center;">
+        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:6px; min-height:220px;">
+        ${Array.from({ length: 14 }).map((_, idx) => {
+          const d = new Date(); d.setDate(d.getDate() - 2 + idx);
+          const dateStr = d.toISOString().split('T')[0];
+          const dayItems = items.filter(i => i.dueDate === dateStr);
+          return `
+            <div style="background:#1e293b; padding:6px; border-radius:4px; font-size:0.75rem; color:#f8fafc; min-height:60px;">
+              <div style="font-weight:bold; color:#38bdf8; margin-bottom:4px;">${d.getDate()}</div>
+              ${dayItems.map(i => `<div style="font-size:0.7rem; color:#cbd5e1; background:#0f172a; padding:2px; border-radius:2px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(i.title)}</div>`).join('')}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketTimelineView(items, projs) {
+  return `
+    <div style="background:#0f172a; padding:16px; border-radius:6px; border:1px solid #1e293b;">
+      <h4 style="margin-top:0; color:#38bdf8;">📈 Project Gantt & Task Timeline</h4>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+        ${items.map(i => {
+          const start = i.startDate || todayStr();
+          const due = i.dueDate || todayStr();
+          return `
+            <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem; color:#f8fafc;">
+              <span style="width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(i.title)}</span>
+              <div style="flex:1; background:#1e293b; height:18px; border-radius:4px; position:relative; overflow:hidden;">
+                <div style="position:absolute; left:10%; width:60%; height:100%; background:#0284c7; border-radius:4px; display:flex; align-items:center; padding-left:6px; font-size:0.7rem;">${start} ➔ ${due}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketMatrixView(data) {
+  return `
+    <div>
+      <div id="plotArea">
+        <div class="plot-axis-label" style="bottom:6px; left:10px;">Soon</div>
+        <div class="plot-axis-label" style="bottom:6px; right:10px;">Later</div>
+        <div class="plot-axis-label" style="top:6px; left:10px;">Urgent</div>
+        <div class="plot-axis-label" style="bottom:50%; left:10px;">Low priority</div>
+      </div>
+      <div class="hint">Drag dots to adjust priority/timing. Click a dot to toggle completion.</div>
+    </div>
+  `;
+}
+
+function openNewDocketTaskModal() {
+  const projs = getDocketProjects();
+  openModalForm({
+    title: 'New Docket Task',
+    fields: [
+      { name: 'title', label: 'Task Title', type: 'text', value: '', required: true },
+      { name: 'description', label: 'Description / Details', type: 'text', value: '' },
+      { name: 'priority', label: 'Priority', type: 'select', value: 'normal', options: ['low', 'normal', 'high', 'urgent'] },
+      { name: 'projectId', label: 'Project', type: 'select', value: 'proj_default', options: projs.map(p => p.id) },
+      { name: 'dueDate', label: 'Due Date', type: 'text', value: todayStr() },
+      { name: 'recurrence', label: 'Recurrence', type: 'select', value: 'none', options: ['none', 'daily', 'weekdays', 'weekly', 'monthly'] }
+    ],
+    onSubmit: (vals) => {
+      if (!vals.title) return;
+      const data = getDocketData();
+      const newTask = {
+        id: 'task_' + Date.now(),
+        title: vals.title,
+        label: vals.title,
+        description: vals.description || '',
+        status: 'inbox',
+        priority: vals.priority || 'normal',
+        projectId: vals.projectId || 'proj_default',
+        startDate: todayStr(),
+        dueDate: vals.dueDate || todayStr(),
+        recurrence: vals.recurrence || 'none',
+        createdAt: todayStr()
+      };
+      data.items.push(newTask);
+      saveDocketData(data);
+      renderTasks();
+    }
+  });
+}
+
+function openNewDocketProjectModal() {
+  openModalForm({
+    title: 'New Project Workspace',
+    fields: [
+      { name: 'name', label: 'Project Name', type: 'text', value: '', required: true },
+      { name: 'description', label: 'Description', type: 'text', value: '' },
+      { name: 'priority', label: 'Priority', type: 'select', value: 'normal', options: ['low', 'normal', 'high', 'urgent'] },
+      { name: 'targetDate', label: 'Target Completion Date', type: 'text', value: todayStr() }
+    ],
+    onSubmit: (vals) => {
+      if (!vals.name) return;
+      const projs = getDocketProjects();
+      projs.push({
+        id: 'proj_' + Date.now(),
+        name: vals.name,
+        description: vals.description || '',
+        status: 'active',
+        owner: 'Self',
+        startDate: todayStr(),
+        targetDate: vals.targetDate || todayStr(),
+        priority: vals.priority || 'normal',
+        createdAt: todayStr()
+      });
+      saveDocketProjects(projs);
+      renderTasks();
+    }
+  });
+}
+
+function openDocketQuickCaptureModal() {
+  openModalForm({
+    title: '⚡ Quick Capture Task',
+    fields: [
+      { name: 'raw', label: 'Task Title or Quick Input', type: 'text', value: '', required: true },
+      { name: 'priority', label: 'Priority', type: 'select', value: 'normal', options: ['low', 'normal', 'high', 'urgent'] }
+    ],
+    onSubmit: (vals) => {
+      if (!vals.raw) return;
+      const data = getDocketData();
+      data.items.push({
+        id: 'task_' + Date.now(),
+        title: vals.raw,
+        label: vals.raw,
+        status: 'inbox',
+        priority: vals.priority || 'normal',
+        projectId: 'proj_default',
+        dueDate: todayStr(),
+        createdAt: todayStr()
+      });
+      saveDocketData(data);
+      renderTasks();
+    }
+  });
+}
+
+function toggleDocketTaskDone(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => i.id === id);
+  if (item) {
+    item.done = !item.done;
+    item.status = item.done ? 'completed' : 'in_progress';
+    item.completedAt = item.done ? todayStr() : null;
+
+    if (item.done && item.recurrence && item.recurrence !== 'none') {
+      const nextDate = new Date();
+      if (item.recurrence === 'daily') nextDate.setDate(nextDate.getDate() + 1);
+      else if (item.recurrence === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+      else if (item.recurrence === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+
+      data.items.push({
+        ...item,
+        id: 'task_' + Date.now(),
+        done: false,
+        status: 'planned',
+        dueDate: nextDate.toISOString().split('T')[0],
+        completedAt: null
+      });
+    }
+
+    saveDocketData(data);
+    renderTasks();
+  }
+}
+
+function deleteDocketTask(id) {
+  const data = getDocketData();
+  data.items = data.items.filter(i => i.id !== id);
+  saveDocketData(data);
+  renderTasks();
+}
+
+function openDocketTaskDetailModal(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => i.id === id);
+  if (!item) return;
+
+  const modal = document.getElementById('capsuleModal');
+  if (!modal) return;
+
+  const projs = getDocketProjects();
+  const projOptions = projs.map(p => `<option value="${p.id}" ${p.id === item.projectId ? 'selected' : ''}>${escapeHTML(p.name)}</option>`).join('');
+
+  modal.innerHTML = `
+    <h3>Task Inspector: ${escapeHTML(item.title)}</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.85rem; margin-bottom:12px;">
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Task Title:</label>
+        <input type="text" id="editTaskTitle" value="${escapeHTML(item.title)}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Status:</label>
+        <select id="editTaskStatus" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+          <option value="inbox" ${item.status === 'inbox' ? 'selected' : ''}>Inbox</option>
+          <option value="planned" ${item.status === 'planned' ? 'selected' : ''}>Planned</option>
+          <option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+          <option value="waiting" ${item.status === 'waiting' ? 'selected' : ''}>Waiting</option>
+          <option value="blocked" ${item.status === 'blocked' ? 'selected' : ''}>Blocked</option>
+          <option value="completed" ${item.status === 'completed' ? 'selected' : ''}>Completed</option>
+          <option value="archived" ${item.status === 'archived' ? 'selected' : ''}>Archived</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Priority:</label>
+        <select id="editTaskPriority" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+          <option value="low" ${item.priority === 'low' ? 'selected' : ''}>Low</option>
+          <option value="normal" ${item.priority === 'normal' ? 'selected' : ''}>Normal</option>
+          <option value="high" ${item.priority === 'high' ? 'selected' : ''}>High</option>
+          <option value="urgent" ${item.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Project:</label>
+        <select id="editTaskProject" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+          ${projOptions}
+        </select>
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Due Date:</label>
+        <input type="text" id="editTaskDueDate" value="${escapeHTML(item.dueDate || todayStr())}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+      </div>
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#94a3b8;">Waiting Reason / Blocked By:</label>
+        <input type="text" id="editTaskWaiting" value="${escapeHTML(item.waitingFor || '')}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #1e293b; border-radius:4px;">
+      </div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="btn ghost small" onclick="closeCapsuleModal()">Cancel</button>
+      <button class="btn brass small" onclick="saveTaskDetailsFromModal('${item.id}')">Save Changes</button>
+    </div>
+  `;
+  document.getElementById('capsuleModalBg')?.classList.add('show');
+}
+
+function createDocketTaskFromApp(sourceApp, sourceRecordId, title, details) {
+  if (!title) return;
+  const data = getDocketData();
+  const newTask = {
+    id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    title: title,
+    label: title,
+    description: details || '',
+    status: 'inbox',
+    priority: 'normal',
+    projectId: 'proj_default',
+    startDate: todayStr(),
+    dueDate: todayStr(),
+    sourceApp: sourceApp || 'External',
+    sourceRecordId: sourceRecordId || null,
+    createdAt: todayStr()
+  };
+  data.items.push(newTask);
+  saveDocketData(data);
+  return newTask;
+}
+
+function saveTaskDetailsFromModal(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => i.id === id);
+  if (item) {
+    item.title = document.getElementById('editTaskTitle')?.value || item.title;
+    item.label = item.title;
+    item.status = document.getElementById('editTaskStatus')?.value || item.status;
+    item.priority = document.getElementById('editTaskPriority')?.value || item.priority;
+    item.projectId = document.getElementById('editTaskProject')?.value || item.projectId;
+    item.dueDate = document.getElementById('editTaskDueDate')?.value || item.dueDate;
+    item.waitingFor = document.getElementById('editTaskWaiting')?.value || item.waitingFor;
+    item.done = item.status === 'completed';
+    saveDocketData(data);
+    renderTasks();
+  }
+  closeCapsuleModal();
+}
+function getDocketData() {
+  const raw = loadLocal('tasks', { items: [
+    { id: 'task_1', x: 20, y: 20, label: 'Reply to client', done: false, status: 'in_progress', priority: 'high', createdDate: todayStr(), dueDate: todayStr(), projectId: 'proj_default' },
+    { id: 'task_2', x: 70, y: 60, label: 'Plan next month', done: false, status: 'planned', priority: 'normal', createdDate: todayStr(), dueDate: todayStr(), projectId: 'proj_offlines' },
+    { id: 'task_3', x: 40, y: 85, label: 'Renew domain', done: true, status: 'completed', priority: 'low', createdDate: todayStr(), dueDate: todayStr(), projectId: 'proj_default' }
+  ] });
+
+  let itemsRaw = Array.isArray(raw.items) ? raw.items : [];
+  const items = itemsRaw.map((it, idx) => {
+    if (typeof it === 'string') it = { label: it };
+    else if (!it || typeof it !== 'object') it = { label: String(it || '') };
+
+    const id = it.id || ('task_' + Date.now() + '_' + idx);
+    const title = it.title || it.label || 'Untitled Task';
+    const description = it.description || '';
+    let status = it.status;
+    if (!status) {
+      status = it.done ? 'completed' : (it.y !== undefined && it.y < 40 ? 'in_progress' : 'inbox');
+    }
+    let priority = it.priority;
+    if (!priority) {
+      if (it.y !== undefined && it.y < 30) priority = 'urgent';
+      else if (it.y !== undefined && it.y < 50) priority = 'high';
+      else priority = 'normal';
+    }
+    const projectId = it.projectId || 'proj_default';
+    const sectionId = it.sectionId || 'section_general';
+    const parentTaskId = it.parentTaskId || null;
+    const startDate = it.startDate || it.createdDate || todayStr();
+    const dueDate = it.dueDate || (it.createdDate || todayStr());
+    const completedDate = it.completedDate || (it.done ? (it.createdDate || todayStr()) : null);
+    const recurrence = it.recurrence || 'none';
+    const estimatedMinutes = parseInt(it.estimatedMinutes || 30);
+    const actualMinutes = parseInt(it.actualMinutes || 0);
+    const tags = Array.isArray(it.tags) ? it.tags : [];
+    const assignee = it.assignee || 'Self';
+    const dependencies = Array.isArray(it.dependencies) ? it.dependencies : [];
+    const blockedBy = Array.isArray(it.blockedBy) ? it.blockedBy : [];
+    const waitingFor = it.waitingFor || '';
+    const notes = it.notes || '';
+    const attachments = Array.isArray(it.attachments) ? it.attachments : [];
+    const sourceApp = it.sourceApp || null;
+    const sourceRecordId = it.sourceRecordId || null;
+    const x = it.x !== undefined ? it.x : 50;
+    const y = it.y !== undefined ? it.y : 50;
+    const createdAt = it.createdAt || (it.createdDate || todayStr());
+    const updatedAt = it.updatedAt || todayStr();
+    const completedAt = it.completedAt || (status === 'completed' ? todayStr() : null);
+    const archivedAt = it.archivedAt || null;
+
+    return {
+      id,
+      title,
+      label: title,
+      description,
+      status,
+      priority,
+      projectId,
+      sectionId,
+      parentTaskId,
+      startDate,
+      dueDate,
+      completedDate,
+      recurrence,
+      estimatedMinutes,
+      actualMinutes,
+      tags,
+      assignee,
+      dependencies,
+      blockedBy,
+      waitingFor,
+      notes,
+      attachments,
+      sourceApp,
+      sourceRecordId,
+      x,
+      y,
+      done: status === 'completed',
+      createdAt,
+      updatedAt,
+      completedAt,
+      archivedAt
+    };
+  });
+
+  return { type: 'plot', items };
+}
+
+function saveDocketData(data) {
+  saveLocal('tasks', data);
+}
+
+function getDocketProjects() {
+  const raw = loadLocal('docket_projects', { projects: [] });
+  let projs = Array.isArray(raw.projects) ? raw.projects : [];
+  if (projs.length === 0) {
+    projs = [
+      {
+        id: 'proj_default',
+        name: 'General Tasks',
+        description: 'Default project workspace for uncategorized tasks',
+        status: 'active',
+        owner: 'Self',
+        startDate: todayStr(),
+        targetDate: todayStr(),
+        priority: 'normal',
+        tags: ['general'],
+        milestones: ['Setup Docket'],
+        createdAt: todayStr()
+      },
+      {
+        id: 'proj_offlines',
+        name: 'OFFLINES Upgrade',
+        description: 'Product suite enhancement and offline architecture',
+        status: 'active',
+        owner: 'Self',
+        startDate: todayStr(),
+        targetDate: todayStr(),
+        priority: 'high',
+        tags: ['development'],
+        milestones: ['Docket Rebuild', 'Spot System'],
+        createdAt: todayStr()
+      }
+    ];
+  }
+  return projs;
+}
+
+function saveDocketProjects(projs) {
+  saveLocal('docket_projects', { projects: projs });
+}
+
+function getTasksData() {
+  return getDocketData();
 }
 function renderPlotArea(){
   const d = getTasksData();
