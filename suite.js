@@ -6242,11 +6242,7 @@ function resetDocketCalMonth() {
 }
 
 function openQuickTaskForDate(dateStr) {
-  openDocketQuickCaptureModal();
-  setTimeout(() => {
-    const dueEl = document.getElementById('qcTaskDueDate');
-    if (dueEl) dueEl.value = dateStr;
-  }, 100);
+  openDocketQuickCaptureModal(dateStr);
 }
 
 function handleDocketCalDrop(e, targetDateStr) {
@@ -6438,7 +6434,7 @@ function openNewDocketProjectModal() {
   });
 }
 
-function openDocketQuickCaptureModal() {
+function openDocketQuickCaptureModal(defaultDate = null) {
   const projs = getDocketProjects();
   const projOptions = projs.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
 
@@ -6476,7 +6472,7 @@ function openDocketQuickCaptureModal() {
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <div>
           <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Target Date</label>
-          <input type="date" id="qcTaskDueDate" value="${todayStr()}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+          <input type="date" id="qcTaskDueDate" value="${defaultDate || todayStr()}" style="width:100%; padding:6px; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
         </div>
         <div>
           <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Destination</label>
@@ -6538,6 +6534,32 @@ function submitQuickCaptureTask() {
   renderTasks();
 }
 
+
+function hasDependencyPath(data, startId, targetId, visited = new Set()) {
+  if (String(startId) === String(targetId)) return true;
+  if (visited.has(String(startId))) return false;
+  visited.add(String(startId));
+
+  const startTask = data.items.find(i => String(i.id) === String(startId));
+  if (!startTask || !startTask.dependencies) return false;
+
+  for (const depId of startTask.dependencies) {
+    if (hasDependencyPath(data, depId, targetId, visited)) return true;
+  }
+  return false;
+}
+
+function hasParentPath(data, startId, targetId, visited = new Set()) {
+  if (String(startId) === String(targetId)) return true;
+  if (visited.has(String(startId))) return false;
+  visited.add(String(startId));
+
+  const startTask = data.items.find(i => String(i.id) === String(startId));
+  if (!startTask || !startTask.parentTaskId) return false;
+
+  return hasParentPath(data, startTask.parentTaskId, targetId, visited);
+}
+
 function resolveDocketDependencies(data) {
   // Resolve blocked status based on prerequisite completion
   data.items.forEach(item => {
@@ -6582,7 +6604,11 @@ function updateParentTaskProgress(data, parentId) {
 }
 
 function calculateNextRecurrenceDate(startDateStr, pattern, interval = 1) {
-  const dt = new Date(startDateStr || todayStr());
+  const parts = (startDateStr || todayStr()).split('-');
+  const origYear = parseInt(parts[0], 10) || new Date().getFullYear();
+  const origMonth = (parseInt(parts[1], 10) || (new Date().getMonth() + 1)) - 1;
+  const origDay = parseInt(parts[2], 10) || new Date().getDate();
+  const dt = new Date(origYear, origMonth, origDay);
   interval = Math.max(1, parseInt(interval || 1));
 
   if (pattern === 'daily') {
@@ -6590,13 +6616,21 @@ function calculateNextRecurrenceDate(startDateStr, pattern, interval = 1) {
   } else if (pattern === 'weekdays') {
     do {
       dt.setDate(dt.getDate() + 1);
-    } while (dt.getDay() === 0 || dt.getDay() === 6); // Skip Sun (0) and Sat (6)
+    } while (dt.getDay() === 0 || dt.getDay() === 6);
   } else if (pattern === 'weekly') {
     dt.setDate(dt.getDate() + (7 * interval));
   } else if (pattern === 'monthly') {
-    dt.setMonth(dt.getMonth() + interval);
+    const targetMonth = dt.getMonth() + interval;
+    dt.setMonth(targetMonth);
+    if (dt.getMonth() !== targetMonth % 12) {
+      dt.setDate(0); // Clamp to last day of target month (e.g. Jan 31 -> Feb 28)
+    }
   }
-  return dt.toISOString().split('T')[0];
+
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const d = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function toggleDocketTaskDone(id) {
@@ -6620,12 +6654,15 @@ function toggleDocketTaskDone(id) {
       updateParentTaskProgress(data, item.parentTaskId);
     }
 
-    // Handle Recurrence
+    // Handle Recurrence with Max Occurrences & End Date Enforcement
     if (item.done && item.recurrence && item.recurrence !== 'none') {
+      item.occurrenceCount = (item.occurrenceCount || 1);
+      const isWithinMax = !item.recurrenceMax || item.occurrenceCount < item.recurrenceMax;
       const nextDueDate = calculateNextRecurrenceDate(item.dueDate || todayStr(), item.recurrence, item.recurrenceInterval || 1);
       const isWithinEnd = !item.recurrenceEndDate || nextDueDate <= item.recurrenceEndDate;
 
-      if (isWithinEnd) {
+      if (isWithinMax && isWithinEnd) {
+        const nextOccurrence = item.occurrenceCount + 1;
         const recurringTask = {
           ...item,
           id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -6638,8 +6675,9 @@ function toggleDocketTaskDone(id) {
           completedAt: null,
           completedDate: null,
           createdAt: todayStr(),
+          occurrenceCount: nextOccurrence,
           activity: [
-            { timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5), action: 'Recurring Instance Created', detail: `Generated from recurring rule (${item.recurrence})` }
+            { timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5), action: 'Recurring Instance Created', detail: `Generated instance #${nextOccurrence} from recurring rule (${item.recurrence})` }
           ]
         };
         data.items.push(recurringTask);
@@ -6997,6 +7035,12 @@ function deleteDocketSubtask(subtaskId, parentId) {
 function handleDocketAttachmentUpload(taskId, inputEl) {
   if (!inputEl.files || !inputEl.files[0]) return;
   const file = inputEl.files[0];
+
+  if (file.size > 1024 * 1024) {
+    alert(`Attachment "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds the 1MB size limit for local device storage.`);
+    inputEl.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = function(e) {
     const data = getDocketData();
@@ -7113,13 +7157,25 @@ function addInlineSubtask(parentId) {
 
 function navigateToDocketSourceApp(app, recordId) {
   closeCapsuleModal();
-  if (app === 'Spot') switchTab('spot');
-  else if (app === 'Transmute') switchTab('transmute');
-  else if (app === 'Folio') switchTab('folio');
-  else if (app === 'Grid') switchTab('grid');
-  else if (app === 'Glides') switchTab('glides');
-  else if (app === 'Almanac') switchTab('almanac');
-  else alert(`Navigating to ${app} record ${recordId}...`);
+  if (app === 'Spot') {
+    switchTab('spot');
+    if (recordId && typeof openSpotNoteDetailModal === 'function') openSpotNoteDetailModal(recordId);
+  } else if (app === 'Folio') {
+    switchTab('folio');
+    if (recordId && typeof loadFolioDocument === 'function') loadFolioDocument(recordId);
+  } else if (app === 'Grid') {
+    switchTab('grid');
+    if (recordId && typeof openGridWorkbook === 'function') openGridWorkbook(recordId);
+  } else if (app === 'Glides') {
+    switchTab('glides');
+    if (recordId && typeof openGlidesDeck === 'function') openGlidesDeck(recordId);
+  } else if (app === 'Transmute') {
+    switchTab('transmute');
+  } else if (app === 'Almanac') {
+    switchTab('almanac');
+  } else {
+    alert(`Navigating to ${app} record ${recordId}...`);
+  }
 }
 
 function createDocketTaskFromApp(sourceApp, sourceRecordId, title, details) {

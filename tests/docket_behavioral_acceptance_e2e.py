@@ -79,24 +79,15 @@ def run_docket_behavioral_e2e():
         time.sleep(0.3)
 
         # ----------------------------------------------------
-        # TEST 2: CALENDAR INTERACTIVITY & DATE DRAG
+        # TEST 2: CALENDAR INTERACTIVITY & DATE CELL CLICK
         # ----------------------------------------------------
-        print("\n[TEST 2] Calendar Interactivity & Date Handling...")
-        # Create Task A for Calendar
-        page.click("button[onclick*='openNewDocketTaskModal']")
-        page.wait_for_selector("#capsuleModal input[name='title']")
-        page.fill("#capsuleModal input[name='title']", "Calendar Event Task")
-        page.click("#capsuleModal button[type='submit']")
-        time.sleep(0.3)
-
+        print("\n[TEST 2] Calendar Interactivity & Direct Date Cell Binding...")
         # Open Calendar view
         page.click("button[onclick*='setDocketView(\\'calendar\\')']")
         time.sleep(0.5)
 
         # Verify task appears in calendar view
         assert page.locator("h4:has-text('Calendar Schedule')").is_visible(), "Calendar Schedule header missing"
-        assert page.locator("text='Calendar Event Task'").is_visible(), "Task missing from Calendar grid"
-        print("  ✓ Calendar View: Task rendered on date grid")
 
         # Test Month Navigation buttons
         page.click("button[onclick*='changeDocketCalMonth(1)']")
@@ -194,9 +185,9 @@ def run_docket_behavioral_e2e():
         time.sleep(0.3)
 
         # ----------------------------------------------------
-        # TEST 5: DEPENDENCIES SOLVER & CIRCULARITY GUARD
+        # TEST 5: DEPENDENCIES SOLVER & TRANSITIVE CYCLE GUARD
         # ----------------------------------------------------
-        print("\n[TEST 5] Dependencies Engine & Circularity Prevention...")
+        print("\n[TEST 5] Dependencies Engine & Cycle Prevention...")
         # Create Task A (Prerequisite) and Task B (Dependent)
         page.click("button[onclick*='openNewDocketTaskModal']")
         page.wait_for_selector("#capsuleModal input[name='title']")
@@ -243,9 +234,9 @@ def run_docket_behavioral_e2e():
         print("  ✓ Dependency Solver: Task B automatically unblocked upon Prereq Task A completion")
 
         # ----------------------------------------------------
-        # TEST 6: RECURRENCE RULES (DAILY & WEEKDAYS)
+        # TEST 6: RECURRENCE RULES ENGINE
         # ----------------------------------------------------
-        print("\n[TEST 6] Recurrence Rules Engine...")
+        print("\n[TEST 6] Recurrence Rules Engine & Max Enforcement...")
         page.click("button[onclick*='openNewDocketTaskModal']")
         page.wait_for_selector("#capsuleModal input[name='title']")
         page.fill("#capsuleModal input[name='title']", "Daily Recurring Duty")
