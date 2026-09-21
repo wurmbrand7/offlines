@@ -5214,6 +5214,8 @@ let draggingDot = null;
 let currentDocketNav = 'today';
 let currentDocketView = 'list';
 let currentDocketSearch = '';
+let _activeDocketProjectId = null;
+let _activeProjectSubTab = 'overview';
 
 function renderTasks() {
   const p = document.getElementById('panel-tasks');
@@ -5333,6 +5335,7 @@ function onDocketSearchInput(q) {
 
 function renderDocketCurrentView(data, projs) {
   if (currentDocketNav === 'projects') return renderDocketProjectsView(data, projs);
+  if (currentDocketNav === 'project_workspace') return renderDocketProjectWorkspaceView(data, projs);
   if (currentDocketNav === 'review') return renderDocketReviewView(data, projs);
 
   if (currentDocketView === 'matrix') {
@@ -5352,7 +5355,32 @@ function renderDocketCurrentView(data, projs) {
 function filterDocketItemsBySearch(items) {
   if (!currentDocketSearch || !currentDocketSearch.trim()) return items;
   const q = currentDocketSearch.trim().toLowerCase();
-  return items.filter(i => (i.title || '').toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q) || (i.tags || []).some(t => t.toLowerCase().includes(q)));
+  const projs = getDocketProjects();
+
+  return items.filter(i => {
+    const proj = projs.find(p => String(p.id) === String(i.projectId));
+    const projName = proj ? proj.name.toLowerCase() : '';
+    const title = (i.title || '').toLowerCase();
+    const desc = (i.description || '').toLowerCase();
+    const notes = (i.notes || '').toLowerCase();
+    const assignee = (i.assignee || '').toLowerCase();
+    const waiting = (i.waitingFor || '').toLowerCase();
+    const sourceApp = (i.sourceApp || '').toLowerCase();
+    const status = (i.status || '').toLowerCase();
+    const priority = (i.priority || '').toLowerCase();
+    const tags = (i.tags || []).map(t => t.toLowerCase());
+
+    return title.includes(q) ||
+           desc.includes(q) ||
+           notes.includes(q) ||
+           assignee.includes(q) ||
+           waiting.includes(q) ||
+           sourceApp.includes(q) ||
+           status.includes(q) ||
+           priority.includes(q) ||
+           projName.includes(q) ||
+           tags.some(t => t.includes(q));
+  });
 }
 
 function renderDocketListSection(data, projs, filterFn, title) {
@@ -5494,6 +5522,10 @@ function renderDocketProjectsView(data, projs) {
                 <div style="width:100%; height:6px; background:#1e293b; border-radius:3px; overflow:hidden;">
                   <div style="width:${pct}%; height:100%; background:#0284c7; border-radius:3px;"></div>
                 </div>
+                <div style="display:flex; gap:6px; margin-top:10px;">
+                  <button class="btn brass micro" style="flex:1;" onclick="openDocketProjectWorkspace('${p.id}')">↗ Open Workspace</button>
+                  <button class="btn ghost micro" onclick="openDocketProjectEditorModal('${p.id}')">✏️ Edit</button>
+                </div>
               </div>
             </div>
           `;
@@ -5501,6 +5533,401 @@ function renderDocketProjectsView(data, projs) {
       </div>
     </div>
   `;
+}
+
+
+function openDocketProjectWorkspace(projId) {
+  _activeDocketProjectId = projId;
+  _activeProjectSubTab = 'overview';
+  currentDocketNav = 'project_workspace';
+  renderTasks();
+}
+
+function setDocketProjectSubTab(tab) {
+  _activeProjectSubTab = tab;
+  renderTasks();
+}
+
+function renderDocketProjectWorkspaceView(data, projs) {
+  const p = projs.find(x => String(x.id) === String(_activeDocketProjectId)) || projs[0];
+  if (!p) {
+    currentDocketNav = 'projects';
+    return renderDocketProjectsView(data, projs);
+  }
+
+  const projTasks = data.items.filter(i => String(i.projectId) === String(p.id));
+  const doneTasks = projTasks.filter(i => i.status === 'completed');
+  const blockedTasks = projTasks.filter(i => i.status === 'blocked');
+  const inProgTasks = projTasks.filter(i => i.status === 'in_progress');
+  const plannedTasks = projTasks.filter(i => i.status === 'planned' || i.status === 'inbox');
+  const pct = projTasks.length > 0 ? Math.round((doneTasks.length / projTasks.length) * 100) : 0;
+  const milestones = p.milestones || [];
+  const doneMilestones = milestones.filter(m => typeof m === 'object' && m.status === 'completed').length;
+  const milestonePct = milestones.length > 0 ? Math.round((doneMilestones / milestones.length) * 100) : 0;
+
+  return `
+    <div>
+      <!-- PROJECT HEADER -->
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:16px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <button class="btn ghost micro" onclick="setDocketNav('projects')">← Back to Projects</button>
+              <h3 style="margin:0; font-size:1.2rem; color:#f8fafc; font-weight:700;">📂 ${escapeHTML(p.name)}</h3>
+              <span class="docket-priority-badge docket-priority-${p.priority || 'normal'}">${(p.priority || 'normal').toUpperCase()}</span>
+              <span style="font-size:0.75rem; background:#1e293b; color:#38bdf8; padding:2px 8px; border-radius:10px; font-weight:600;">${p.status || 'active'}</span>
+            </div>
+            <p style="margin:0; font-size:0.85rem; color:#94a3b8;">${escapeHTML(p.description || 'No description provided.')}</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn brass micro" onclick="openNewDocketTaskModalWithProject('${p.id}')">+ Quick Task</button>
+            <button class="btn ghost micro" onclick="openDocketProjectEditorModal('${p.id}')">✏️ Edit Project</button>
+            <button class="btn ghost micro" style="color:#ef4444;" onclick="deleteDocketProject('${p.id}')">🗑️ Delete</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:16px; font-size:0.8rem; color:#64748b; border-top:1px solid #1e293b; padding-top:8px;">
+          <span>👤 Owner: <strong style="color:#cbd5e1;">${escapeHTML(p.owner || 'Self')}</strong></span>
+          <span>📅 Start: <strong style="color:#cbd5e1;">${p.startDate || 'N/A'}</strong></span>
+          <span>🎯 Target Date: <strong style="color:#38bdf8;">${p.targetDate || 'N/A'}</strong></span>
+          <span>🏷️ Tags: <strong style="color:#cbd5e1;">${(p.tags || []).join(', ') || 'None'}</strong></span>
+        </div>
+      </div>
+
+      <!-- WORKSPACE SUB-TABS -->
+      <div style="display:flex; gap:6px; border-bottom:1px solid #1e293b; margin-bottom:14px; overflow-x:auto;">
+        <button class="btn ghost micro ${_activeProjectSubTab === 'overview' ? 'active' : ''}" onclick="setDocketProjectSubTab('overview')">📊 Overview</button>
+        <button class="btn ghost micro ${_activeProjectSubTab === 'tasks' ? 'active' : ''}" onclick="setDocketProjectSubTab('tasks')">📋 Tasks (${projTasks.length})</button>
+        <button class="btn ghost micro ${_activeProjectSubTab === 'board' ? 'active' : ''}" onclick="setDocketProjectSubTab('board')">📌 Board</button>
+        <button class="btn ghost micro ${_activeProjectSubTab === 'calendar' ? 'active' : ''}" onclick="setDocketProjectSubTab('calendar')">📅 Calendar</button>
+        <button class="btn ghost micro ${_activeProjectSubTab === 'timeline' ? 'active' : ''}" onclick="setDocketProjectSubTab('timeline')">📈 Timeline</button>
+        <button class="btn ghost micro ${_activeProjectSubTab === 'milestones' ? 'active' : ''}" onclick="setDocketProjectSubTab('milestones')">🎯 Milestones (${milestones.length})</button>
+        <button class="btn ghost micro ${_activeProjectSubTab === 'notes' ? 'active' : ''}" onclick="setDocketProjectSubTab('notes')">📝 Notes & Links</button>
+      </div>
+
+      <!-- SUB-TAB CONTENT -->
+      <div>
+        ${renderDocketProjectWorkspaceSubTab(p, projTasks, data, projs)}
+      </div>
+    </div>
+  `;
+}
+
+function renderDocketProjectWorkspaceSubTab(p, projTasks, data, projs) {
+  const doneTasks = projTasks.filter(i => i.status === 'completed');
+  const blockedTasks = projTasks.filter(i => i.status === 'blocked');
+  const inProgTasks = projTasks.filter(i => i.status === 'in_progress');
+  const plannedTasks = projTasks.filter(i => i.status === 'planned' || i.status === 'inbox');
+  const pct = projTasks.length > 0 ? Math.round((doneTasks.length / projTasks.length) * 100) : 0;
+  const milestones = p.milestones || [];
+
+  if (_activeProjectSubTab === 'overview') {
+    return `
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:14px;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <!-- METRICS CARDS -->
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;">
+            <div style="background:#0f172a; border:1px solid #1e293b; padding:10px; border-radius:6px; text-align:center;">
+              <span style="font-size:0.75rem; color:#64748b; display:block;">Total Tasks</span>
+              <span style="font-size:1.2rem; font-weight:700; color:#f8fafc;">${projTasks.length}</span>
+            </div>
+            <div style="background:#0f172a; border:1px solid #1e293b; padding:10px; border-radius:6px; text-align:center;">
+              <span style="font-size:0.75rem; color:#64748b; display:block;">In Progress</span>
+              <span style="font-size:1.2rem; font-weight:700; color:#38bdf8;">${inProgTasks.length}</span>
+            </div>
+            <div style="background:#0f172a; border:1px solid #1e293b; padding:10px; border-radius:6px; text-align:center;">
+              <span style="font-size:0.75rem; color:#64748b; display:block;">Blocked</span>
+              <span style="font-size:1.2rem; font-weight:700; color:#ef4444;">${blockedTasks.length}</span>
+            </div>
+            <div style="background:#0f172a; border:1px solid #1e293b; padding:10px; border-radius:6px; text-align:center;">
+              <span style="font-size:0.75rem; color:#64748b; display:block;">Completed</span>
+              <span style="font-size:1.2rem; font-weight:700; color:#10b981;">${doneTasks.length}</span>
+            </div>
+          </div>
+
+          <!-- PROGRESS BAR -->
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8; margin-bottom:6px;">
+              <span>Overall Project Completion</span>
+              <span style="color:#38bdf8; font-weight:700;">${pct}%</span>
+            </div>
+            <div style="height:8px; background:#1e293b; border-radius:4px; overflow:hidden;">
+              <div style="height:100%; width:${pct}%; background:#0284c7; transition:width 0.3s;"></div>
+            </div>
+          </div>
+
+          <!-- RECENT TASKS -->
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:12px;">
+            <h4 style="margin:0 0 10px 0; font-size:0.9rem; color:#f8fafc; font-weight:600;">📋 Project Tasks</h4>
+            <div style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;">
+              ${projTasks.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No tasks assigned to this project yet.</div>' : projTasks.map(t => `
+                <div onclick="openDocketTaskDetailModal('${t.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#020617; border:1px solid #1e293b; border-radius:4px; cursor:pointer; font-size:0.8rem;">
+                  <span style="color:${t.status === 'completed' ? '#64748b' : '#f8fafc'}; text-decoration:${t.status === 'completed' ? 'line-through' : 'none'};">${escapeHTML(t.title)}</span>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="font-size:0.7rem; color:#64748b;">Due: ${t.dueDate || 'N/A'}</span>
+                    <span class="docket-priority-badge docket-priority-${t.priority}">${t.priority}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <!-- MILESTONES SUMMARY -->
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <h4 style="margin:0; font-size:0.9rem; color:#f8fafc; font-weight:600;">🎯 Milestones</h4>
+              <button class="btn brass micro" onclick="openDocketMilestoneModal('${p.id}')">+ Add</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${milestones.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No milestones defined.</div>' : milestones.map((m, idx) => {
+                const isObj = typeof m === 'object';
+                const mName = isObj ? m.name : m;
+                const mDone = isObj ? m.status === 'completed' : false;
+                const mId = isObj ? m.id : 'm_' + idx;
+                return `
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:6px; background:#020617; border:1px solid #1e293b; border-radius:4px; font-size:0.8rem;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:${mDone ? '#64748b' : '#cbd5e1'}; text-decoration:${mDone ? 'line-through' : 'none'};">
+                      <input type="checkbox" ${mDone ? 'checked' : ''} onchange="toggleDocketMilestoneStatus('${p.id}', '${mId}')">
+                      <span>${escapeHTML(mName)}</span>
+                    </label>
+                    <button class="btn ghost micro" style="color:#ef4444;" onclick="deleteDocketMilestone('${p.id}', '${mId}')">×</button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (_activeProjectSubTab === 'tasks') {
+    return renderDocketListSection(data, projs, i => String(i.projectId) === String(p.id), `Tasks in ${p.name}`);
+  }
+
+  if (_activeProjectSubTab === 'board') {
+    return renderDocketBoardView(projTasks, projs);
+  }
+
+  if (_activeProjectSubTab === 'calendar') {
+    return renderDocketCalendarView(projTasks, projs);
+  }
+
+  if (_activeProjectSubTab === 'timeline') {
+    return renderDocketTimelineView(projTasks, projs);
+  }
+
+  if (_activeProjectSubTab === 'milestones') {
+    return `
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h4 style="margin:0; color:#f8fafc; font-size:1rem; font-weight:700;">🎯 Project Milestones Manager</h4>
+          <button class="btn brass micro" onclick="openDocketMilestoneModal('${p.id}')">+ Add Milestone</button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          ${milestones.length === 0 ? '<div style="color:#64748b; font-size:0.85rem;">No milestones created for this project yet.</div>' : milestones.map((m, idx) => {
+            const isObj = typeof m === 'object';
+            const mName = isObj ? m.name : m;
+            const mDesc = isObj ? (m.description || '') : '';
+            const mDate = isObj ? (m.targetDate || '') : '';
+            const mDone = isObj ? m.status === 'completed' : false;
+            const mId = isObj ? m.id : 'm_' + idx;
+
+            return `
+              <div style="background:#020617; border:1px solid #1e293b; border-radius:6px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                  <input type="checkbox" ${mDone ? 'checked' : ''} onchange="toggleDocketMilestoneStatus('${p.id}', '${mId}')" style="margin-top:3px;">
+                  <div>
+                    <h5 style="margin:0 0 4px 0; color:${mDone ? '#64748b' : '#f8fafc'}; text-decoration:${mDone ? 'line-through' : 'none'}; font-size:0.95rem;">${escapeHTML(mName)}</h5>
+                    <p style="margin:0; font-size:0.8rem; color:#94a3b8;">${escapeHTML(mDesc || 'No details specified.')}</p>
+                    ${mDate ? `<span style="font-size:0.75rem; color:#38bdf8; display:inline-block; margin-top:4px;">Target Date: ${mDate}</span>` : ''}
+                  </div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn ghost micro" onclick="openDocketMilestoneModal('${p.id}', '${mId}')">Edit</button>
+                  <button class="btn ghost micro" style="color:#ef4444;" onclick="deleteDocketMilestone('${p.id}', '${mId}')">Delete</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (_activeProjectSubTab === 'notes') {
+    return `
+      <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:16px;">
+        <h4 style="margin:0 0 12px 0; color:#f8fafc; font-size:1rem; font-weight:700;">📝 Project Notes & Work Logs</h4>
+        <textarea id="projectNotesTextarea" rows="8" style="width:100%; padding:10px; background:#020617; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-family:inherit; resize:vertical; margin-bottom:12px;" placeholder="Add project specifications, team updates, decisions, or meeting logs...">${escapeHTML(p.notes || '')}</textarea>
+        <button class="btn brass small" onclick="saveDocketProjectNotes('${p.id}')">Save Project Notes</button>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
+function openNewDocketTaskModalWithProject(projId) {
+  const projs = getDocketProjects();
+  openModalForm({
+    title: 'New Task in Project',
+    fields: [
+      { name: 'title', label: 'Task Title', type: 'text', value: '', required: true },
+      { name: 'description', label: 'Description', type: 'text', value: '' },
+      { name: 'priority', label: 'Priority', type: 'select', value: 'normal', options: ['low', 'normal', 'high', 'urgent'] },
+      { name: 'projectId', label: 'Project', type: 'select', value: projId, options: projs.map(p => p.id) },
+      { name: 'dueDate', label: 'Due Date', type: 'text', value: todayStr() }
+    ],
+    onSubmit: (vals) => {
+      if (!vals.title) return;
+      const data = getDocketData();
+      const newTask = {
+        id: 'task_' + Date.now(),
+        title: vals.title,
+        label: vals.title,
+        description: vals.description || '',
+        status: 'planned',
+        priority: vals.priority || 'normal',
+        projectId: vals.projectId || projId,
+        startDate: todayStr(),
+        dueDate: vals.dueDate || todayStr(),
+        createdAt: todayStr()
+      };
+      data.items.push(newTask);
+      saveDocketData(data);
+      renderTasks();
+    }
+  });
+}
+
+function openDocketProjectEditorModal(projId) {
+  const projs = getDocketProjects();
+  const p = projs.find(x => String(x.id) === String(projId));
+  if (!p) return;
+
+  openModalForm({
+    title: 'Edit Project Workspace',
+    fields: [
+      { name: 'name', label: 'Project Name', type: 'text', value: p.name, required: true },
+      { name: 'description', label: 'Description', type: 'text', value: p.description || '' },
+      { name: 'owner', label: 'Project Owner', type: 'text', value: p.owner || 'Self' },
+      { name: 'status', label: 'Status', type: 'select', value: p.status || 'active', options: ['active', 'planning', 'on_hold', 'completed'] },
+      { name: 'priority', label: 'Priority', type: 'select', value: p.priority || 'normal', options: ['low', 'normal', 'high', 'urgent'] },
+      { name: 'startDate', label: 'Start Date', type: 'text', value: p.startDate || todayStr() },
+      { name: 'targetDate', label: 'Target Date', type: 'text', value: p.targetDate || todayStr() },
+      { name: 'tags', label: 'Tags (comma separated)', type: 'text', value: (p.tags || []).join(', ') }
+    ],
+    onSubmit: (vals) => {
+      if (!vals.name) return;
+      p.name = vals.name;
+      p.description = vals.description || '';
+      p.owner = vals.owner || 'Self';
+      p.status = vals.status || 'active';
+      p.priority = vals.priority || 'normal';
+      p.startDate = vals.startDate || todayStr();
+      p.targetDate = vals.targetDate || todayStr();
+      p.tags = (vals.tags || '').split(',').map(s => s.trim()).filter(Boolean);
+
+      saveDocketProjects(projs);
+      renderTasks();
+    }
+  });
+}
+
+function deleteDocketProject(projId) {
+  if (projId === 'proj_default') {
+    alert('Cannot delete the default project.');
+    return;
+  }
+  const projs = getDocketProjects().filter(x => String(x.id) !== String(projId));
+  saveDocketProjects(projs);
+  if (_activeDocketProjectId === projId) {
+    _activeDocketProjectId = null;
+    currentDocketNav = 'projects';
+  }
+  renderTasks();
+}
+
+function saveDocketProjectNotes(projId) {
+  const notesText = document.getElementById('projectNotesTextarea')?.value || '';
+  const projs = getDocketProjects();
+  const p = projs.find(x => String(x.id) === String(projId));
+  if (p) {
+    p.notes = notesText;
+    saveDocketProjects(projs);
+    alert('Project notes saved successfully.');
+  }
+}
+
+function openDocketMilestoneModal(projId, milestoneId = null) {
+  const projs = getDocketProjects();
+  const p = projs.find(x => String(x.id) === String(projId));
+  if (!p) return;
+
+  p.milestones = p.milestones || [];
+  let existingM = null;
+  if (milestoneId) {
+    existingM = p.milestones.find(m => typeof m === 'object' && String(m.id) === String(milestoneId));
+  }
+
+  openModalForm({
+    title: milestoneId ? 'Edit Milestone' : 'New Milestone',
+    fields: [
+      { name: 'name', label: 'Milestone Title', type: 'text', value: existingM ? existingM.name : '', required: true },
+      { name: 'description', label: 'Description', type: 'text', value: existingM ? (existingM.description || '') : '' },
+      { name: 'targetDate', label: 'Target Date', type: 'text', value: existingM ? (existingM.targetDate || todayStr()) : todayStr() },
+      { name: 'status', label: 'Status', type: 'select', value: existingM ? existingM.status : 'pending', options: ['pending', 'completed'] }
+    ],
+    onSubmit: (vals) => {
+      if (!vals.name) return;
+      if (existingM) {
+        existingM.name = vals.name;
+        existingM.description = vals.description || '';
+        existingM.targetDate = vals.targetDate || todayStr();
+        existingM.status = vals.status;
+      } else {
+        p.milestones.push({
+          id: 'm_' + Date.now(),
+          name: vals.name,
+          description: vals.description || '',
+          targetDate: vals.targetDate || todayStr(),
+          status: vals.status || 'pending',
+          createdAt: todayStr()
+        });
+      }
+      saveDocketProjects(projs);
+      renderTasks();
+    }
+  });
+}
+
+function toggleDocketMilestoneStatus(projId, milestoneId) {
+  const projs = getDocketProjects();
+  const p = projs.find(x => String(x.id) === String(projId));
+  if (!p || !p.milestones) return;
+
+  const m = p.milestones.find(x => (typeof x === 'object' && String(x.id) === String(milestoneId)) || String(x) === String(milestoneId));
+  if (m) {
+    if (typeof m === 'object') {
+      m.status = m.status === 'completed' ? 'pending' : 'completed';
+    }
+    saveDocketProjects(projs);
+    renderTasks();
+  }
+}
+
+function deleteDocketMilestone(projId, milestoneId) {
+  const projs = getDocketProjects();
+  const p = projs.find(x => String(x.id) === String(projId));
+  if (!p || !p.milestones) return;
+
+  p.milestones = p.milestones.filter(x => (typeof x === 'object' ? String(x.id) !== String(milestoneId) : String(x) !== String(milestoneId)));
+  saveDocketProjects(projs);
+  renderTasks();
 }
 
 function renderDocketReviewView(data, projs) {
@@ -5595,6 +6022,9 @@ function rescheduleDocketTaskToToday(id) {
     item.updatedAt = todayStr();
     saveDocketData(data);
     renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
   }
 }
 
@@ -5621,6 +6051,9 @@ function unblockDocketTask(id) {
     item.updatedAt = todayStr();
     saveDocketData(data);
     renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
   }
 }
 
@@ -5695,6 +6128,9 @@ function handleDocketBoardDrop(e, targetStatus) {
     resolveDocketDependencies(data);
     saveDocketData(data);
     renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
   }
 }
 
@@ -5832,6 +6268,9 @@ function handleDocketCalDrop(e, targetDateStr) {
 
     saveDocketData(data);
     renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
   }
 }
 
@@ -5978,7 +6417,7 @@ function openNewDocketProjectModal() {
     onSubmit: (vals) => {
       if (!vals.name) return;
       const projs = getDocketProjects();
-      projs.push({
+      const newProj = {
         id: 'proj_' + Date.now(),
         name: vals.name,
         description: vals.description || '',
@@ -5988,8 +6427,12 @@ function openNewDocketProjectModal() {
         targetDate: vals.targetDate || todayStr(),
         priority: vals.priority || 'normal',
         createdAt: todayStr()
-      });
+      };
+      projs.push(newProj);
       saveDocketProjects(projs);
+      _activeDocketProjectId = newProj.id;
+      _activeProjectSubTab = 'overview';
+      currentDocketNav = 'project_workspace';
       renderTasks();
     }
   });
@@ -6208,6 +6651,9 @@ function toggleDocketTaskDone(id) {
 
     saveDocketData(data);
     renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
   }
 }
 
@@ -6421,7 +6867,10 @@ function renderDocketInspectorTabContent(item, projs, parentOptions, subtasks, s
                   <input type="checkbox" ${s.status === 'completed' ? 'checked' : ''} onchange="toggleDocketTaskDone('${s.id}')">
                   <span style="text-decoration:${s.status === 'completed' ? 'line-through' : 'none'}; color:${s.status === 'completed' ? '#64748b' : '#f8fafc'};">${escapeHTML(s.title)}</span>
                 </label>
-                <button class="btn ghost micro" onclick="openDocketTaskDetailModal('${s.id}')">Edit</button>
+                <div style="display:flex; gap:4px;">
+                  <button class="btn ghost micro" onclick="openDocketTaskDetailModal('${s.id}')">Edit</button>
+                  <button class="btn ghost micro" style="color:#ef4444;" onclick="deleteDocketSubtask('${s.id}', '${item.id}')">Delete</button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -6462,6 +6911,7 @@ function renderDocketInspectorTabContent(item, projs, parentOptions, subtasks, s
   }
 
   if (_docketInspectorActiveTab === 'resources') {
+    const atts = item.attachments || [];
     return `
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div>
@@ -6480,11 +6930,22 @@ function renderDocketInspectorTabContent(item, projs, parentOptions, subtasks, s
         </div>
 
         <div>
-          <label style="display:block; margin-bottom:4px; color:#94a3b8; font-weight:600;">Attachments (${(item.attachments || []).length})</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="color:#94a3b8; font-weight:600;">Attachments (${atts.length})</label>
+            <input type="file" id="docketAttachmentInput" style="display:none;" onchange="handleDocketAttachmentUpload('${item.id}', this)">
+            <button class="btn brass micro" onclick="document.getElementById('docketAttachmentInput').click()">+ Attach File</button>
+          </div>
           <div style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:10px;">
-            ${(item.attachments || []).length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No files attached to this task.</div>' : (item.attachments || []).map(att => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #1e293b;">
-                <span style="color:#cbd5e1;">📎 ${escapeHTML(att.name || att)}</span>
+            ${atts.length === 0 ? '<div style="color:#64748b; font-size:0.8rem;">No files attached to this task. Click "+ Attach File" above.</div>' : atts.map((att, idx) => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #1e293b; font-size:0.8rem;">
+                <div>
+                  <span style="color:#cbd5e1; font-weight:600;">📎 ${escapeHTML(att.name || 'Attachment ' + (idx + 1))}</span>
+                  <span style="font-size:0.7rem; color:#64748b; margin-left:6px;">(${escapeHTML(att.size || 'N/A')})</span>
+                </div>
+                <div style="display:flex; gap:6px;">
+                  ${att.data ? `<a href="${att.data}" download="${escapeHTML(att.name || 'file')}" class="btn ghost micro" style="text-decoration:none; color:#38bdf8;">📥 Download</a>` : ''}
+                  <button class="btn ghost micro" style="color:#ef4444;" onclick="deleteDocketAttachment('${item.id}', ${idx})">🗑️ Delete</button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -6522,6 +6983,101 @@ function renderDocketInspectorTabContent(item, projs, parentOptions, subtasks, s
   }
 
   return '';
+}
+
+
+function deleteDocketSubtask(subtaskId, parentId) {
+  const data = getDocketData();
+  data.items = data.items.filter(i => String(i.id) !== String(subtaskId));
+  updateParentTaskProgress(data, parentId);
+  saveDocketData(data);
+  openDocketTaskDetailModal(parentId, 'structure');
+}
+
+function handleDocketAttachmentUpload(taskId, inputEl) {
+  if (!inputEl.files || !inputEl.files[0]) return;
+  const file = inputEl.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = getDocketData();
+    const item = data.items.find(i => String(i.id) === String(taskId));
+    if (item) {
+      item.attachments = item.attachments || [];
+      item.attachments.push({
+        id: 'att_' + Date.now(),
+        name: file.name,
+        size: (file.size / 1024).toFixed(1) + ' KB',
+        type: file.type,
+        data: e.target.result,
+        uploadedAt: todayStr()
+      });
+      item.activity = item.activity || [];
+      item.activity.push({
+        timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+        action: 'Attached File',
+        detail: `Attached file: ${file.name}`
+      });
+      saveDocketData(data);
+      openDocketTaskDetailModal(taskId, 'resources');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function deleteDocketAttachment(taskId, attIdx) {
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(taskId));
+  if (item && item.attachments && item.attachments[attIdx]) {
+    const removedName = item.attachments[attIdx].name || 'file';
+    item.attachments.splice(attIdx, 1);
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: 'Removed Attachment',
+      detail: `Deleted file: ${removedName}`
+    });
+    saveDocketData(data);
+    openDocketTaskDetailModal(taskId, 'resources');
+  }
+}
+
+function archiveDocketTask(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(id));
+  if (item) {
+    item.status = 'archived';
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: 'Archived',
+      detail: 'Moved task to Archive'
+    });
+    saveDocketData(data);
+    renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
+  }
+}
+
+function restoreDocketTask(id) {
+  const data = getDocketData();
+  const item = data.items.find(i => String(i.id) === String(id));
+  if (item) {
+    item.status = 'planned';
+    item.done = false;
+    item.activity = item.activity || [];
+    item.activity.push({
+      timestamp: todayStr() + ' ' + new Date().toTimeString().slice(0, 5),
+      action: 'Restored',
+      detail: 'Restored task from Archive to Planned'
+    });
+    saveDocketData(data);
+    renderTasks();
+    if (document.getElementById('capsuleModalBg')?.classList.contains('show') && _docketInspectorActiveTab === 'structure') {
+      openDocketTaskDetailModal(item.parentTaskId || item.id, 'structure');
+    }
+  }
 }
 
 function addInlineSubtask(parentId) {
@@ -6621,13 +7177,31 @@ function saveTaskDetailsFromModal(id) {
     if (document.getElementById('editTaskRecurrenceInterval')) item.recurrenceInterval = parseInt(document.getElementById('editTaskRecurrenceInterval').value || 1);
     if (document.getElementById('editTaskRecurrenceEndDate')) item.recurrenceEndDate = document.getElementById('editTaskRecurrenceEndDate').value || null;
 
-    // Collect structure tab fields if present
-    if (document.getElementById('editTaskParent')) item.parentTaskId = document.getElementById('editTaskParent').value || null;
+    // Collect structure tab fields if present with guardrails
+    if (document.getElementById('editTaskParent')) {
+      const selectedParent = document.getElementById('editTaskParent').value || null;
+      if (selectedParent && String(selectedParent) !== String(item.id)) {
+        const parentObj = data.items.find(i => String(i.id) === String(selectedParent));
+        if (parentObj && String(parentObj.parentTaskId) !== String(item.id)) {
+          item.parentTaskId = selectedParent;
+        }
+      } else if (!selectedParent) {
+        item.parentTaskId = null;
+      }
+    }
 
-    // Collect dependencies if present
+    // Collect dependencies if present with circularity guardrails
     const depCheckboxes = document.querySelectorAll('.editTaskDepCheckbox:checked');
     if (depCheckboxes.length > 0 || document.querySelector('.editTaskDepCheckbox')) {
-      item.dependencies = Array.from(depCheckboxes).map(cb => String(cb.value));
+      const selectedDeps = Array.from(depCheckboxes).map(cb => String(cb.value));
+      item.dependencies = selectedDeps.filter(depId => {
+        if (depId === String(item.id)) return false;
+        const depTask = data.items.find(t => String(t.id) === String(depId));
+        if (depTask && depTask.dependencies && depTask.dependencies.includes(String(item.id))) {
+          return false; // Prevent circular dependency
+        }
+        return true;
+      });
     }
 
     // Collect context tab fields if present
@@ -6645,6 +7219,7 @@ function saveTaskDetailsFromModal(id) {
       detail: 'Updated task details via Task Inspector'
     });
 
+    resolveDocketDependencies(data);
     saveDocketData(data);
     renderTasks();
   }
@@ -6924,13 +7499,27 @@ function filterDocketTasks(q) {
   renderDocketList();
 }
 function exportTasks(){
-  const d = getTasksData();
-  download('tasks.plot', JSON.stringify({type:'plot',...d}, null, 2));
+  const d = getDocketData();
+  const projs = getDocketProjects();
+  download('workspace.plot', JSON.stringify({ type: 'plot', version: 2, items: d.items || [], projects: projs || [] }, null, 2));
 }
+
 function importTasks(){
-  pickFile('.plot', (content)=>{
-    try{ const parsed = JSON.parse(content); saveLocal('tasks', {items:parsed.items||[]}); renderTasks(); }
-    catch(e){ alert('Could not read that .plot file'); }
+  pickFile('.plot', (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed.items)) {
+        saveDocketData({ items: parsed.items });
+      } else if (Array.isArray(parsed)) {
+        saveDocketData({ items: parsed });
+      }
+      if (Array.isArray(parsed.projects)) {
+        saveDocketProjects(parsed.projects);
+      }
+      renderTasks();
+    } catch(e) {
+      alert('Could not read that .plot file');
+    }
   });
 }
 
@@ -11333,7 +11922,7 @@ function openModalForm({ title, fields, onSubmit }){
       <label style="display:block;font-size:0.8em;color:var(--text-muted);margin-bottom:4px;">${f.label}</label>`;
     if(f.type === 'select'){
       formHtml += `<select name="${f.name}" style="width:100%;">` +
-        f.options.map(o => `<option value="${o.val}" ${o.val===f.value?'selected':''}>${o.label}</option>`).join('') +
+        f.options.map(o => (typeof o === 'object' && o !== null) ? `<option value="${o.val}" ${o.val===f.value?'selected':''}>${o.label}</option>` : `<option value="${o}" ${o===f.value?'selected':''}>${o}</option>`).join('') +
         `</select>`;
     } else if(f.type === 'textarea'){
       formHtml += `<textarea name="${f.name}" style="width:100%;min-height:70px;">${f.value||''}</textarea>`;
