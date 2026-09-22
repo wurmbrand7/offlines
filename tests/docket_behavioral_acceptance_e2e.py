@@ -31,7 +31,7 @@ def run_docket_behavioral_e2e():
         time.sleep(0.3)
 
         # ----------------------------------------------------
-        # TEST 1: BOARD DRAG AND DROP
+        # TEST 1: BOARD DRAG AND DROP & STATUS ASSERTION
         # ----------------------------------------------------
         print("\n[TEST 1] Board Drag & Drop Verification...")
         # Create a task for drag-and-drop test
@@ -60,9 +60,10 @@ def run_docket_behavioral_e2e():
         page.mouse.up()
         time.sleep(0.5)
 
-        # Verify task rendered in Board view
-        assert page.locator(card_selector).is_visible(), "Task failed to render in Board view"
-        print("  ✓ Board Drag & Drop: Card rendered and drag action executed")
+        # Verify task rendered in Planned column
+        planned_col = page.locator("div:has(h4:has-text('📅 Planned'))").first
+        assert planned_col.locator(".docket-task-item:has-text('Drag Drop Test Task')").is_visible(), "Task failed to drop into Planned column"
+        print("  ✓ Board Drag & Drop: Card moved to Planned column")
 
         # Reload page and verify Board state persistence
         page.reload()
@@ -71,7 +72,7 @@ def run_docket_behavioral_e2e():
         time.sleep(0.5)
         page.click("button[onclick*='setDocketView(\\'board\\')']")
         time.sleep(0.5)
-        assert page.locator(card_selector).is_visible(), "Task did not persist in Board view after reload"
+        assert planned_col.locator(".docket-task-item:has-text('Drag Drop Test Task')").is_visible(), "Task status change did not persist in Planned column after reload"
         print("  ✓ Board Drag & Drop: Reload persistence verified")
 
         # Switch back to List view
@@ -79,7 +80,7 @@ def run_docket_behavioral_e2e():
         time.sleep(0.3)
 
         # ----------------------------------------------------
-        # TEST 2: CALENDAR INTERACTIVITY & DATE CELL CLICK
+        # TEST 2: CALENDAR INTERACTIVITY & DATE BINDING
         # ----------------------------------------------------
         print("\n[TEST 2] Calendar Interactivity & Direct Date Cell Binding...")
         # Open Calendar view
@@ -185,7 +186,7 @@ def run_docket_behavioral_e2e():
         time.sleep(0.3)
 
         # ----------------------------------------------------
-        # TEST 5: DEPENDENCIES SOLVER & TRANSITIVE CYCLE GUARD
+        # TEST 5: DEPENDENCIES SOLVER & CYCLE PREVENTION
         # ----------------------------------------------------
         print("\n[TEST 5] Dependencies Engine & Cycle Prevention...")
         # Create Task A (Prerequisite) and Task B (Dependent)
@@ -234,7 +235,7 @@ def run_docket_behavioral_e2e():
         print("  ✓ Dependency Solver: Task B automatically unblocked upon Prereq Task A completion")
 
         # ----------------------------------------------------
-        # TEST 6: RECURRENCE RULES ENGINE
+        # TEST 6: RECURRENCE RULES ENGINE & MAX ENFORCEMENT
         # ----------------------------------------------------
         print("\n[TEST 6] Recurrence Rules Engine & Max Enforcement...")
         page.click("button[onclick*='openNewDocketTaskModal']")
@@ -257,9 +258,9 @@ def run_docket_behavioral_e2e():
         print("  ✓ Recurrence Rules: Daily recurring next instance generated successfully")
 
         # ----------------------------------------------------
-        # TEST 7: PROJECT WORKSPACE & MILESTONES
+        # TEST 7: PROJECT WORKSPACE & TASK-LINKED MILESTONES
         # ----------------------------------------------------
-        print("\n[TEST 7] Project Workspace & Milestones Management...")
+        print("\n[TEST 7] Project Workspace & Task-Linked Milestones...")
         page.click(".docket-nav-btn:has-text('📂 Projects')")
         time.sleep(0.5)
 
@@ -333,7 +334,21 @@ def run_docket_behavioral_e2e():
         page.click(".docket-nav-btn:has-text('📦 Archive')")
         time.sleep(0.3)
         assert page.locator(".docket-task-item:has-text('Archivable Task Item')").is_visible(), "Archived task missing from Archive view"
-        print("  ✓ Archive Workflow: Task moved to Archive view")
+
+        # Restore Task from Archive
+        page.click(".docket-task-item:has-text('Archivable Task Item')")
+        time.sleep(0.5)
+        page.click("button:has-text('Planning')")
+        time.sleep(0.3)
+        page.select_option("#editTaskStatus", "planned")
+        page.click("button[onclick*='saveTaskDetailsFromModal']")
+        time.sleep(0.5)
+
+        # Verify restored to Planned
+        page.click(".docket-nav-btn:has-text('📥 Inbox')")
+        time.sleep(0.3)
+        assert page.locator(".docket-task-item:has-text('Archivable Task Item')").is_visible(), "Task failed to restore from Archive"
+        print("  ✓ Archive & Restore: Task archived and successfully restored back to active view")
 
         # ----------------------------------------------------
         # TEST 10: IMPORT / EXPORT PACKAGE ROUND-TRIP

@@ -5736,17 +5736,28 @@ function renderDocketProjectWorkspaceSubTab(p, projTasks, data, projs) {
             const mDone = isObj ? m.status === 'completed' : false;
             const mId = isObj ? m.id : 'm_' + idx;
 
+            const mTaskIds = isObj && Array.isArray(m.taskIds) ? m.taskIds : [];
+            const linkedTasks = projTasks.filter(t => mTaskIds.includes(String(t.id)));
+            const completedLinked = linkedTasks.filter(t => t.status === 'completed').length;
+            const mPct = linkedTasks.length > 0 ? Math.round((completedLinked / linkedTasks.length) * 100) : (mDone ? 100 : 0);
+
             return `
               <div style="background:#020617; border:1px solid #1e293b; border-radius:6px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
-                <div style="display:flex; align-items:flex-start; gap:10px;">
+                <div style="display:flex; align-items:flex-start; gap:10px; flex:1;">
                   <input type="checkbox" ${mDone ? 'checked' : ''} onchange="toggleDocketMilestoneStatus('${p.id}', '${mId}')" style="margin-top:3px;">
-                  <div>
-                    <h5 style="margin:0 0 4px 0; color:${mDone ? '#64748b' : '#f8fafc'}; text-decoration:${mDone ? 'line-through' : 'none'}; font-size:0.95rem;">${escapeHTML(mName)}</h5>
-                    <p style="margin:0; font-size:0.8rem; color:#94a3b8;">${escapeHTML(mDesc || 'No details specified.')}</p>
-                    ${mDate ? `<span style="font-size:0.75rem; color:#38bdf8; display:inline-block; margin-top:4px;">Target Date: ${mDate}</span>` : ''}
+                  <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                      <h5 style="margin:0; color:${mDone ? '#64748b' : '#f8fafc'}; text-decoration:${mDone ? 'line-through' : 'none'}; font-size:0.95rem;">${escapeHTML(mName)}</h5>
+                      <span style="font-size:0.75rem; color:#38bdf8; font-weight:700;">${mPct}% Complete (${completedLinked}/${linkedTasks.length} Tasks)</span>
+                    </div>
+                    <p style="margin:0 0 6px 0; font-size:0.8rem; color:#94a3b8;">${escapeHTML(mDesc || 'No details specified.')}</p>
+                    <div style="width:100%; height:4px; background:#1e293b; border-radius:2px; overflow:hidden; margin-bottom:6px;">
+                      <div style="width:${mPct}%; height:100%; background:#38bdf8;"></div>
+                    </div>
+                    ${mDate ? `<span style="font-size:0.75rem; color:#64748b; display:inline-block;">Target Date: ${mDate}</span>` : ''}
                   </div>
                 </div>
-                <div style="display:flex; gap:6px;">
+                <div style="display:flex; gap:6px; margin-left:12px;">
                   <button class="btn ghost micro" onclick="openDocketMilestoneModal('${p.id}', '${mId}')">Edit</button>
                   <button class="btn ghost micro" style="color:#ef4444;" onclick="deleteDocketMilestone('${p.id}', '${mId}')">Delete</button>
                 </div>
@@ -5874,6 +5885,17 @@ function openDocketMilestoneModal(projId, milestoneId = null) {
     existingM = p.milestones.find(m => typeof m === 'object' && String(m.id) === String(milestoneId));
   }
 
+  const data = getDocketData();
+  const projTasks = data.items.filter(i => String(i.projectId) === String(projId));
+  const linkedTaskIds = existingM && Array.isArray(existingM.taskIds) ? existingM.taskIds : [];
+
+  const taskCheckboxes = projTasks.map(t => `
+    <label style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:#cbd5e1; cursor:pointer;">
+      <input type="checkbox" class="milestoneTaskCheckbox" value="${t.id}" ${linkedTaskIds.includes(String(t.id)) ? 'checked' : ''}>
+      <span>${escapeHTML(t.title)} (${t.status})</span>
+    </label>
+  `).join('');
+
   openModalForm({
     title: milestoneId ? 'Edit Milestone' : 'New Milestone',
     fields: [
@@ -5884,11 +5906,15 @@ function openDocketMilestoneModal(projId, milestoneId = null) {
     ],
     onSubmit: (vals) => {
       if (!vals.name) return;
+      const checkedTaskBoxes = document.querySelectorAll('.milestoneTaskCheckbox:checked');
+      const selectedTaskIds = Array.from(checkedTaskBoxes).map(cb => String(cb.value));
+
       if (existingM) {
         existingM.name = vals.name;
         existingM.description = vals.description || '';
         existingM.targetDate = vals.targetDate || todayStr();
         existingM.status = vals.status;
+        existingM.taskIds = selectedTaskIds;
       } else {
         p.milestones.push({
           id: 'm_' + Date.now(),
@@ -5896,6 +5922,7 @@ function openDocketMilestoneModal(projId, milestoneId = null) {
           description: vals.description || '',
           targetDate: vals.targetDate || todayStr(),
           status: vals.status || 'pending',
+          taskIds: selectedTaskIds,
           createdAt: todayStr()
         });
       }
@@ -5903,6 +5930,19 @@ function openDocketMilestoneModal(projId, milestoneId = null) {
       renderTasks();
     }
   });
+
+  const modalForm = document.getElementById('genericModalForm');
+  if (modalForm && projTasks.length > 0) {
+    const taskContainer = document.createElement('div');
+    taskContainer.style.marginTop = '10px';
+    taskContainer.innerHTML = `
+      <label style="display:block; font-size:0.8em; color:var(--text-muted); margin-bottom:4px;">Linked Project Tasks</label>
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:4px; padding:8px; max-height:110px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
+        ${taskCheckboxes}
+      </div>
+    `;
+    modalForm.insertBefore(taskContainer, modalForm.lastElementChild);
+  }
 }
 
 function toggleDocketMilestoneStatus(projId, milestoneId) {
@@ -7153,6 +7193,28 @@ function addInlineSubtask(parentId) {
   data.items.push(newSubtask);
   saveDocketData(data);
   openDocketTaskDetailModal(parentId, 'structure');
+}
+
+
+function openSpotNoteDetailModal(id) {
+  if (typeof _spotActiveNoteId !== 'undefined') _spotActiveNoteId = id;
+  switchTab('spot');
+  if (typeof renderSpotContent === 'function') renderSpotContent();
+}
+
+function loadFolioDocument(id) {
+  switchTab('folio');
+  if (typeof openFolioDoc === 'function') openFolioDoc(id);
+}
+
+function openGridWorkbook(id) {
+  switchTab('grid');
+  if (typeof loadGridWorkbook === 'function') loadGridWorkbook(id);
+}
+
+function openGlidesDeck(id) {
+  switchTab('glides');
+  if (typeof loadGlidesDeck === 'function') loadGlidesDeck(id);
 }
 
 function navigateToDocketSourceApp(app, recordId) {
