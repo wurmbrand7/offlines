@@ -9576,45 +9576,343 @@ function importLockbox(){
 }
 
 /* ================= FORMULA (.formu) ================= */
+
+function evaluateFormulaEngine(rawInput, vars = {}, visited = new Set()) {
+  if (rawInput === null || rawInput === undefined || String(rawInput).trim() === '') {
+    return { value: 0, display: '0', type: 'number' };
+  }
+  let expr = String(rawInput).trim();
+  if (expr.startsWith('=')) expr = expr.slice(1).trim();
+
+  // 1. Percentage 'of' syntax e.g. "15% of 850" -> "(15/100 * 850)"
+  expr = expr.replace(/([\d.]+)\s*%\s*of\s*([\d.]+|\b[A-Za-z_][A-Za-z0-9_]*\b)/gi, '($1/100 * $2)');
+
+  // 2. Percentage addition/subtraction e.g. "1250 + 18%" -> "1250 * (1 + 18/100)"
+  expr = expr.replace(/([\d.]+|\b[A-Za-z_][A-Za-z0-9_]*\b)\s*([\+\-])\s*([\d.]+)\s*%/gi, (m, base, op, pct) => {
+    const factor = op === '+' ? `(1 + ${pct}/100)` : `(1 - ${pct}/100)`;
+    return `${base} * ${factor}`;
+  });
+
+  // 3. Trailing percentage e.g. "30%" -> "(30/100)"
+  expr = expr.replace(/([\d.]+)\s*%/g, '($1/100)');
+
+  // 4. Variable substitution from vars map
+  if (vars && typeof vars === 'object') {
+    const sortedVarNames = Object.keys(vars).sort((a, b) => b.length - a.length);
+    for (const vName of sortedVarNames) {
+      const varRegex = new RegExp(`\\b${vName}\\b`, 'g');
+      if (varRegex.test(expr)) {
+        if (visited.has(vName)) {
+          return { value: '#CIRCULAR!', display: '#CIRCULAR!', type: 'error', error: 'Circular dependency detected' };
+        }
+        let rawVal = vars[vName];
+        if (typeof rawVal === 'string' && (rawVal.startsWith('=') || isNaN(Number(rawVal)))) {
+          const nextVisited = new Set(visited);
+          nextVisited.add(vName);
+          const evalRes = evaluateFormulaEngine(rawVal, vars, nextVisited);
+          if (evalRes.type === 'error') return evalRes;
+          rawVal = evalRes.value;
+        }
+        const numericVal = Number(rawVal);
+        const replacement = (!isNaN(numericVal) && rawVal !== '') ? numericVal : JSON.stringify(String(rawVal));
+        expr = expr.replace(varRegex, replacement);
+      }
+    }
+  }
+
+  // 5. Replace single '=' with '==' for equality comparisons when not part of <=, >=, !=, ==
+  expr = expr.replace(/(?<![<>=!])=(?![=])/g, '==');
+
+  // 6. Replace '^' with '**' for power
+  expr = expr.replace(/\^/g, '**');
+
+  // Helper functions
+  const flatten = (...args) => args.flatMap(a => Array.isArray(a) ? a.flat(Infinity) : [a]);
+  const SUM = (...args) => flatten(...args).reduce((a, b) => a + (Number(b) || 0), 0);
+  const AVG = (...args) => { const a = flatten(...args); return a.length ? SUM(...a) / a.length : 0; };
+  const AVERAGE = AVG;
+  const MIN = (...args) => Math.min(...flatten(...args).map(Number));
+  const MAX = (...args) => Math.max(...flatten(...args).map(Number));
+  const COUNT = (...args) => flatten(...args).filter(x => typeof x === 'number' && !isNaN(x)).length;
+  const ROUND = (val, dec = 0) => Number(Math.round(val + 'e' + dec) + 'e-' + dec);
+  const ROUNDUP = (val, dec = 0) => Number(Math.ceil(val + 'e' + dec) + 'e-' + dec);
+  const ROUNDDOWN = (val, dec = 0) => Number(Math.floor(val + 'e' + dec) + 'e-' + dec);
+  const ABS = val => Math.abs(val);
+  const SQRT = val => val < 0 ? '#NUM!' : Math.sqrt(val);
+  const POWER = (b, e) => Math.pow(b, e);
+  const MOD = (n, d) => d === 0 ? '#DIV/0!' : n % d;
+  const PRODUCT = (...args) => flatten(...args).reduce((a, b) => a * (Number(b) || 0), 1);
+  const IF = (cond, t, f) => (cond ? t : f);
+  const IFERROR = (val, errVal) => (typeof val === 'string' && val.startsWith('#') ? errVal : val);
+  const AND = (...args) => args.every(Boolean);
+  const OR = (...args) => args.some(Boolean);
+  const NOT = val => !val;
+  const TODAY = () => new Date().toISOString().slice(0, 10);
+  const DAYS = (d1, d2) => {
+    const t1 = new Date(d1).getTime(), t2 = new Date(d2).getTime();
+    return isNaN(t1) || isNaN(t2) ? '#VALUE!' : Math.round(Math.abs(t2 - t1) / (1000 * 3600 * 24));
+  };
+  const DATEDIFF = DAYS;
+  const DATEADD = (d, days) => {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '#VALUE!';
+    dt.setDate(dt.getDate() + Number(days));
+    return dt.toISOString().slice(0, 10);
+  };
+  const UPPER = str => String(str).toUpperCase();
+  const LOWER = str => String(str).toLowerCase();
+  const LEN = str => String(str).length;
+  const TRIM = str => String(str).trim();
+  const sin = x => Math.sin(x);
+  const cos = x => Math.cos(x);
+  const tan = x => Math.tan(x);
+  const sqrt = x => Math.sqrt(x);
+  const log = x => Math.log10(x);
+  const ln = x => Math.log(x);
+  const pi = Math.PI;
+  const e = Math.E;
+
+  // Security sanitization check
+  if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process|this)\b/i.test(expr) || /[;\{\}\\\`]|--|\/\*/.test(expr)) {
+    return { value: '#SECURITY_ERROR!', display: '#SECURITY_ERROR!', type: 'error' };
+  }
+
+  try {
+    const fn = new Function(
+      'SUM','AVG','AVERAGE','MIN','MAX','COUNT','ROUND','ROUNDUP','ROUNDDOWN','ABS','SQRT','POWER','MOD','PRODUCT','IF','IFERROR','AND','OR','NOT','TODAY','DAYS','DATEDIFF','DATEADD','UPPER','LOWER','LEN','TRIM','sin','cos','tan','sqrt','log','ln','pi','e',
+      'return (' + expr + ');'
+    );
+    let calc = fn(
+      SUM, AVG, AVERAGE, MIN, MAX, COUNT, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, PRODUCT, IF, IFERROR, AND, OR, NOT, TODAY, DAYS, DATEDIFF, DATEADD, UPPER, LOWER, LEN, TRIM, sin, cos, tan, sqrt, log, ln, pi, e
+    );
+
+    if (calc === Infinity || calc === -Infinity) return { value: '#DIV/0!', display: '#DIV/0!', type: 'error' };
+    if (typeof calc === 'number' && isNaN(calc)) return { value: '#VALUE!', display: '#VALUE!', type: 'error' };
+
+    if (typeof calc === 'boolean') {
+      return { value: calc ? 1 : 0, display: calc ? 'TRUE' : 'FALSE', type: 'boolean' };
+    }
+
+    const disp = typeof calc === 'number' ? (Number.isInteger(calc) ? calc.toString() : parseFloat(calc.toFixed(8)).toString()) : String(calc);
+    return { value: calc, display: disp, type: typeof calc };
+  } catch (err) {
+    return { value: '#ERROR!', display: '#ERROR!', type: 'error', error: err.message };
+  }
+}
+
+let _formulaActiveTab = 'calculator';
+let _formulaCalcInput = '';
+let _formulaCalcDisplayVal = '0';
+let _formulaCalcMemory = 0;
+
+function setFormulaTab(tab) {
+  _formulaActiveTab = tab;
+  renderFormula();
+}
+
 function renderFormula(){
   const p = document.getElementById('panel-formula');
   if(!p) return;
+
   p.innerHTML = `
-    <h2>Formula</h2>
-    <div class="sub">.formu — Local scientific calculator, expression evaluator &amp; unit converter</div>
-    <div class="toolbar">
-      <button class="btn ghost small" onclick="clearFormulaHistory()">Clear History</button>
-      <button class="btn ghost small" onclick="exportFormulaHistory()">Export .formu</button>
-      <button class="btn ghost small" onclick="importFormulaHistory()">Import .formu</button>
-    </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
       <div>
-        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Expression / Math Input</label>
-        <div style="display:flex; gap:6px; margin-bottom:8px;">
-          <input type="text" id="formulaInput" placeholder="e.g. 25 * 4 + sin(3.14159/2) or 100 kg to lbs" style="flex:1;" onkeydown="if(event.key==='Enter') evaluateFormulaExpr()">
-          <button class="btn sage small" onclick="evaluateFormulaExpr()">Calc</button>
+        <h2 style="margin:0; font-size:1.4rem;">Formula</h2>
+        <div class="sub" style="margin-top:2px; color:var(--text-muted,#94a3b8);">.formu — Professional calculation studio, model engine &amp; unit workspace</div>
+      </div>
+      <div class="toolbar" style="margin:0;">
+        <button class="btn ghost small" onclick="clearFormulaHistory()">Clear History</button>
+        <button class="btn ghost small" onclick="exportFormulaHistory()">Export .formu</button>
+        <button class="btn ghost small" onclick="importFormulaHistory()">Import .formu</button>
+      </div>
+    </div>
+
+    <!-- SUBNAV TABS -->
+    <div class="formula-subnav">
+      <button class="formula-nav-btn ${_formulaActiveTab==='calculator'?'active':''}" onclick="setFormulaTab('calculator')">🧮 Workspace Pad</button>
+      <button class="formula-nav-btn ${_formulaActiveTab==='calculations'?'active':''}" onclick="setFormulaTab('calculations')">📚 Preset Library</button>
+      <button class="formula-nav-btn ${_formulaActiveTab==='models'?'active':''}" onclick="setFormulaTab('models')">📈 Model Engine</button>
+      <button class="formula-nav-btn ${_formulaActiveTab==='converters'?'active':''}" onclick="setFormulaTab('converters')">🔄 Unit Converters</button>
+      <button class="formula-nav-btn ${_formulaActiveTab==='history'?'active':''}" onclick="setFormulaTab('history')">📜 History</button>
+    </div>
+
+    <!-- TAB CONTENT CONTAINER -->
+    <div id="formulaTabContent"></div>
+  `;
+
+  const container = document.getElementById('formulaTabContent');
+  if (!container) return;
+
+  if (_formulaActiveTab === 'calculator') {
+    renderFormulaCalculatorTab(container);
+  } else if (_formulaActiveTab === 'calculations') {
+    renderFormulaLibraryTab(container);
+  } else if (_formulaActiveTab === 'models') {
+    renderFormulaModelsTab(container);
+  } else if (_formulaActiveTab === 'converters') {
+    renderFormulaConvertersTab(container);
+  } else if (_formulaActiveTab === 'history') {
+    renderFormulaHistoryTab(container);
+  }
+}
+
+function renderFormulaCalculatorTab(container) {
+  container.innerHTML = `
+    <div style="display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start;">
+      <!-- CALCULATOR KEYPAD & DISPLAY AREA -->
+      <div>
+        <!-- DISPLAY SCREEN -->
+        <div class="formula-calc-display">
+          <div class="formula-calc-expr" id="formulaCalcExpr">${_formulaCalcInput || '&nbsp;'}</div>
+          <div class="formula-calc-val" id="formulaCalcVal">${_formulaCalcDisplayVal}</div>
+          <div style="font-size:0.75rem; color:#64748b; margin-top:4px; display:flex; justify-content:space-between;">
+            <span>Memory: <b id="formulaMemIndicator">${_formulaCalcMemory}</b></span>
+            <span>Keyboard Active</span>
+          </div>
         </div>
-        <div id="formulaResultDisplay" style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:12px; min-height:48px; font-family:monospace; font-size:1.2em; font-weight:bold; color:#f8fafc;">
-          Result will appear here...
+
+        <!-- DIRECT EXPRESSION INPUT -->
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <input type="text" id="formulaInput" value="${_formulaCalcInput}" placeholder="Enter expression e.g. 125 * 18.5 + 250 or 100 kg to lbs" style="flex:1;" oninput="_formulaCalcInput=this.value; document.getElementById('formulaCalcExpr').textContent=this.value||' ';" onkeydown="if(event.key==='Enter') evaluateFormulaExpr()">
+          <button class="btn sage" onclick="evaluateFormulaExpr()">Calc / Calculate</button>
+          <div id="formulaResultDisplay" style="display:none;"></div>
         </div>
-        <div style="margin-top:12px; display:grid; grid-template-columns: repeat(4, 1fr); gap:6px;">
-          <button class="btn ghost small" onclick="appendFormulaToken('sin(')">sin</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('cos(')">cos</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('tan(')">tan</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('sqrt(')">sqrt</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('log(')">log</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('pi')">π</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('^')">^</button>
-          <button class="btn ghost small" onclick="appendFormulaToken('deg2rad(')">deg2rad</button>
+
+        <!-- KEYPAD GRID -->
+        <div class="formula-keypad-grid">
+          <!-- Row 1: Memory & Percent -->
+          <button class="formula-key-btn mem" onclick="handleFormulaKeypadInput('MC')">MC</button>
+          <button class="formula-key-btn mem" onclick="handleFormulaKeypadInput('MR')">MR</button>
+          <button class="formula-key-btn mem" onclick="handleFormulaKeypadInput('M+')">M+</button>
+          <button class="formula-key-btn mem" onclick="handleFormulaKeypadInput('M-')">M-</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('%')">%</button>
+
+          <!-- Row 2: Clear & Parens -->
+          <button class="formula-key-btn action" onclick="handleFormulaKeypadInput('CE')">CE</button>
+          <button class="formula-key-btn action" onclick="handleFormulaKeypadInput('C')">C</button>
+          <button class="formula-key-btn action" onclick="handleFormulaKeypadInput('⌫')">⌫</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('(')">(</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput(')')">)</button>
+
+          <!-- Row 3: 7 8 9 ÷ ^ -->
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('7')">7</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('8')">8</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('9')">9</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('/')">÷</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('^')">^</button>
+
+          <!-- Row 4: 4 5 6 * √ -->
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('4')">4</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('5')">5</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('6')">6</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('*')">×</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('sqrt(')">√</button>
+
+          <!-- Row 5: 1 2 3 - x² -->
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('1')">1</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('2')">2</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('3')">3</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('-')">−</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('^2')">x²</button>
+
+          <!-- Row 6: 0 . ± + = -->
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('0')">0</button>
+          <button class="formula-key-btn" onclick="handleFormulaKeypadInput('.')">.</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('±')">±</button>
+          <button class="formula-key-btn op" onclick="handleFormulaKeypadInput('+')">+</button>
+          <button class="formula-key-btn eq" onclick="handleFormulaKeypadInput('=')">=</button>
         </div>
       </div>
+
+      <!-- SIDEBAR HISTORY & QUICK TOKENS -->
       <div>
-        <label style="display:block; font-size:0.85em; font-weight:600; margin-bottom:4px;">Calculation History</label>
-        <div id="formulaHistoryList" style="max-height:280px; overflow-y:auto; background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:6px; padding:8px;"></div>
+        <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:12px; margin-bottom:12px;">
+          <div style="font-weight:600; font-size:0.9rem; margin-bottom:8px; color:#f8fafc;">Quick Scientific Functions</div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
+            <button class="btn ghost small" onclick="appendFormulaToken('sin(')">sin</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('cos(')">cos</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('tan(')">tan</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('log(')">log</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('ln(')">ln</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('pi')">π</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('ROUND(')">ROUND</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('ABS(')">ABS</button>
+            <button class="btn ghost small" onclick="appendFormulaToken('IF(')">IF</button>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-weight:600; font-size:0.9rem; color:#f8fafc;">Calculation Log</span>
+            <button class="btn ghost small" style="padding:2px 6px; font-size:0.75rem;" onclick="clearFormulaHistory()">Clear</button>
+          </div>
+          <div id="formulaHistoryList" style="max-height:260px; overflow-y:auto;"></div>
+        </div>
       </div>
     </div>
   `;
   renderFormulaHistory();
+}
+
+function handleFormulaKeypadInput(key) {
+  const inp = document.getElementById('formulaInput');
+  const exprEl = document.getElementById('formulaCalcExpr');
+  const valEl = document.getElementById('formulaCalcVal');
+  const memEl = document.getElementById('formulaMemIndicator');
+
+  if (key === 'MC') {
+    _formulaCalcMemory = 0;
+    if (memEl) memEl.textContent = '0';
+    return;
+  }
+  if (key === 'MR') {
+    _formulaCalcInput += String(_formulaCalcMemory);
+  } else if (key === 'M+') {
+    const res = evaluateFormulaEngine(_formulaCalcInput);
+    if (typeof res.value === 'number') _formulaCalcMemory += res.value;
+    if (memEl) memEl.textContent = String(_formulaCalcMemory);
+    return;
+  } else if (key === 'M-') {
+    const res = evaluateFormulaEngine(_formulaCalcInput);
+    if (typeof res.value === 'number') _formulaCalcMemory -= res.value;
+    if (memEl) memEl.textContent = String(_formulaCalcMemory);
+    return;
+  } else if (key === 'CE') {
+    _formulaCalcInput = '';
+    _formulaCalcDisplayVal = '0';
+  } else if (key === 'C') {
+    _formulaCalcInput = '';
+    _formulaCalcDisplayVal = '0';
+    _formulaCalcMemory = 0;
+    if (memEl) memEl.textContent = '0';
+  } else if (key === '⌫') {
+    _formulaCalcInput = _formulaCalcInput.slice(0, -1);
+  } else if (key === '±') {
+    if (_formulaCalcInput.startsWith('-')) {
+      _formulaCalcInput = _formulaCalcInput.slice(1);
+    } else {
+      _formulaCalcInput = '-' + _formulaCalcInput;
+    }
+  } else if (key === '=') {
+    if (!_formulaCalcInput.trim()) return;
+    const res = evaluateFormulaEngine(_formulaCalcInput);
+    _formulaCalcDisplayVal = res.display;
+
+    // Log calculation history
+    if (res.type !== 'error') {
+      const data = loadLocal('formula', {history:[]});
+      data.history.unshift({ id: Date.now(), expr: _formulaCalcInput, result: res.display, ts: new Date().toLocaleTimeString() });
+      if (data.history.length > 50) data.history.pop();
+      saveLocal('formula', data);
+      renderFormulaHistory();
+    }
+  } else {
+    _formulaCalcInput += key;
+  }
+
+  if (inp) inp.value = _formulaCalcInput;
+  if (exprEl) exprEl.textContent = _formulaCalcInput || ' ';
+  if (valEl) valEl.textContent = _formulaCalcDisplayVal;
 }
 
 function appendFormulaToken(tok){
@@ -9627,43 +9925,30 @@ function appendFormulaToken(tok){
 function evaluateFormulaExpr(){
   const inp = document.getElementById('formulaInput');
   const resEl = document.getElementById('formulaResultDisplay');
-  if(!inp || !resEl) return;
+  const valEl = document.getElementById('formulaCalcVal');
+  if(!inp) return;
   const raw = inp.value.trim();
   if(!raw) return;
 
+  _formulaCalcInput = raw;
   let resultVal = '';
-  try {
-    const convMatch = raw.match(/^([\d.]+)\s*([a-zA-Z]+)\s+to\s+([a-zA-Z]+)$/i);
-    if(convMatch){
-      const val = parseFloat(convMatch[1]);
-      const u1 = convMatch[2].toLowerCase();
-      const u2 = convMatch[3].toLowerCase();
-      resultVal = convertFormulaUnits(val, u1, u2);
-    } else {
-      let expr = raw.replace(/pi/gi, 'Math.PI')
-                    .replace(/e/gi, 'Math.E')
-                    .replace(/sin\(/gi, 'Math.sin(')
-                    .replace(/cos\(/gi, 'Math.cos(')
-                    .replace(/tan\(/gi, 'Math.tan(')
-                    .replace(/sqrt\(/gi, 'Math.sqrt(')
-                    .replace(/log\(/gi, 'Math.log10(')
-                    .replace(/ln\(/gi, 'Math.log(')
-                    .replace(/deg2rad\(([^)]+)\)/gi, '(($1)*Math.PI/180)')
-                    .replace(/\^/g, '**');
-      if (/\b(window|document|eval|Function|fetch|XMLHttpRequest|localStorage|sessionStorage|IndexedDB|cookie|constructor|prototype|__proto__|globalThis|import|process)\b/i.test(expr) || /[;=\{\}\\\`]|--|\/\*/.test(expr)) {
-        resEl.textContent = 'Error: Security Constraint';
-        return;
-      }
-      const calc = Function('"use strict"; return (' + expr + ')')();
-      resultVal = (typeof calc === 'number') ? (Number.isInteger(calc) ? calc.toString() : calc.toFixed(6).replace(/\.?0+$/, '')) : String(calc);
-    }
-  } catch(e) {
-    resultVal = 'Error: Invalid Expression';
+
+  const convMatch = raw.match(/^([\d.]+)\s*([a-zA-Z]+)\s+to\s+([a-zA-Z]+)$/i);
+  if(convMatch){
+    const val = parseFloat(convMatch[1]);
+    const u1 = convMatch[2].toLowerCase();
+    const u2 = convMatch[3].toLowerCase();
+    resultVal = convertFormulaUnits(val, u1, u2);
+  } else {
+    const res = evaluateFormulaEngine(raw);
+    resultVal = res.display;
   }
 
-  resEl.textContent = resultVal;
+  _formulaCalcDisplayVal = resultVal;
+  if(resEl) resEl.textContent = resultVal;
+  if(valEl) valEl.textContent = resultVal;
 
-  if(!resultVal.startsWith('Error')){
+  if(!resultVal.startsWith('#ERROR') && !resultVal.startsWith('Error')){
     const data = loadLocal('formula', {history:[]});
     data.history.unshift({ id:Date.now(), expr:raw, result:resultVal, ts:new Date().toLocaleTimeString() });
     if(data.history.length > 50) data.history.pop();
@@ -9672,54 +9957,830 @@ function evaluateFormulaExpr(){
   }
 }
 
-function convertFormulaUnits(val, u1, u2){
-  const ratesInMeters = { m:1, km:1000, cm:0.01, mm:0.001, ft:0.3048, in:0.0254, mi:1609.34 };
-  const ratesInKg = { kg:1, g:0.001, mg:0.000001, lbs:0.453592, oz:0.0283495 };
-  if(ratesInMeters[u1] && ratesInMeters[u2]){
-    const meters = val * ratesInMeters[u1];
-    const res = meters / ratesInMeters[u2];
-    return res.toFixed(4) + ' ' + u2;
+let _formulaLibraryCategory = 'finance';
+let _formulaConverterCategory = 'length';
+
+function setFormulaLibCategory(cat) {
+  _formulaLibraryCategory = cat;
+  const container = document.getElementById('formulaTabContent');
+  if (container) renderFormulaLibraryTab(container);
+}
+
+function setFormulaConvCategory(cat) {
+  _formulaConverterCategory = cat;
+  const container = document.getElementById('formulaTabContent');
+  if (container) renderFormulaConvertersTab(container);
+}
+
+function renderFormulaLibraryTab(container) {
+  container.innerHTML = `
+    <div>
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <button class="btn ${_formulaLibraryCategory==='finance'?'sage':'ghost'} small" onclick="setFormulaLibCategory('finance')">💰 Finance</button>
+        <button class="btn ${_formulaLibraryCategory==='business'?'sage':'ghost'} small" onclick="setFormulaLibCategory('business')">📊 Business</button>
+        <button class="btn ${_formulaLibraryCategory==='everyday'?'sage':'ghost'} small" onclick="setFormulaLibCategory('everyday')">📅 Everyday</button>
+        <button class="btn ${_formulaLibraryCategory==='geometry'?'sage':'ghost'} small" onclick="setFormulaLibCategory('geometry')">📐 Geometry</button>
+        <button class="btn ${_formulaLibraryCategory==='physics'?'sage':'ghost'} small" onclick="setFormulaLibCategory('physics')">⚡ Physics</button>
+        <button class="btn ${_formulaLibraryCategory==='electrical'?'sage':'ghost'} small" onclick="setFormulaLibCategory('electrical')">🔌 Electrical</button>
+      </div>
+
+      <div id="formulaLibCardsGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:16px;"></div>
+    </div>
+  `;
+
+  const grid = document.getElementById('formulaLibCardsGrid');
+  if (!grid) return;
+
+  if (_formulaLibraryCategory === 'finance') {
+    grid.innerHTML = `
+      <!-- REVENUE & PROFIT -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Revenue & Profitability</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="finRevUnits" placeholder="Units Sold (e.g. 1000)" style="width:100%;">
+          <input type="number" id="finRevPrice" placeholder="Price Per Unit (e.g. 25)" style="width:100%;">
+          <input type="number" id="finRevCOGS" placeholder="COGS (e.g. 7500)" style="width:100%;">
+          <button class="btn sage small" onclick="calcFinRevenue()">Calculate Profitability</button>
+          <div id="finRevRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- LOAN PAYMENT (PMT) -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Loan Monthly Payment (PMT)</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="finLoanP" placeholder="Principal Amount ($)" style="width:100%;">
+          <input type="number" id="finLoanR" placeholder="Annual Interest Rate (%)" style="width:100%;">
+          <input type="number" id="finLoanY" placeholder="Tenure (Years)" style="width:100%;">
+          <button class="btn sage small" onclick="calcFinLoan()">Calculate Payment</button>
+          <div id="finLoanRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- COMPOUND INTEREST -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Compound Interest</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="finCompP" placeholder="Initial Principal ($)" style="width:100%;">
+          <input type="number" id="finCompR" placeholder="Annual Rate (%)" style="width:100%;">
+          <input type="number" id="finCompT" placeholder="Time (Years)" style="width:100%;">
+          <button class="btn sage small" onclick="calcFinCompound()">Calculate Future Value</button>
+          <div id="finCompRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- ROI & ROAS -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">ROI &amp; ROAS</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="finRoiGain" placeholder="Net Gain ($)" style="width:100%;">
+          <input type="number" id="finRoiCost" placeholder="Investment Cost ($)" style="width:100%;">
+          <button class="btn sage small" onclick="calcFinROI()">Calculate ROI / ROAS</button>
+          <div id="finRoiRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- BREAK-EVEN POINT -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Break-Even Point</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="finBeFixed" placeholder="Fixed Costs ($)" style="width:100%;">
+          <input type="number" id="finBePrice" placeholder="Price Per Unit ($)" style="width:100%;">
+          <input type="number" id="finBeVar" placeholder="Variable Cost Per Unit ($)" style="width:100%;">
+          <button class="btn sage small" onclick="calcFinBreakEven()">Calculate Units Needed</button>
+          <div id="finBeRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+    `;
+  } else if (_formulaLibraryCategory === 'business') {
+    grid.innerHTML = `
+      <!-- PERCENTAGE GROWTH -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Percentage Growth / Change</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="bizGrowStart" placeholder="Starting Value" style="width:100%;">
+          <input type="number" id="bizGrowEnd" placeholder="Ending Value" style="width:100%;">
+          <button class="btn sage small" onclick="calcBizGrowth()">Calculate Growth Rate</button>
+          <div id="bizGrowRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- CONVERSION & CHURN -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Conversion &amp; Churn Rate</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="bizConvTotal" placeholder="Total Visitors / Customers" style="width:100%;">
+          <input type="number" id="bizConvCount" placeholder="Conversions / Lost Customers" style="width:100%;">
+          <button class="btn sage small" onclick="calcBizConversion()">Calculate Rates</button>
+          <div id="bizConvRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- UNIT COST & MARGIN -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Cost Per Unit &amp; Contribution Margin</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="bizCostRev" placeholder="Total Revenue ($)" style="width:100%;">
+          <input type="number" id="bizCostVar" placeholder="Variable Costs ($)" style="width:100%;">
+          <input type="number" id="bizCostUnits" placeholder="Total Units Produced" style="width:100%;">
+          <button class="btn sage small" onclick="calcBizUnitCost()">Calculate Unit Economics</button>
+          <div id="bizCostRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+    `;
+  } else if (_formulaLibraryCategory === 'everyday') {
+    grid.innerHTML = `
+      <!-- PERCENTAGE OF AMOUNT -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Percentage Calculator</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="evPctRate" placeholder="Percentage % (e.g. 15)" style="width:100%;">
+          <input type="number" id="evPctBase" placeholder="Base Amount (e.g. 850)" style="width:100%;">
+          <button class="btn sage small" onclick="calcEvPercentage()">Calculate Amount</button>
+          <div id="evPctRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- DAYS BETWEEN DATES -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Days Between Dates</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="date" id="evDateStart" style="width:100%;">
+          <input type="date" id="evDateEnd" style="width:100%;">
+          <button class="btn sage small" onclick="calcEvDaysBetween()">Calculate Days Difference</button>
+          <div id="evDaysRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+    `;
+  } else if (_formulaLibraryCategory === 'geometry') {
+    grid.innerHTML = `
+      <!-- CIRCLE -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Circle (Area &amp; Circumference)</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="geoCircRadius" placeholder="Radius (r)" style="width:100%;">
+          <button class="btn sage small" onclick="calcGeoCircle()">Calculate Circle</button>
+          <div id="geoCircRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- RECTANGLE -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Rectangle</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="geoRectL" placeholder="Length (l)" style="width:100%;">
+          <input type="number" id="geoRectW" placeholder="Width (w)" style="width:100%;">
+          <button class="btn sage small" onclick="calcGeoRectangle()">Calculate Rectangle</button>
+          <div id="geoRectRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- CYLINDER -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Cylinder (Volume &amp; Surface)</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="geoCylR" placeholder="Radius (r)" style="width:100%;">
+          <input type="number" id="geoCylH" placeholder="Height (h)" style="width:100%;">
+          <button class="btn sage small" onclick="calcGeoCylinder()">Calculate Cylinder</button>
+          <div id="geoCylRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+    `;
+  } else if (_formulaLibraryCategory === 'physics') {
+    grid.innerHTML = `
+      <!-- SPEED DISTANCE TIME -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Speed = Distance / Time</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="phyDist" placeholder="Distance (m)" style="width:100%;">
+          <input type="number" id="phyTime" placeholder="Time (s)" style="width:100%;">
+          <button class="btn sage small" onclick="calcPhySpeed()">Calculate Speed</button>
+          <div id="phySpeedRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- FORCE (NEWTON'S SECOND LAW) -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Force (F = m × a)</h4>
+        <div style="display:grid; gap:8px;">
+          <input type="number" id="phyMass" placeholder="Mass (kg)" style="width:100%;">
+          <input type="number" id="phyAccel" placeholder="Acceleration (m/s²)" style="width:100%;">
+          <button class="btn sage small" onclick="calcPhyForce()">Calculate Force</button>
+          <div id="phyForceRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+    `;
+  } else if (_formulaLibraryCategory === 'electrical') {
+    grid.innerHTML = `
+      <!-- OHM'S LAW -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+        <h4 style="margin:0 0 10px 0; color:#38bdf8;">Ohm's Law Solver (V = I × R)</h4>
+        <div style="display:grid; gap:8px;">
+          <select id="elecSolveTarget" style="width:100%;">
+            <option value="V">Solve Voltage (V = I × R)</option>
+            <option value="I">Solve Current (I = V / R)</option>
+            <option value="R">Solve Resistance (R = V / I)</option>
+          </select>
+          <input type="number" id="elecVal1" placeholder="Current I (Amps)" style="width:100%;">
+          <input type="number" id="elecVal2" placeholder="Resistance R (Ohms)" style="width:100%;">
+          <button class="btn sage small" onclick="calcElecOhm()">Solve Ohm's Law</button>
+          <div id="elecOhmRes" style="font-family:monospace; font-weight:bold; color:#f8fafc; font-size:0.95rem; margin-top:4px;"></div>
+        </div>
+      </div>
+    `;
   }
-  if(ratesInKg[u1] && ratesInKg[u2]){
-    const kgs = val * ratesInKg[u1];
-    const res = kgs / ratesInKg[u2];
-    return res.toFixed(4) + ' ' + u2;
+}
+
+/* Calculation Library Handlers */
+function calcFinRevenue() {
+  const units = parseFloat(document.getElementById('finRevUnits')?.value || 0);
+  const price = parseFloat(document.getElementById('finRevPrice')?.value || 0);
+  const cogs = parseFloat(document.getElementById('finRevCOGS')?.value || 0);
+  const rev = units * price;
+  const gp = rev - cogs;
+  const margin = rev ? ((gp / rev) * 100).toFixed(2) : '0';
+  document.getElementById('finRevRes').innerHTML = `Revenue: $${rev.toLocaleString()}<br>Gross Profit: $${gp.toLocaleString()}<br>Gross Margin: ${margin}%`;
+}
+
+function calcFinLoan() {
+  const p = parseFloat(document.getElementById('finLoanP')?.value || 0);
+  const rAnn = parseFloat(document.getElementById('finLoanR')?.value || 0) / 100 / 12;
+  const n = parseFloat(document.getElementById('finLoanY')?.value || 0) * 12;
+  if (!p || !rAnn || !n) return;
+  const pmt = p * (rAnn * Math.pow(1 + rAnn, n)) / (Math.pow(1 + rAnn, n) - 1);
+  const total = pmt * n;
+  document.getElementById('finLoanRes').innerHTML = `Monthly Payment: $${pmt.toFixed(2)}<br>Total Paid over ${n} months: $${total.toFixed(2)}`;
+}
+
+function calcFinCompound() {
+  const p = parseFloat(document.getElementById('finCompP')?.value || 0);
+  const r = parseFloat(document.getElementById('finCompR')?.value || 0) / 100;
+  const t = parseFloat(document.getElementById('finCompT')?.value || 0);
+  const fv = p * Math.pow(1 + r, t);
+  document.getElementById('finCompRes').innerHTML = `Future Value: $${fv.toFixed(2)}<br>Total Interest Earned: $${(fv - p).toFixed(2)}`;
+}
+
+function calcFinROI() {
+  const gain = parseFloat(document.getElementById('finRoiGain')?.value || 0);
+  const cost = parseFloat(document.getElementById('finRoiCost')?.value || 0);
+  if (!cost) return;
+  const roi = ((gain / cost) * 100).toFixed(2);
+  document.getElementById('finRoiRes').innerHTML = `ROI: ${roi}%<br>ROAS Multiple: ${(gain / cost).toFixed(2)}x`;
+}
+
+function calcFinBreakEven() {
+  const fixed = parseFloat(document.getElementById('finBeFixed')?.value || 0);
+  const price = parseFloat(document.getElementById('finBePrice')?.value || 0);
+  const vCost = parseFloat(document.getElementById('finBeVar')?.value || 0);
+  const margin = price - vCost;
+  if (margin <= 0) { document.getElementById('finBeRes').textContent = 'Error: Price must exceed variable cost'; return; }
+  const units = Math.ceil(fixed / margin);
+  document.getElementById('finBeRes').innerHTML = `Break-Even Units: ${units} units<br>Break-Even Revenue: $${(units * price).toLocaleString()}`;
+}
+
+function calcBizGrowth() {
+  const start = parseFloat(document.getElementById('bizGrowStart')?.value || 0);
+  const end = parseFloat(document.getElementById('bizGrowEnd')?.value || 0);
+  if (!start) return;
+  const growth = (((end - start) / start) * 100).toFixed(2);
+  document.getElementById('bizGrowRes').textContent = `Growth Rate: ${growth}% (${end >= start ? '+' : ''}${(end - start).toFixed(2)})`;
+}
+
+function calcBizConversion() {
+  const total = parseFloat(document.getElementById('bizConvTotal')?.value || 0);
+  const count = parseFloat(document.getElementById('bizConvCount')?.value || 0);
+  if (!total) return;
+  const rate = ((count / total) * 100).toFixed(2);
+  document.getElementById('bizConvRes').textContent = `Rate: ${rate}% (${count} of ${total})`;
+}
+
+function calcBizUnitCost() {
+  const rev = parseFloat(document.getElementById('bizCostRev')?.value || 0);
+  const vCost = parseFloat(document.getElementById('bizCostVar')?.value || 0);
+  const units = parseFloat(document.getElementById('bizCostUnits')?.value || 0);
+  if (!units) return;
+  const unitCost = (vCost / units).toFixed(2);
+  const contribMargin = rev ? (((rev - vCost) / rev) * 100).toFixed(2) : '0';
+  document.getElementById('bizCostRes').innerHTML = `Cost / Unit: $${unitCost}<br>Contribution Margin: ${contribMargin}%`;
+}
+
+function calcEvPercentage() {
+  const rate = parseFloat(document.getElementById('evPctRate')?.value || 0);
+  const base = parseFloat(document.getElementById('evPctBase')?.value || 0);
+  const amt = (rate / 100) * base;
+  document.getElementById('evPctRes').textContent = `${rate}% of ${base} = ${amt}`;
+}
+
+function calcEvDaysBetween() {
+  const d1 = document.getElementById('evDateStart')?.value;
+  const d2 = document.getElementById('evDateEnd')?.value;
+  if (!d1 || !d2) return;
+  const days = evaluateFormulaEngine(`DAYS("${d1}", "${d2}")`).value;
+  document.getElementById('evDaysRes').textContent = `Total Days Difference: ${days} days`;
+}
+
+function calcGeoCircle() {
+  const r = parseFloat(document.getElementById('geoCircRadius')?.value || 0);
+  const area = (Math.PI * r * r).toFixed(4);
+  const circ = (2 * Math.PI * r).toFixed(4);
+  document.getElementById('geoCircRes').innerHTML = `Area: ${area}<br>Circumference: ${circ}`;
+}
+
+function calcGeoRectangle() {
+  const l = parseFloat(document.getElementById('geoRectL')?.value || 0);
+  const w = parseFloat(document.getElementById('geoRectW')?.value || 0);
+  document.getElementById('geoRectRes').innerHTML = `Area: ${(l * w).toFixed(4)}<br>Perimeter: ${(2 * (l + w)).toFixed(4)}`;
+}
+
+function calcGeoCylinder() {
+  const r = parseFloat(document.getElementById('geoCylR')?.value || 0);
+  const h = parseFloat(document.getElementById('geoCylH')?.value || 0);
+  const vol = (Math.PI * r * r * h).toFixed(4);
+  const sa = (2 * Math.PI * r * h + 2 * Math.PI * r * r).toFixed(4);
+  document.getElementById('geoCylRes').innerHTML = `Volume: ${vol}<br>Surface Area: ${sa}`;
+}
+
+function calcPhySpeed() {
+  const d = parseFloat(document.getElementById('phyDist')?.value || 0);
+  const t = parseFloat(document.getElementById('phyTime')?.value || 0);
+  if (!t) return;
+  document.getElementById('phySpeedRes').textContent = `Speed: ${(d / t).toFixed(4)} m/s`;
+}
+
+function calcPhyForce() {
+  const m = parseFloat(document.getElementById('phyMass')?.value || 0);
+  const a = parseFloat(document.getElementById('phyAccel')?.value || 0);
+  document.getElementById('phyForceRes').textContent = `Force (F): ${(m * a).toFixed(4)} N`;
+}
+
+function calcElecOhm() {
+  const target = document.getElementById('elecSolveTarget')?.value;
+  const v1 = parseFloat(document.getElementById('elecVal1')?.value || 0);
+  const v2 = parseFloat(document.getElementById('elecVal2')?.value || 0);
+  const resEl = document.getElementById('elecOhmRes');
+
+  if (target === 'V') {
+    resEl.textContent = `Voltage (V) = ${(v1 * v2).toFixed(4)} V`;
+  } else if (target === 'I') {
+    if (!v2) return;
+    resEl.textContent = `Current (I) = ${(v1 / v2).toFixed(4)} A`;
+  } else if (target === 'R') {
+    if (!v2) return;
+    resEl.textContent = `Resistance (R) = ${(v1 / v2).toFixed(4)} Ω`;
   }
-  if(u1==='c' && u2==='f') return ((val * 9/5) + 32).toFixed(2) + ' °F';
-  if(u1==='f' && u2==='c') return (((val - 32) * 5/9)).toFixed(2) + ' °C';
+}
+
+function renderFormulaConvertersTab(container) {
+  container.innerHTML = `
+    <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:16px; max-width:640px;">
+      <h3 style="margin:0 0 14px 0; color:#38bdf8;">Unit Converter (13 Categories)</h3>
+
+      <div style="display:grid; gap:12px;">
+        <div>
+          <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Category</label>
+          <select id="convCategorySelect" style="width:100%;" onchange="updateFormulaConverterUnits()">
+            <option value="Length">Length</option>
+            <option value="Area">Area</option>
+            <option value="Volume">Volume</option>
+            <option value="Mass">Mass</option>
+            <option value="Temperature">Temperature</option>
+            <option value="Time">Time</option>
+            <option value="Speed">Speed</option>
+            <option value="Pressure">Pressure</option>
+            <option value="Energy">Energy</option>
+            <option value="Power">Power</option>
+            <option value="Frequency">Frequency</option>
+            <option value="Data Size">Data Size</option>
+            <option value="Angle">Angle</option>
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">From</label>
+            <select id="convFromUnit" style="width:100%;" onchange="runFormulaConverter()"></select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">To</label>
+            <select id="convToUnit" style="width:100%;" onchange="runFormulaConverter()"></select>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Input Value</label>
+          <input type="number" id="convInputValue" value="10" style="width:100%;" oninput="runFormulaConverter()">
+        </div>
+
+        <div id="convResultBox" style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:12px; font-family:monospace; font-size:1.2rem; font-weight:bold; color:#38bdf8; text-align:center;"></div>
+      </div>
+    </div>
+  `;
+
+  updateFormulaConverterUnits();
+}
+
+function updateFormulaConverterUnits() {
+  const cat = document.getElementById('convCategorySelect')?.value || 'Length';
+  const fromSel = document.getElementById('convFromUnit');
+  const toSel = document.getElementById('convToUnit');
+  if (!fromSel || !toSel) return;
+
+  const unitMap = {
+    'Length': ['m', 'km', 'cm', 'mm', 'ft', 'in', 'yd', 'mi', 'nmi'],
+    'Area': ['m2', 'km2', 'cm2', 'ft2', 'in2', 'acre', 'ha'],
+    'Volume': ['liter', 'ml', 'm3', 'gal', 'qt', 'pt', 'cup', 'floz'],
+    'Mass': ['kg', 'g', 'mg', 'lb', 'oz', 'ton', 'mton'],
+    'Temperature': ['c', 'f', 'k'],
+    'Time': ['sec', 'min', 'hr', 'day', 'week', 'month', 'year'],
+    'Speed': ['m/s', 'km/h', 'mph', 'knot', 'ft/s'],
+    'Pressure': ['pa', 'kpa', 'bar', 'psi', 'atm'],
+    'Energy': ['joule', 'kj', 'cal', 'kcal', 'wh', 'kwh', 'btu'],
+    'Power': ['watt', 'kw', 'mw', 'hp'],
+    'Frequency': ['hz', 'khz', 'mhz', 'ghz'],
+    'Data Size': ['bytes', 'kb', 'mb', 'gb', 'tb', 'pb'],
+    'Angle': ['deg', 'rad', 'grad']
+  };
+
+  const units = unitMap[cat] || ['m', 'km'];
+  fromSel.innerHTML = units.map(u => `<option value="${u}">${u}</option>`).join('');
+  toSel.innerHTML = units.map(u => `<option value="${u}">${u}</option>`).join('');
+
+  if (units.length > 1) toSel.selectedIndex = 1;
+  runFormulaConverter();
+}
+
+function runFormulaConverter() {
+  const cat = document.getElementById('convCategorySelect')?.value || 'Length';
+  const u1 = document.getElementById('convFromUnit')?.value;
+  const u2 = document.getElementById('convToUnit')?.value;
+  const val = parseFloat(document.getElementById('convInputValue')?.value || 0);
+  const resBox = document.getElementById('convResultBox');
+
+  if (!resBox || !u1 || !u2) return;
+  const res = convertFormulaUnits(val, u1, u2, cat);
+  resBox.textContent = `${val} ${u1} = ${res}`;
+}
+
+function convertFormulaUnits(val, u1, u2, category) {
+  if (isNaN(val)) return '0 ' + u2;
+  if (u1 === u2) return val + ' ' + u2;
+
+  // Temperature
+  if (category === 'Temperature' || (['c','f','k'].includes(u1) && ['c','f','k'].includes(u2))) {
+    let kelvin = 0;
+    if (u1 === 'c') kelvin = val + 273.15;
+    else if (u1 === 'f') kelvin = (val - 32) * 5/9 + 273.15;
+    else kelvin = val;
+
+    let res = 0;
+    if (u2 === 'c') res = kelvin - 273.15;
+    else if (u2 === 'f') res = (kelvin - 273.15) * 9/5 + 32;
+    else res = kelvin;
+    return parseFloat(res.toFixed(6)).toString() + ' ' + u2.toUpperCase();
+  }
+
+  // Length
+  const lengthRates = { m: 1, km: 1000, cm: 0.01, mm: 0.001, ft: 0.3048, in: 0.0254, yd: 0.9144, mi: 1609.344, nmi: 1852 };
+  if (lengthRates[u1] && lengthRates[u2]) {
+    const meters = val * lengthRates[u1];
+    return parseFloat((meters / lengthRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Area
+  const areaRates = { m2: 1, km2: 1000000, cm2: 0.0001, ft2: 0.092903, in2: 0.00064516, acre: 4046.856, ha: 10000 };
+  if (areaRates[u1] && areaRates[u2]) {
+    const sqMeters = val * areaRates[u1];
+    return parseFloat((sqMeters / areaRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Volume
+  const volRates = { liter: 1, ml: 0.001, m3: 1000, gal: 3.78541, qt: 0.946353, pt: 0.473176, cup: 0.24, floz: 0.0295735 };
+  if (volRates[u1] && volRates[u2]) {
+    const liters = val * volRates[u1];
+    return parseFloat((liters / volRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Mass
+  const massRates = { kg: 1, g: 0.001, mg: 0.000001, lb: 0.45359237, lbs: 0.45359237, oz: 0.028349523, ton: 907.18474, mton: 1000 };
+  if (massRates[u1] && massRates[u2]) {
+    const kgs = val * massRates[u1];
+    return parseFloat((kgs / massRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Time
+  const timeRates = { sec: 1, min: 60, hr: 3600, day: 86400, week: 604800, month: 2592000, year: 31536000 };
+  if (timeRates[u1] && timeRates[u2]) {
+    const secs = val * timeRates[u1];
+    return parseFloat((secs / timeRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Speed
+  const speedRates = { 'm/s': 1, 'km/h': 0.277778, 'mph': 0.44704, 'knot': 0.514444, 'ft/s': 0.3048 };
+  if (speedRates[u1] && speedRates[u2]) {
+    const ms = val * speedRates[u1];
+    return parseFloat((ms / speedRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Pressure
+  const pressRates = { pa: 1, kpa: 1000, bar: 100000, psi: 6894.76, atm: 101325 };
+  if (pressRates[u1] && pressRates[u2]) {
+    const pas = val * pressRates[u1];
+    return parseFloat((pas / pressRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Energy
+  const energyRates = { joule: 1, kj: 1000, cal: 4.184, kcal: 4184, wh: 3600, kwh: 3600000, btu: 1055.06 };
+  if (energyRates[u1] && energyRates[u2]) {
+    const joules = val * energyRates[u1];
+    return parseFloat((joules / energyRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Power
+  const powerRates = { watt: 1, kw: 1000, mw: 1000000, hp: 745.7 };
+  if (powerRates[u1] && powerRates[u2]) {
+    const watts = val * powerRates[u1];
+    return parseFloat((watts / powerRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Frequency
+  const freqRates = { hz: 1, khz: 1000, mhz: 1000000, ghz: 1000000000 };
+  if (freqRates[u1] && freqRates[u2]) {
+    const hzs = val * freqRates[u1];
+    return parseFloat((hzs / freqRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Data Size
+  const dataRates = { bytes: 1, kb: 1024, mb: 1048576, gb: 1073741824, tb: 1099511627776, pb: 1125899906842624 };
+  if (dataRates[u1] && dataRates[u2]) {
+    const bytes = val * dataRates[u1];
+    return parseFloat((bytes / dataRates[u2]).toFixed(6)).toString() + ' ' + u2;
+  }
+
+  // Angle
+  if (u1 === 'deg' && u2 === 'rad') return parseFloat((val * Math.PI / 180).toFixed(6)).toString() + ' rad';
+  if (u1 === 'rad' && u2 === 'deg') return parseFloat((val * 180 / Math.PI).toFixed(6)).toString() + ' deg';
+
   return 'Unsupported unit conversion';
 }
 
+function loadFormulaModelData() {
+  const defaultModel = {
+    title: 'SaaS Financial Model',
+    activeScenario: 'Base',
+    variables: [
+      { id: 'v1', name: 'Units', expr: '1000' },
+      { id: 'v2', name: 'Price', expr: '25' },
+      { id: 'v3', name: 'Revenue', expr: 'Units * Price' },
+      { id: 'v4', name: 'COGS_Rate', expr: '0.30' },
+      { id: 'v5', name: 'COGS', expr: 'Revenue * COGS_Rate' },
+      { id: 'v6', name: 'GrossProfit', expr: 'Revenue - COGS' },
+      { id: 'v7', name: 'OpEx', expr: '7500' },
+      { id: 'v8', name: 'NetProfit', expr: 'GrossProfit - OpEx' },
+      { id: 'v9', name: 'Margin', expr: 'NetProfit / Revenue' }
+    ],
+    scenarios: {
+      'Base': {},
+      'Optimistic': { Units: '1500', Price: '30' },
+      'Pessimistic': { Units: '500', Price: '20' }
+    }
+  };
+  return loadLocal('formula_model', defaultModel);
+}
+
+function saveFormulaModelData(model) {
+  saveLocal('formula_model', model);
+}
+
+function evaluateModelVariables(model, scenarioName = null) {
+  const activeScen = scenarioName || model.activeScenario || 'Base';
+  const overrides = model.scenarios?.[activeScen] || {};
+
+  // Build initial expressions map with scenario overrides
+  const exprMap = {};
+  model.variables.forEach(v => {
+    exprMap[v.name] = overrides[v.name] !== undefined ? overrides[v.name] : v.expr;
+  });
+
+  // Evaluate each variable
+  const evaluated = {};
+  const results = [];
+
+  model.variables.forEach(v => {
+    const rawExpr = exprMap[v.name];
+    const res = evaluateFormulaEngine(rawExpr, exprMap);
+    evaluated[v.name] = res.value;
+    results.push({
+      id: v.id,
+      name: v.name,
+      expr: rawExpr,
+      evaluated: res.value,
+      display: res.name === 'Margin' || v.name === 'Margin' ? (typeof res.value === 'number' ? (res.value * 100).toFixed(1) + '%' : res.display) : res.display,
+      type: res.type,
+      isOverride: overrides[v.name] !== undefined
+    });
+  });
+
+  return { evaluated, results, activeScen };
+}
+
+function renderFormulaModelsTab(container) {
+  const model = loadFormulaModelData();
+  const evalData = evaluateModelVariables(model);
+
+  container.innerHTML = `
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <h3 style="margin:0; color:#38bdf8;">📈 ${model.title}</h3>
+          <span style="font-size:0.8rem; background:#1e293b; border:1px solid #334155; padding:2px 8px; border-radius:4px; color:#cbd5e1;">Scenario: <b>${evalData.activeScen}</b></span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn sage small" onclick="openAddFormulaVarModal()">+ Add Variable</button>
+          <button class="btn ghost small" onclick="switchFormulaScenario('Base')">Base</button>
+          <button class="btn ghost small" onclick="switchFormulaScenario('Optimistic')">Optimistic</button>
+          <button class="btn ghost small" onclick="switchFormulaScenario('Pessimistic')">Pessimistic</button>
+        </div>
+      </div>
+
+      <!-- VARIABLES TABLE -->
+      <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; overflow:hidden; margin-bottom:16px;">
+        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+          <thead>
+            <tr style="background:#0f172a; border-bottom:1px solid #334155; color:#94a3b8;">
+              <th style="padding:10px 12px;">Variable Name</th>
+              <th style="padding:10px 12px;">Formula / Expression</th>
+              <th style="padding:10px 12px;">Calculated Value</th>
+              <th style="padding:10px 12px; text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${evalData.results.map(r => `
+              <tr style="border-bottom:1px solid #334155;">
+                <td style="padding:8px 12px; font-weight:600; color:#f8fafc;">
+                  ${r.name}
+                  ${r.isOverride ? '<span style="font-size:0.7rem; color:#f59e0b; margin-left:4px;">(override)</span>' : ''}
+                </td>
+                <td style="padding:8px 12px; font-family:monospace; color:#cbd5e1;">${r.expr}</td>
+                <td style="padding:8px 12px; font-family:monospace; font-weight:bold; color:#38bdf8;">${r.display}</td>
+                <td style="padding:8px 12px; text-align:right;">
+                  <button class="btn ghost small" style="padding:2px 6px; font-size:0.75rem;" onclick="deleteFormulaVar('${r.id}')">Delete</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SENSITIVITY MATRIX & TRACE -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+        <!-- 2D SENSITIVITY MATRIX -->
+        <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+          <h4 style="margin:0 0 10px 0; color:#38bdf8;">2D Sensitivity Matrix</h4>
+          <div style="display:grid; gap:8px; font-size:0.85rem;">
+            <div>
+              <label>Row Var: <b>Units</b> (500, 1000, 1500)</label>
+            </div>
+            <div>
+              <label>Col Var: <b>Price</b> (20, 25, 30)</label>
+            </div>
+            <div>
+              <label>Target Outcome: <b>NetProfit</b></label>
+            </div>
+            <button class="btn sage small" onclick="generateFormulaSensitivityMatrix()">Generate Matrix</button>
+            <div id="formulaSensitivityBox" style="margin-top:8px; overflow-x:auto;"></div>
+          </div>
+        </div>
+
+        <!-- STEP-BY-STEP CALCULATION TRACE -->
+        <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:14px;">
+          <h4 style="margin:0 0 10px 0; color:#38bdf8;">Calculation Dependency Trace</h4>
+          <div id="formulaTraceBox" style="max-height:220px; overflow-y:auto; font-family:monospace; font-size:0.82rem; color:#cbd5e1;">
+            ${evalData.results.map(r => `<div>⚡ <b>${r.name}</b> = ${r.expr} → <span style="color:#38bdf8; font-weight:bold;">${r.display}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  generateFormulaSensitivityMatrix();
+}
+
+function switchFormulaScenario(scenName) {
+  const model = loadFormulaModelData();
+  model.activeScenario = scenName;
+  saveFormulaModelData(model);
+  renderFormula();
+}
+
+function openAddFormulaVarModal() {
+  openModalForm('Add New Variable', [
+    { name: 'name', label: 'Variable Name', type: 'text', placeholder: 'e.g. DiscountRate', required: true },
+    { name: 'expr', label: 'Formula or Value', type: 'text', placeholder: 'e.g. 0.05 or Units * Price * 0.1', required: true }
+  ], (data) => {
+    const model = loadFormulaModelData();
+    model.variables.push({ id: 'v_' + Date.now(), name: data.name.trim(), expr: data.expr.trim() });
+    saveFormulaModelData(model);
+    renderFormula();
+  });
+}
+
+function deleteFormulaVar(id) {
+  const model = loadFormulaModelData();
+  model.variables = model.variables.filter(v => v.id !== id);
+  saveFormulaModelData(model);
+  renderFormula();
+}
+
+function generateFormulaSensitivityMatrix() {
+  const box = document.getElementById('formulaSensitivityBox');
+  if (!box) return;
+
+  const model = loadFormulaModelData();
+  const rowVals = [500, 1000, 1500]; // Units
+  const colVals = [20, 25, 30]; // Price
+
+  let html = `
+    <table style="width:100%; border-collapse:collapse; text-align:center; font-family:monospace; font-size:0.85rem;">
+      <thead>
+        <tr style="background:#0f172a; color:#94a3b8;">
+          <th style="padding:6px; border:1px solid #334155;">Units \\ Price</th>
+          ${colVals.map(p => `<th style="padding:6px; border:1px solid #334155;">$${p}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  rowVals.forEach(u => {
+    html += `<tr><td style="background:#0f172a; font-weight:bold; color:#94a3b8; padding:6px; border:1px solid #334155;">${u} units</td>`;
+    colVals.forEach(p => {
+      // Evaluate model with override Units=u and Price=p
+      const tempModel = JSON.parse(JSON.stringify(model));
+      if (!tempModel.scenarios) tempModel.scenarios = {};
+      tempModel.scenarios['TempMatrix'] = { Units: String(u), Price: String(p) };
+      const res = evaluateModelVariables(tempModel, 'TempMatrix');
+      const np = res.evaluated['NetProfit'] ?? 0;
+      const formatted = typeof np === 'number' ? '$' + np.toLocaleString() : np;
+      html += `<td style="padding:6px; border:1px solid #334155; color:${np >= 0 ? '#38bdf8' : '#ef4444'}; font-weight:bold;">${formatted}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  box.innerHTML = html;
+}
+
+function renderFormulaHistoryTab(container) {
+  container.innerHTML = `
+    <div style="background:var(--bg-elevated,#1e293b); border:1px solid var(--border,#334155); border-radius:8px; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; color:#38bdf8;">📜 Calculation Log &amp; History</h3>
+        <div style="display:flex; gap:6px;">
+          <button class="btn ghost small" onclick="clearFormulaHistory()">Clear Log</button>
+          <button class="btn ghost small" onclick="exportFormulaHistory()">Export .formu</button>
+          <button class="btn ghost small" onclick="importFormulaHistory()">Import .formu</button>
+        </div>
+      </div>
+      <div id="formulaFullHistoryList" style="max-height:400px; overflow-y:auto;"></div>
+    </div>
+  `;
+  renderFormulaHistory();
+}
+
 function renderFormulaHistory(){
-  const el = document.getElementById('formulaHistoryList');
+  const el = document.getElementById('formulaHistoryList') || document.getElementById('formulaFullHistoryList');
   if(!el) return;
   const data = loadLocal('formula', {history:[]});
-  if(!data.history.length){ el.innerHTML = '<div class="hint">No calculations logged.</div>'; return; }
+  if(!data.history.length){ el.innerHTML = '<div class="hint" style="color:#94a3b8; padding:8px;">No calculations logged.</div>'; return; }
   el.innerHTML = data.history.map(item=>`
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border,#334155); padding:6px 0; font-size:0.88em;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border,#334155); padding:8px 0; font-size:0.88em;">
       <div>
         <span style="font-family:monospace; font-weight:600; color:#cbd5e1;">${item.expr}</span>
         <span style="color:var(--text-muted,#94a3b8);"> = </span>
         <span style="font-family:monospace; font-weight:bold; color:#38bdf8;">${item.result}</span>
       </div>
-      <span style="font-size:0.75em; color:var(--text-muted,#94a3b8);">${item.ts}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:0.75em; color:var(--text-muted,#94a3b8);">${item.ts}</span>
+        <button class="btn ghost small" style="padding:2px 6px; font-size:0.75rem;" onclick="_formulaCalcInput='${item.expr.replace(/'/g,"\\'")}'; setFormulaTab('calculator');">Reuse</button>
+      </div>
     </div>
   `).join('');
 }
 
 function clearFormulaHistory(){
   saveLocal('formula', {history:[]});
-  renderFormulaHistory();
+  renderFormula();
 }
 function exportFormulaHistory(){
   const d = loadLocal('formula', {history:[]});
-  download('calculations.formu', JSON.stringify({type:'formu', ...d}, null, 2));
+  const m = loadFormulaModelData();
+  download('calculations.formu', JSON.stringify({type:'formu', history: d.history||[], model: m}, null, 2));
 }
 function importFormulaHistory(){
   pickFile('.formu', (content)=>{
     try{
       const parsed = JSON.parse(content);
-      saveLocal('formula', {history: parsed.history || []});
+      if (parsed.history) saveLocal('formula', {history: parsed.history});
+      if (parsed.model) saveFormulaModelData(parsed.model);
       renderFormula();
     } catch(e){ alert('Could not parse .formu file'); }
   });

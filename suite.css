@@ -1666,3 +1666,99 @@ table.grid th{
   font-size: 0.65rem;
   color: #818cf8;
 }
+
+/* FORMULA CALCULATOR & SUITE STYLES */
+.formula-subnav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border, #334155);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+.formula-nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.formula-nav-btn:hover {
+  background: var(--bg-hover, #1e293b);
+  color: var(--text, #f8fafc);
+}
+.formula-nav-btn.active {
+  background: var(--bg-surface-elevated, #1e293b);
+  border-color: var(--accent, #38bdf8);
+  color: var(--accent, #38bdf8);
+}
+.formula-calc-display {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: right;
+  margin-bottom: 16px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+.formula-calc-expr {
+  font-family: monospace;
+  font-size: 1.1rem;
+  color: #94a3b8;
+  min-height: 24px;
+  word-break: break-all;
+}
+.formula-calc-val {
+  font-family: monospace;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #f8fafc;
+  word-break: break-all;
+}
+.formula-keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.formula-key-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 14px 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: background 0.1s ease, transform 0.05s ease;
+  user-select: none;
+}
+.formula-key-btn:hover {
+  background: #334155;
+}
+.formula-key-btn:active {
+  transform: scale(0.96);
+}
+.formula-key-btn.op {
+  background: #0f172a;
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+.formula-key-btn.action {
+  background: #312e81;
+  border-color: #6366f1;
+  color: #818cf8;
+}
+.formula-key-btn.eq {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  font-weight: 700;
+}
+.formula-key-btn.mem {
+  background: #1e1b4b;
+  border-color: #4338ca;
+  color: #a5b4fc;
+}
