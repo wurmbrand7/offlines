@@ -102,7 +102,7 @@ def run_transmute_complete_e2e():
         time.sleep(0.5)
 
         assert page.locator("div:has-text('Output Validated')").first.is_visible(), "DOCX conversion output validation failed"
-        assert "WORD DOCX DOCUMENT GENERATED" in page.input_value("#xmutePreviewArea"), "Word DOCX conversion failed"
+        assert "OPENXML WORD DOCX PACKAGE GENERATED" in page.input_value("#xmutePreviewArea"), "Word DOCX conversion failed"
         print("  ✓ PDF -> DOCX Conversion: Generated Word DOCX document Blob successfully")
 
         # ----------------------------------------------------

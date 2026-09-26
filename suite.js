@@ -11142,9 +11142,9 @@ function validateXmuteOutput(targetFormat, text, blob, sourceFile) {
     return { valid: true, details: `Valid PDF Document (${(blob.size/1024).toFixed(1)} KB)` };
   }
 
-  if (targetFormat === 'docx') {
-    if (blob.size < 20) throw new Error('Generated Word Document Blob is empty.');
-    return { valid: true, details: `Valid Word DOCX (${(blob.size/1024).toFixed(1)} KB)` };
+  if (['docx', 'xlsx', 'pptx'].includes(targetFormat)) {
+    if (blob.size < 100) throw new Error(`Generated ${targetFormat.toUpperCase()} package Blob is empty or corrupt.`);
+    return { valid: true, details: `Valid OpenXML PKZip Package (${(blob.size/1024).toFixed(1)} KB)` };
   }
 
   if (targetFormat === 'json') {
@@ -11727,6 +11727,26 @@ function parseCSV(text, delimiter) {
   return { matrix, delimiter };
 }
 
+const TRANSMUTE_FORMAT_CAPABILITIES = {
+  pdf: { id: 'pdf', label: 'PDF Document', ext: '.pdf', mime: 'application/pdf', localSupported: true },
+  docx: { id: 'docx', label: 'Word Document', ext: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', localSupported: true },
+  xlsx: { id: 'xlsx', label: 'Excel Spreadsheet', ext: '.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', localSupported: true },
+  pptx: { id: 'pptx', label: 'PowerPoint Presentation', ext: '.pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', localSupported: true },
+  csv: { id: 'csv', label: 'CSV Table', ext: '.csv', mime: 'text/csv', localSupported: true },
+  tsv: { id: 'tsv', label: 'TSV Table', ext: '.tsv', mime: 'text/tab-separated-values', localSupported: true },
+  json: { id: 'json', label: 'JSON Array', ext: '.json', mime: 'application/json', localSupported: true },
+  jsonl: { id: 'jsonl', label: 'JSON Lines', ext: '.jsonl', mime: 'application/x-jsonlines', localSupported: true },
+  md: { id: 'md', label: 'Markdown', ext: '.md', mime: 'text/markdown', localSupported: true },
+  html: { id: 'html', label: 'HTML5 Markup', ext: '.html', mime: 'text/html', localSupported: true },
+  txt: { id: 'txt', label: 'Plain Text', ext: '.txt', mime: 'text/plain', localSupported: true },
+  png: { id: 'png', label: 'PNG Image', ext: '.png', mime: 'image/png', localSupported: true },
+  jpeg: { id: 'jpeg', label: 'JPEG Image', ext: '.jpg', mime: 'image/jpeg', localSupported: true },
+  webp: { id: 'webp', label: 'WebP Image', ext: '.webp', mime: 'image/webp', localSupported: true },
+  sha256: { id: 'sha256', label: 'SHA-256 Hash', ext: '.sha256.txt', mime: 'text/plain', localSupported: true },
+  hex: { id: 'hex', label: 'Hex Dump', ext: '.hex.txt', mime: 'text/plain', localSupported: true },
+  b64: { id: 'b64', label: 'Base64 Data URI', ext: '.b64.txt', mime: 'text/plain', localSupported: true }
+};
+
 async function detectXmuteFileType(file) {
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   let detectedFormat = ext.toUpperCase();
@@ -11755,6 +11775,249 @@ async function detectXmuteFileType(file) {
   }
 
   return { ext, detectedFormat, magicName, mismatchWarning };
+}
+
+function computeCrc32(uint8Array) {
+  let table = window._crc32Table;
+  if (!table) {
+    table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let j = 0; j < 8; j++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[i] = c;
+    }
+    window._crc32Table = table;
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < uint8Array.length; i++) {
+    crc = (crc >>> 8) ^ table[(crc ^ uint8Array[i]) & 0xFF];
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function createMinimalZipPackage(filesMap) {
+  const localHeaders = [];
+  const cdHeaders = [];
+  let currentOffset = 0;
+  const encoder = new TextEncoder();
+
+  Object.keys(filesMap).forEach(fileName => {
+    const fileData = typeof filesMap[fileName] === 'string' ? encoder.encode(filesMap[fileName]) : filesMap[fileName];
+    const nameBytes = encoder.encode(fileName);
+    const crc = computeCrc32(fileData);
+    const size = fileData.length;
+
+    const localHeader = new Uint8Array(30 + nameBytes.length + size);
+    const view = new DataView(localHeader.buffer);
+
+    view.setUint32(0, 0x04034b50, true); // PK\x03\x04
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 0, true);
+    view.setUint16(8, 0, true); // Store
+    view.setUint16(10, 0x4a21, true);
+    view.setUint16(12, 0x5895, true);
+    view.setUint32(14, crc, true);
+    view.setUint32(18, size, true);
+    view.setUint32(22, size, true);
+    view.setUint16(26, nameBytes.length, true);
+    view.setUint16(28, 0, true);
+
+    localHeader.set(nameBytes, 30);
+    localHeader.set(fileData, 30 + nameBytes.length);
+
+    localHeaders.push({ header: localHeader, offset: currentOffset, size: size, nameBytes, crc });
+    currentOffset += localHeader.length;
+  });
+
+  let cdSize = 0;
+  localHeaders.forEach(item => {
+    const cdHeader = new Uint8Array(46 + item.nameBytes.length);
+    const view = new DataView(cdHeader.buffer);
+
+    view.setUint32(0, 0x02014b50, true); // PK\x01\x02
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 20, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0x4a21, true);
+    view.setUint16(14, 0x5895, true);
+    view.setUint32(16, item.crc, true);
+    view.setUint32(20, item.size, true);
+    view.setUint32(24, item.size, true);
+    view.setUint16(28, item.nameBytes.length, true);
+    view.setUint16(30, 0, true);
+    view.setUint16(32, 0, true);
+    view.setUint16(34, 0, true);
+    view.setUint16(36, 0, true);
+    view.setUint32(38, 0, true);
+    view.setUint32(42, item.offset, true);
+
+    cdHeader.set(item.nameBytes, 46);
+    cdHeaders.push(cdHeader);
+    cdSize += cdHeader.length;
+  });
+
+  const eocd = new Uint8Array(22);
+  const viewEocd = new DataView(eocd.buffer);
+  viewEocd.setUint32(0, 0x06054b50, true); // PK\x05\x06
+  viewEocd.setUint16(4, 0, true);
+  viewEocd.setUint16(6, 0, true);
+  viewEocd.setUint16(8, localHeaders.length, true);
+  viewEocd.setUint16(10, localHeaders.length, true);
+  viewEocd.setUint32(12, cdSize, true);
+  viewEocd.setUint32(16, currentOffset, true);
+  viewEocd.setUint16(20, 0, true);
+
+  const totalSize = currentOffset + cdSize + 22;
+  const zipBytes = new Uint8Array(totalSize);
+  let pos = 0;
+
+  localHeaders.forEach(item => {
+    zipBytes.set(item.header, pos);
+    pos += item.header.length;
+  });
+
+  cdHeaders.forEach(cd => {
+    zipBytes.set(cd, pos);
+    pos += cd.length;
+  });
+
+  zipBytes.set(eocd, pos);
+
+  return zipBytes;
+}
+
+function generateDocxPackageBlob(title, contentText) {
+  const sanitizeXml = str => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  const lines = String(contentText).split('\n').filter(l => l.trim());
+
+  let bodyXml = `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t>${sanitizeXml(title)}</w:t></w:r></w:p>`;
+
+  lines.forEach(line => {
+    bodyXml += `<w:p><w:r><w:t>${sanitizeXml(line)}</w:t></w:r></w:p>`;
+  });
+
+  const filesMap = {
+    '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`,
+
+    '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+
+    'word/document.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${bodyXml}
+  </w:body>
+</w:document>`,
+
+    'word/styles.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+  </w:style>
+</w:styles>`,
+
+    'word/_rels/document.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+  };
+
+  const zipBytes = createMinimalZipPackage(filesMap);
+  return new Blob([zipBytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+function generateXlsxPackageBlob(sheetName, matrixOrCsv) {
+  const sanitizeXml = str => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  let matrix = Array.isArray(matrixOrCsv) ? matrixOrCsv : (parseCSV(String(matrixOrCsv)).matrix || []);
+  if (!matrix.length) matrix = [['Sample Header'], ['Sample Data']];
+
+  const sharedStrings = [];
+  const stringIndexMap = new Map();
+
+  const getStringIndex = (strVal) => {
+    const s = String(strVal);
+    if (stringIndexMap.has(s)) return stringIndexMap.get(s);
+    const idx = sharedStrings.length;
+    sharedStrings.push(s);
+    stringIndexMap.set(s, idx);
+    return idx;
+  };
+
+  let rowsXml = '';
+  matrix.forEach((r, rowIdx) => {
+    let cellsXml = '';
+    r.forEach((cellVal, colIdx) => {
+      const colLetter = String.fromCharCode(65 + (colIdx % 26));
+      const ref = `${colLetter}${rowIdx + 1}`;
+      const numVal = Number(cellVal);
+      if (!isNaN(numVal) && String(cellVal).trim() !== '') {
+        cellsXml += `<c r="${ref}"><v>${numVal}</v></c>`;
+      } else {
+        const sIdx = getStringIndex(cellVal);
+        cellsXml += `<c r="${ref}" t="s"><v>${sIdx}</v></c>`;
+      }
+    });
+    rowsXml += `<row r="${rowIdx + 1}">${cellsXml}</row>`;
+  });
+
+  let sharedStringsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${sharedStrings.length}" uniqueCount="${sharedStrings.length}">`;
+  sharedStrings.forEach(s => {
+    sharedStringsXml += `<si><t>${sanitizeXml(s)}</t></si>`;
+  });
+  sharedStringsXml += `</sst>`;
+
+  const filesMap = {
+    '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+</Types>`,
+
+    '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`,
+
+    'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="${sanitizeXml(sheetName || 'Sheet1')}" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`,
+
+    'xl/worksheets/sheet1.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    ${rowsXml}
+  </sheetData>
+</worksheet>`,
+
+    'xl/sharedStrings.xml': sharedStringsXml,
+
+    'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
+</Relationships>`
+  };
+
+  const zipBytes = createMinimalZipPackage(filesMap);
+  return new Blob([zipBytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 function extractTextFromZipBuffer(buffer, fileType) {
@@ -12040,13 +12303,15 @@ async function processXmuteConversion() {
       if (_xmuteTargetFormat === 'pdf') {
         mimeType = 'application/pdf';
         resultBlob = generatePdfBlobFromText(_xmuteActiveFile.name, textContent);
-        console.log('PDF Blob Size:', resultBlob.size);
         convertedText = `[PDF DOCUMENT GENERATED (${(resultBlob.size/1024).toFixed(1)} KB) - ${textContent.length} chars]`;
       } else if (_xmuteTargetFormat === 'docx') {
         mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        const docxHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHTML(_xmuteActiveFile.name)}</title></head><body><h2>${escapeHTML(_xmuteActiveFile.name)}</h2><div>${escapeHTML(textContent).replace(/\n/g, '<br>')}</div></body></html>`;
-        resultBlob = new Blob([docxHtml], { type: mimeType });
-        convertedText = `[WORD DOCX DOCUMENT GENERATED (${(resultBlob.size/1024).toFixed(1)} KB)]\n\n` + textContent;
+        resultBlob = generateDocxPackageBlob(_xmuteActiveFile.name, textContent);
+        convertedText = `[OPENXML WORD DOCX PACKAGE GENERATED (${(resultBlob.size/1024).toFixed(1)} KB)]\n\n` + textContent;
+      } else if (_xmuteTargetFormat === 'xlsx') {
+        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        resultBlob = generateXlsxPackageBlob(_xmuteActiveFile.name, textContent);
+        convertedText = `[OPENXML EXCEL XLSX PACKAGE GENERATED (${(resultBlob.size/1024).toFixed(1)} KB)]\n\n` + textContent;
       } else if (_xmuteTargetFormat === 'json') {
         if (ext === 'csv' || ext === 'tsv' || _xmuteAnalysis?.structure === 'Tabular Dataset') {
           const parsed = parseCSV(textContent, ext === 'tsv' ? '\t' : null);
